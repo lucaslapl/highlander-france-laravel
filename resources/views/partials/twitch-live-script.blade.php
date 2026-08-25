@@ -41,8 +41,9 @@
             var badge = badgeByMatchId[id];
             if (byMatchId[id]) {
                 badge.href = byMatchId[id].url;
-                badge.title = "Regarder sur Twitch (" + byMatchId[id].name
-                    + (byMatchId[id].viewers > 0 ? " \u2014 " + byMatchId[id].viewers + " spectateurs" : "") + ")";
+                badge.title = "Regarder sur Twitch (" + byMatchId[id].name + ")";
+                badge.innerHTML = '<i class="fa-brands fa-twitch"></i> EN DIRECT'
+                    + (byMatchId[id].viewers > 0 ? ' \u00B7 ' + byMatchId[id].viewers : '');
                 badge.removeAttribute("hidden");
             } else {
                 badge.setAttribute("hidden", "");
