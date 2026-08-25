@@ -43,11 +43,11 @@
                     </td>
 
                     <td>
-                        {{ (int)$member['is_admin'] === 1 ? '<span class="badge badge-admin">ADMIN</span>' : '<span class="badge badge-disabled">ADMIN</span>' }}
-                        {{ (int)$member['is_founder'] === 1 ? '<span class="badge badge-founder">FONDATEUR</span>' : '<span class="badge badge-disabled">FONDATEUR</span>' }}
-                        {{ (int)$member['is_moderator'] === 1 ? '<span class="badge badge-moderator">MODO</span>' : '<span class="badge badge-disabled">MODO</span>' }}
-                        {{ (int)$member['is_mentor'] === 1 ? '<span class="badge badge-mentor">MENTOR</span>' : '<span class="badge badge-disabled">MENTOR</span>' }}
-                        {{ (int)$member['is_mixer'] === 1 ? '<span class="badge badge-mixer">MIXER</span>' : '<span class="badge badge-disabled">MIXER</span>' }}
+                        {!! (int)$member['is_admin'] === 1 ? '<span class="badge badge-admin">ADMIN</span>' : '<span class="badge badge-disabled">ADMIN</span>' !!} 
+                        {!! (int)$member['is_founder'] === 1 ? '<span class="badge badge-founder">FONDATEUR</span>' : '<span class="badge badge-disabled">FONDATEUR</span>' !!} 
+                        {!! (int)$member['is_moderator'] === 1 ? '<span class="badge badge-moderator">MODO</span>' : '<span class="badge badge-disabled">MODO</span>' !!} 
+                        {!! (int)$member['is_mentor'] === 1 ? '<span class="badge badge-mentor">MENTOR</span>' : '<span class="badge badge-disabled">MENTOR</span>' !!} 
+                        {!! (int)$member['is_mixer'] === 1 ? '<span class="badge badge-mixer">MIXER</span>' : '<span class="badge badge-disabled">MIXER</span>' !!} 
                     </td>
 
                     <td class="text-center">

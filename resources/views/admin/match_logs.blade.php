@@ -37,7 +37,7 @@
             </tr>
         </thead>
         <tbody>
-            {{ $rows !== '' ? $rows : '<tr><td colspan="7" style="padding: 20px; text-align: center; color: #aaa; font-style: italic;">Aucun log à afficher.</td></tr>' }}
+            {!! $rows !== '' ? $rows : '<tr><td colspan="7" style="padding: 20px; text-align: center; color: #aaa; font-style: italic;">Aucun log à afficher.</td></tr>' !!}
         </tbody>
     </table>
 </div>

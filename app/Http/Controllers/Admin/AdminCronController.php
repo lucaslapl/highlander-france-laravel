@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\AdminRepository;
 use App\Services\AdminLogger;
 use App\Services\Auth;
 use App\Services\MatchFormat;
@@ -154,7 +155,9 @@ final class AdminCronController extends Controller
         $selectedAction = '';
         $returnStatus = 0;
 
-        if ($request->isMethod('POST') && $request->input('trigger_cron') !== null) {
+        // NB : has() et non input('trigger_cron') !== null — le bouton submit
+        // envoie une valeur vide que ConvertEmptyStringsToNull transforme en null.
+        if ($request->isMethod('POST') && $request->has('trigger_cron')) {
             $selectedAction = (string) $request->input('cron_action', '');
 
             if (array_key_exists($selectedAction, $availableScripts)) {
@@ -233,7 +236,7 @@ final class AdminCronController extends Controller
             $logContent = "Aucun enregistrement trouvé.\nLe fichier 'cron_debug.log' n'a pas encore été généré dans le répertoire de données.";
         }
 
-        if ($request->isMethod('POST') && $request->input('clear_logs') !== null) {
+        if ($request->isMethod('POST') && $request->has('clear_logs')) {
             if ($fileExists) {
                 file_put_contents($logFile, '');
             }

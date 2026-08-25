@@ -25,11 +25,11 @@
         <p style="font-family: monospace; color: #888; font-size: 13px;">SteamID64 : {!! e($target['steamid64']) !!}</p>
         <p style="font-family: monospace; color: #888; font-size: 13px;">SteamID3 : {!! e($target['player']['steamid']) !!}</p>
         <span style="display: block; margin-top: 5px; font-size: 12px; color: #aaa;">
-            {{ (int)$target['player']['is_admin'] === 1 ? '<span class="badge badge-admin">Admin</span>' : '' }}
-            {{ (int)$target['player']['is_founder'] === 1 ? '<span class="badge badge-founder">Fondateur</span>' : '' }}
-            {{ (int)$target['player']['is_moderator'] === 1 ? '<span class="badge badge-moderator">Modérateur</span>' : '' }}
-            {{ (int)$target['player']['is_mentor'] === 1 ? '<span class="badge badge-mentor">Mentor</span>' : '' }}
-            {{ (int)$target['player']['is_mixer'] === 1 ? '<span class="badge badge-mixer">Lanceur de Mix</span>' : '' }}
+            {!! (int)$target['player']['is_admin'] === 1 ? '<span class="badge badge-admin">Admin</span>' : '' !!}
+            {!! (int)$target['player']['is_founder'] === 1 ? '<span class="badge badge-founder">Fondateur</span>' : '' !!}
+            {!! (int)$target['player']['is_moderator'] === 1 ? '<span class="badge badge-moderator">Modérateur</span>' : '' !!}
+            {!! (int)$target['player']['is_mentor'] === 1 ? '<span class="badge badge-mentor">Mentor</span>' : '' !!}
+            {!! (int)$target['player']['is_mixer'] === 1 ? '<span class="badge badge-mixer">Lanceur de Mix</span>' : '' !!}
         </span>
     </div>
 </div>
