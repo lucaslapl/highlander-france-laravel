@@ -52,13 +52,13 @@
                 <div class="form-group">
                     <label for="country">Nationalité :</label>
                     <select name="country" id="country" class="form-control">
-                        @foreach (COUNTRIES as $value => $label)
+                        @foreach (config('hlfr.countries') as $value => $label)
                             <option value="{!! e($value) !!}" {{ $target['current_country'] === $value ? 'selected' : '' }}>
                                 {!! e($label) !!}
                             </option>
                         @endforeach
 
-                        @if (!array_key_exists($target['current_country'], COUNTRIES) && !empty($target['player']['country']))
+                        @if (!array_key_exists($target['current_country'], config('hlfr.countries')) && !empty($target['player']['country']))
                             <option value="{!! e($target['current_country']) !!}" selected>
                                 {!! e(ucfirst((string)$target['player']['country'])) !!} (Actuel)
                             </option>
