@@ -139,6 +139,12 @@ window.__dashboardData = {!! json_encode($dashboardData, JSON_UNESCAPED_UNICODE 
                 <p class="admin-action-card__desc">Exclure des logs logs.tf des stats et de la page Match Stats, avec motif et traçabilité.</p>
                 <a href="/admin/manage-blacklist" class="admin-link-btn">Gérer la blacklist</a>
             </div>
+
+            <div class="admin-action-card" style="--accent: #9b59b6;">
+                <h4 class="admin-action-card__title"><i class="fa-solid fa-flask"></i> Simulateur d'API</h4>
+                <p class="admin-action-card__desc">Simuler un match en direct, des streams Twitch ou créer des matchs ETF2L factices pour tester les affichages sans serveur réel.</p>
+                <a href="/admin/api-test" class="admin-link-btn">Ouvrir le simulateur</a>
+            </div>
         </div>
 
         <div class="admin-api-status">
