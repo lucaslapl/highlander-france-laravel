@@ -1,5 +1,27 @@
 # Changelog — HLFR Match Log Webhook
 
+## 1.4.0 — 2026-08-25
+
+- **Faux webhooks corrigés** : le match n'est plus armé sur n'importe quel
+  `round_start`/`round_win` en mode tournoi. Armement uniquement hors
+  waiting-for-players (après le ready-up des deux équipes) ET avec au moins
+  `hlfr_min_players` joueurs humains en équipe (défaut 16 ; mettez 10 sur un
+  serveur 6v6). Un joueur seul qui pick sa classe ne déclenche plus le
+  webhook de fin de match.
+- **Filet de sécurité retiré** dans `game_over` : `mp_tournament` actif seul ne
+  suffit plus, il faut un vrai match armé (`g_InMatch`). Le fallback
+  `|| tournamentActive` court-circuitait toute la protection et réarmait le
+  webhook sur chaque `game_over` d'un serveur vide.
+- **Anti-deadlock** : les timers d'envoi, de retry et le watchdog ne sont plus
+  `TIMER_FLAG_NO_MAPCHANGE`. Avant, un changement de carte pendant un retry
+  tuait tous les timers en laissant `g_WebhookPending = true`, ce qui bloquait
+  définitivement tous les webhooks suivants ("un webhook est déjà en cours").
+- `g_InMatch` n'est consommé qu'après les vérifications enable/pending.
+- **Commande admin `sm_hlfr_status`** : affiche aussi `min_players` et le
+  nombre actuel de joueurs humains en équipe.
+- Nouvelle convar `hlfr_min_players` (défaut 16).
+- `.smx` fourni recompilé depuis cette source (SourceMod 1.12, spcomp64).
+
 ## 1.3.0 — 2026-08-09
 
 - **Plus jamais silencieux** : chaque chemin est journalisé (journal SourceMod

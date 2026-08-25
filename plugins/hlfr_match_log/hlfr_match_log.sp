@@ -2,13 +2,14 @@
 #pragma newdecls required
 
 #include <sourcemod>
+#include <sdktools>
 
 // REST in Pawn (ripext) est requis et auto-chargé : SourceMod définit déjà
 // AUTOLOAD_EXTENSIONS/REQUIRE_EXTENSIONS par défaut, si l'extension est
 // absente le plugin refuse de se charger (erreur visible dans sm plugins list).
 #include <ripext>
 
-#define PLUGIN_VERSION "1.3.0"
+#define PLUGIN_VERSION "1.4.0"
 
 public Plugin myinfo =
 {
@@ -27,10 +28,11 @@ ConVar g_hDelay;
 ConVar g_hMaxRetries;
 ConVar g_hDebug;
 ConVar g_hRequireTournament;
+ConVar g_hMinPlayers;
 ConVar g_hMPTournament;
 ConVar g_hHostname;
 
-bool   g_InMatch;        // un match de compétition est en cours (mp_tournament actif)
+bool   g_InMatch;        // un vrai match a été armé (round joué avec assez de joueurs)
 bool   g_WebhookPending; // un webhook est déjà en cours (évite les doublons)
 int    g_RetriesLeft;    // tentatives restantes
 char   g_LastMap[PLATFORM_MAX_PATH];
@@ -49,6 +51,7 @@ public void OnPluginStart()
 	g_hMaxRetries = CreateConVar("hlfr_max_retries", "3", "Nombre de nouvelles tentatives si le webhook échoue.", _, true, 0.0);
 	g_hDebug      = CreateConVar("hlfr_debug", "0", "Logs de debug supplémentaires dans la console du serveur.", _, true, 0.0, true, 1.0);
 	g_hRequireTournament = CreateConVar("hlfr_require_tournament", "1", "Exige mp_tournament pour considérer un game_over comme une fin de match. Mettez 0 sur un serveur 100% match (TFTrue) pour déclencher sur chaque game_over.", _, true, 0.0, true, 1.0);
+	g_hMinPlayers = CreateConVar("hlfr_min_players", "16", "Nombre minimum de joueurs humains en équipe pour armer un match (16 = highlander, 10 = 6v6).", _, true, 0.0, true, 64.0);
 
 	AutoExecConfig(true, "hlfr_match_log");
 
@@ -73,27 +76,73 @@ public void OnMapStart()
 	g_InMatch = false;
 }
 
+int CountHumansInTeams()
+{
+	int count = 0;
+
+	for (int i = 1; i <= MaxClients; i++)
+	{
+		if (!IsClientInGame(i) || IsFakeClient(i) || IsClientSourceTV(i))
+		{
+			continue;
+		}
+
+		int team = GetClientTeam(i);
+		if (team == 2 || team == 3)
+		{
+			count++;
+		}
+	}
+
+	return count;
+}
+
+bool InWaitingForPlayers()
+{
+	return GameRules_GetProp("m_bInWaitingForPlayers") != 0;
+}
+
+bool ShouldArmMatch()
+{
+	bool requireTournament = GetConVarBool(g_hRequireTournament);
+	bool tournamentActive  = (g_hMPTournament != null && GetConVarBool(g_hMPTournament));
+
+	if (requireTournament && !tournamentActive)
+	{
+		return false;
+	}
+
+	// L'échauffement (DM ou non) se déroule pendant le waiting-for-players :
+	// on n'arme jamais dans cette phase.
+	if (InWaitingForPlayers())
+	{
+		return false;
+	}
+
+	return CountHumansInTeams() >= GetConVarInt(g_hMinPlayers);
+}
+
 public void Event_RoundStart(Event event, const char[] name, bool dontBroadcast)
 {
-	// Un round démarre alors que le mode tournoi est actif : c'est un match.
-	if (g_hMPTournament != null && GetConVarBool(g_hMPTournament))
+	// Un round démarre hors échauffement avec assez de joueurs : c'est un match.
+	if (ShouldArmMatch())
 	{
 		g_InMatch = true;
 		if (GetConVarBool(g_hDebug))
 		{
-			PrintToServer("[HLFR] Round start en mode tournoi : match armé.");
+			PrintToServer("[HLFR] Round start : match armé (%d joueurs).", CountHumansInTeams());
 		}
 	}
 }
 
 public void Event_RoundWin(Event event, const char[] name, bool dontBroadcast)
 {
-	if (g_hMPTournament != null && GetConVarBool(g_hMPTournament))
+	if (ShouldArmMatch())
 	{
 		g_InMatch = true;
 		if (GetConVarBool(g_hDebug))
 		{
-			PrintToServer("[HLFR] Round win en mode tournoi : match armé.");
+			PrintToServer("[HLFR] Round win : match armé (%d joueurs).", CountHumansInTeams());
 		}
 	}
 }
@@ -101,21 +150,17 @@ public void Event_RoundWin(Event event, const char[] name, bool dontBroadcast)
 public void Event_GameOver(Event event, const char[] name, bool dontBroadcast)
 {
 	bool requireTournament = GetConVarBool(g_hRequireTournament);
-	bool tournamentActive  = (g_hMPTournament != null && GetConVarBool(g_hMPTournament));
 
-	// Déclenche si : mode "tout game_over" (serveur 100% match), OU un match a été
-	// armé (g_InMatch), OU mp_tournament est actif à l'instant du game_over
-	// (filet de sécurité si un round_start a été manqué).
-	bool isMatch = !requireTournament || g_InMatch || tournamentActive;
+	// Déclenche si : mode "tout game_over" (serveur 100% match), OU un vrai
+	// match a été armé (g_InMatch = round joué avec le seuil de joueurs requis).
+	bool isMatch = !requireTournament || g_InMatch;
 
 	if (!isMatch)
 	{
 		// Ne jamais rester silencieux : toujours tracer un game_over ignoré.
-		LogMessage("[HLFR] Game_Over ignoré (pas un match) : hlfr_require_tournament=%d, g_InMatch=%d, mp_tournament=%d.", requireTournament, g_InMatch, tournamentActive);
+		LogMessage("[HLFR] Game_Over ignoré (pas un match) : hlfr_require_tournament=%d, g_InMatch=%d.", requireTournament, g_InMatch);
 		return;
 	}
-
-	g_InMatch = false;
 
 	if (!GetConVarBool(g_hEnabled))
 	{
@@ -130,6 +175,8 @@ public void Event_GameOver(Event event, const char[] name, bool dontBroadcast)
 		PrintToServer("[HLFR] Fin de match ignorée : un webhook est déjà en cours.");
 		return;
 	}
+
+	g_InMatch = false;
 
 	StartWebhook(GetConVarFloat(g_hDelay));
 }
@@ -156,11 +203,13 @@ public Action Command_Sync(int client, int args)
 
 public Action Command_Status(int client, int args)
 {
-	ReplyToCommand(client, "[HLFR] Version %s | enable=%d | require_tournament=%d | mp_tournament=%d | in_match=%d | pending=%d | retries=%d | map=%s",
+	ReplyToCommand(client, "[HLFR] Version %s | enable=%d | require_tournament=%d | mp_tournament=%d | min_players=%d | players=%d | in_match=%d | pending=%d | retries=%d | map=%s",
 		PLUGIN_VERSION,
 		GetConVarBool(g_hEnabled),
 		GetConVarBool(g_hRequireTournament),
 		(g_hMPTournament != null && GetConVarBool(g_hMPTournament)),
+		GetConVarInt(g_hMinPlayers),
+		CountHumansInTeams(),
 		g_InMatch,
 		g_WebhookPending,
 		g_RetriesLeft,
@@ -178,7 +227,9 @@ void StartWebhook(float delay)
 	PrintToServer("[HLFR] Fin de match détectée (map %s). Webhook dans %.0f s.", g_LastMap, delay);
 
 	StartWebhookTimeout();
-	g_hPendingTimer = CreateTimer(delay, Timer_FireWebhook, _, TIMER_FLAG_NO_MAPCHANGE);
+	// Sans TIMER_FLAG_NO_MAPCHANGE : le webhook concerne un log déjà terminé,
+	// il doit partir même si la carte change entre-temps.
+	g_hPendingTimer = CreateTimer(delay, Timer_FireWebhook, _);
 }
 
 // Anti-blocage : si le callback HTTP ne revient jamais (extension ripext qui
@@ -197,7 +248,7 @@ void StartWebhookTimeout()
 	float delay    = GetConVarFloat(g_hDelay);
 
 	float worstCase = float(maxRetries + 1) * delay + 30.0 * float(maxRetries * (maxRetries - 1) / 2) + 120.0;
-	g_hWebhookTimeout = CreateTimer(worstCase, Timer_WebhookTimeout, _, TIMER_FLAG_NO_MAPCHANGE);
+	g_hWebhookTimeout = CreateTimer(worstCase, Timer_WebhookTimeout, _);
 }
 
 public Action Timer_WebhookTimeout(Handle timer)
@@ -354,7 +405,7 @@ void Callback_Webhook(HTTPResponse response, int value)
 	{
 		float backoff = GetConVarFloat(g_hDelay) + float(GetConVarInt(g_hMaxRetries) - g_RetriesLeft) * 30.0;
 		PrintToServer("[HLFR] Nouvel essai dans %.0f s (%d restant%s).", backoff, g_RetriesLeft, g_RetriesLeft > 1 ? "s" : "");
-		g_hPendingTimer = CreateTimer(backoff, Timer_Retry, _, TIMER_FLAG_NO_MAPCHANGE);
+		g_hPendingTimer = CreateTimer(backoff, Timer_Retry, _);
 		return;
 	}
 
