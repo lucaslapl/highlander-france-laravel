@@ -622,7 +622,7 @@ body #main #content #join a:hover {
   align-items: center;
   justify-content: center;
   gap: 8px;
-  margin-top: 15px;
+  margin: 15px 0;
   padding: 10px 15px;
   background: rgba(233, 25, 22, 0.18);
   border: 1px solid rgba(233, 25, 22, 0.45);

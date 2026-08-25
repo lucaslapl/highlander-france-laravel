@@ -280,6 +280,25 @@ final class AdminApiTestController extends Controller
             $matched = array_map(static fn ($id): int => (int) $id, (array) $request->input('match_ids', []));
         }
 
+        // Diagnostic : candidats examinés par l'association (fenêtre ±4 h,
+        // sans scores) — visible dans la réponse pour comprendre un échec.
+        $candidates = [];
+        $now = time();
+        $rows = DB::table('etf2l_matches')
+            ->whereBetween('match_date', [$now - 4 * 3600, $now + 4 * 3600])
+            ->whereNull('r1')
+            ->get(['match_id', 'team1_name', 'team2_name', 'match_date']);
+
+        foreach ($rows as $row) {
+            $candidates[] = [
+                'match_id' => (int) $row->match_id,
+                'team1' => (string) $row->team1_name,
+                'team2' => (string) $row->team2_name,
+                'match_date' => (int) $row->match_date,
+                'matched' => in_array((int) $row->match_id, $matched, true),
+            ];
+        }
+
         $channel = [
             'login' => $login,
             'display_name' => $login,
@@ -317,9 +336,18 @@ final class AdminApiTestController extends Controller
 
         AdminLogger::log('api_test_twitch_simulate', null, 'SUCCESS ('.$login.', '.count($matched).' match(s) associé(s))');
 
+        $message = 'Stream simulé : "'.$login.'" en direct ('.count($matched).' match(s) associé(s)).';
+
+        if ($matched === [] && (bool) $request->boolean('auto_match')) {
+            $message .= $candidates === []
+                ? ' Aucun candidat : aucun match ETF2L sans scores dans la fenêtre ±4 h — crée un match factice (onglet ETF2L, décalage 0).'
+                : ' Candidats présents mais aucun nom d\'équipe trouvé dans le titre normalisé.';
+        }
+
         return response()->json([
             'success' => true,
-            'message' => 'Stream simulé : "'.$login.'" en direct ('.count($matched).' match(s) associé(s)).',
+            'message' => $message,
+            'candidates' => $candidates,
             'state' => TwitchLive::status(),
         ]);
     }

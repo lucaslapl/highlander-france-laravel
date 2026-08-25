@@ -486,8 +486,19 @@
             replace_all: document.getElementById("twitch-replace-all").checked
         }).then(function (res) {
             document.getElementById("twitch-result-card").style.display = "";
-            document.getElementById("twitch-result-output").textContent =
-                (res.message || "") + "\n\n" + JSON.stringify(res.state, null, 2);
+            let out = res.message || "";
+            if (Array.isArray(res.candidates)) {
+                out += "\n\n--- Candidats examinés (fenêtre ±4h, sans scores) ---";
+                out += res.candidates.length === 0
+                    ? "\n(aucun — crée un match factice dans la fenêtre, onglet ETF2L)"
+                    : "\n" + res.candidates.map(function (c) {
+                        return "#" + c.match_id + " " + c.team1 + " vs " + c.team2
+                            + " (" + new Date(c.match_date * 1000).toLocaleString() + ")"
+                            + (c.matched ? "  ✓ ASSOCIÉ" : "  ✗ pas dans le titre");
+                    }).join("\n");
+            }
+            out += "\n\n" + JSON.stringify(res.state, null, 2);
+            document.getElementById("twitch-result-output").textContent = out;
             if (res.success) { refreshTwitchState(); }
         });
     });
