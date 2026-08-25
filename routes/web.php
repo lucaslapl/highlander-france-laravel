@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Http\Controllers\Admin\AdminApiController;
+use App\Http\Controllers\Admin\AdminApiTestController;
 use App\Http\Controllers\Admin\AdminController;
 use App\Http\Controllers\Admin\AdminCronController;
 use App\Http\Controllers\ApiController;
@@ -64,6 +65,15 @@ Route::middleware('admin')->prefix('admin')->group(function (): void {
     Route::any('/match-logs', [AdminCronController::class, 'matchLogs']);
     Route::any('/run-cron-manual', [AdminCronController::class, 'runCronManual']);
     Route::any('/view-logs', [AdminCronController::class, 'viewLogs']);
+    Route::get('/api-test', [AdminApiTestController::class, 'page']);
+    Route::post('/api-test/live/start', [AdminApiTestController::class, 'liveStart']);
+    Route::post('/api-test/live/heartbeat', [AdminApiTestController::class, 'liveHeartbeat']);
+    Route::post('/api-test/live/end', [AdminApiTestController::class, 'liveEnd']);
+    Route::post('/api-test/live/purge', [AdminApiTestController::class, 'livePurge']);
+    Route::post('/api-test/etf2l', [AdminApiTestController::class, 'etf2lUpsert']);
+    Route::post('/api-test/etf2l/delete', [AdminApiTestController::class, 'etf2lDelete']);
+    Route::post('/api-test/twitch', [AdminApiTestController::class, 'twitchSimulate']);
+    Route::post('/api-test/twitch/reset', [AdminApiTestController::class, 'twitchReset']);
 });
 
 // ─── Authentification Steam ──────────────────────────────────────────────────
