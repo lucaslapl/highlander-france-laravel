@@ -54,7 +54,7 @@ final class GenerateJsonService
                                 FROM player_matches pm
                                 JOIN players_info p ON p.steamid = pm.steamid
                                 WHERE pm.game_mode = ? AND p.created_at IS NOT NULL
-                                GROUP BY pm.steamid, p.display_name, p.name, p.avatar
+                                GROUP BY pm.steamid, p.steamid, p.display_name, p.name, p.avatar
                                 HAVING COUNT(*) >= " . self::MIN_MATCHES . "
                                 ORDER BY value DESC LIMIT 18",
             ],
@@ -66,7 +66,7 @@ final class GenerateJsonService
                                 FROM player_matches pm
                                 JOIN players_info p ON p.steamid = pm.steamid
                                 WHERE pm.game_mode = ? AND p.created_at IS NOT NULL
-                                GROUP BY pm.steamid, p.display_name, p.name, p.avatar
+                                GROUP BY pm.steamid, p.steamid, p.display_name, p.name, p.avatar
                                 HAVING COUNT(*) >= " . self::MIN_MATCHES . "
                                 ORDER BY value DESC LIMIT 18",
             ],
@@ -79,7 +79,7 @@ final class GenerateJsonService
                                 FROM player_matches pm
                                 JOIN players_info p ON p.steamid = pm.steamid
                                 WHERE pm.game_mode = ? AND p.created_at IS NOT NULL
-                                GROUP BY pm.steamid, p.display_name, p.name, p.avatar
+                                GROUP BY pm.steamid, p.steamid, p.display_name, p.name, p.avatar
                                 HAVING COUNT(*) >= " . self::MIN_MATCHES . " AND value IS NOT NULL
                                 ORDER BY value DESC LIMIT 18",
             ],
