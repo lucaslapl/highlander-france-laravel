@@ -252,9 +252,11 @@
                     <select id="twitch-title-from-match" class="cron-select" style="width: auto;">
                         <option value="">Préremplir depuis…</option>
                         @foreach ($etf2lUpcoming as $match)
-                            @if ($match['match_date'] <= time() + 4 * 3600 && $match['match_date'] >= time() - 4 * 3600 && is_null($match['r1']))
-                                <option value="{{ e(($match['team1_name'] ?? '') . ' vs ' . ($match['team2_name'] ?? '')) }}">#{{ $match['match_id'] }} — {{ $match['team1_name'] ?? '?' }} vs {{ $match['team2_name'] ?? '?' }}</option>
-                            @endif
+                            @if (!is_null($match['r1'])) @continue @endif
+                            @php
+                                $inWindow = $match['match_date'] <= time() + 4 * 3600 && $match['match_date'] >= time() - 4 * 3600;
+                            @endphp
+                            <option value="{{ e(($match['team1_name'] ?? '').' vs '.($match['team2_name'] ?? '')) }}">#{{ $match['match_id'] }} — {{ $match['team1_name'] ?? '?' }} vs {{ $match['team2_name'] ?? '?' }} ({{ date('d/m H:i', (int) $match['match_date']) }}){{ $inWindow ? '' : ' — hors fenêtre ±4h' }}</option>
                         @endforeach
                     </select>
                 </div>

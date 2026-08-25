@@ -32,7 +32,7 @@
         channels.forEach(function (channel) {
             (channel.matched_match_ids || []).forEach(function (id) {
                 if (!(id in byMatchId)) {
-                    byMatchId[id] = { url: channel.url, name: channel.display_name };
+                    byMatchId[id] = { url: channel.url, name: channel.display_name, viewers: channel.viewers || 0 };
                 }
             });
         });
@@ -41,7 +41,8 @@
             var badge = badgeByMatchId[id];
             if (byMatchId[id]) {
                 badge.href = byMatchId[id].url;
-                badge.title = "Regarder sur Twitch (" + byMatchId[id].name + ")";
+                badge.title = "Regarder sur Twitch (" + byMatchId[id].name
+                    + (byMatchId[id].viewers > 0 ? " \u2014 " + byMatchId[id].viewers + " spectateurs" : "") + ")";
                 badge.removeAttribute("hidden");
             } else {
                 badge.setAttribute("hidden", "");
