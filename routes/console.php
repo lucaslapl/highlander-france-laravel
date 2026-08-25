@@ -25,6 +25,9 @@ Schedule::command('app:generate-json')->everyThreeHours();
 // Agenda des matchs ETF2L français.
 Schedule::command('app:sync-etf2l')->everyThirtyMinutes();
 
+// Chaînes Twitch en direct (badge "EN DIRECT" sur les matchs streamés).
+Schedule::command('app:sync-twitch')->everyMinute();
+
 // Import des profils Steam manquants.
 Schedule::command('app:sync-steam')->hourly();
 

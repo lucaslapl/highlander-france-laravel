@@ -32,7 +32,7 @@
         </h1>
     </div>
 
-    <div class="matchlog-meta flex align-center wrap">
+    <div class="matchlog-meta flex align-center wrap" data-match-id="{{ (int)$match['match_id'] }}">
         <span class="matchlog-meta-item">
             <i class="fa-regular fa-calendar"></i> {!! e($dateMatch) !!}
         </span>
@@ -45,6 +45,7 @@
         <a href="https://etf2l.org/matches/{{ (int)$match['match_id'] }}" target="_blank" rel="noopener" class="btn-match-link">
             <i class="fa-solid fa-arrow-up-right-from-square"></i> Voir sur ETF2L
         </a>
+        <a class="badge-twitch-live" hidden target="_blank" rel="noopener"><i class="fa-brands fa-twitch"></i> EN DIRECT</a>
     </div>
 
 </div>
@@ -136,4 +137,8 @@
         </div>
     @endforeach
 </div>
+
+@push('scripts')
+@include('partials.twitch-live-script')
+@endpush
 @endsection

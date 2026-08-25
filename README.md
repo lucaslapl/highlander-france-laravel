@@ -56,8 +56,30 @@ restent manuels : panel admin (`/admin/run-cron-manual`) ou :
 
 ```bash
 php artisan app:sync-etf2l              # agenda ETF2L
+php artisan app:sync-twitch             # chaînes Twitch en direct
 php artisan app:update-stats            # stats logs.tf
 php artisan app:generate-json           # caches leaderboard
 php artisan app:backfill-etf2l-history  # historique 180 jours
 php artisan app:import-legacy <stats.db>
 ```
+
+## Streams Twitch (badge « EN DIRECT »)
+
+Les chaînes suivies sont détectées automatiquement : quand un stream démarre,
+un badge rouge cliquable apparaît sur le(s) match(s) concerné(s) de l'accueil
+et de la page match (association par analyse du titre du stream).
+
+Configuration :
+
+1. Créer une application sur <https://dev.twitch.tv/console/apps>
+   (type **Website**, catégorie **Other**) — l'URL de redirection n'a pas
+   d'importance pour un token applicatif.
+2. Renseigner dans `.env` :
+   - `TWITCH_CLIENT_ID` / `TWITCH_CLIENT_SECRET` : identifiants de l'application ;
+   - `TWITCH_CHANNELS` : logins des chaînes suivies, séparés par des virgules,
+     en minuscules (ex. `TWITCH_CHANNELS=highlanderfrance`).
+3. Rien d'autre : la commande planifiée `app:sync-twitch` (toutes les minutes)
+   rafraîchit le cache, et `/api/twitch-live` sert ce cache au frontend.
+
+Sans configuration (variables vides), la fonctionnalité est inerte : aucun
+appel API, aucune erreur visible.

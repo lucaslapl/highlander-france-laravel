@@ -20,7 +20,7 @@
                 $flag2 = \App\Services\CountryFlags::flag($match['team2_country'] ?? null);
                 
 @endphp
-                <div class="agenda-item flex align-center">
+                <div class="agenda-item flex align-center" data-match-id="{{ (int)$match['match_id'] }}">
 
                     <div class="match-date-box text-center">
                         <span class="match-date">{{ $dateMatch }}</span>
@@ -29,6 +29,7 @@
 
                     <div class="match-details flex-1">
                         <div class="competition-title">{!! e($match['competition_name']) !!}</div>
+                        <a class="badge-twitch-live" hidden target="_blank" rel="noopener"><i class="fa-brands fa-twitch"></i> EN DIRECT</a>
                         <div class="teams-line flex align-center">
 
                             <span class="team-name text-right flex align-center justify-end gap-10">
@@ -76,7 +77,7 @@
                     $resClass = !$hasScore ? ' res-noscore' : ($win1 ? ' res-win1' : ($win2 ? ' res-win2' : ' res-draw'));
                     
 @endphp
-                    <div class="agenda-item agenda-item-compact flex align-center{{ $resClass }}">
+                    <div class="agenda-item agenda-item-compact flex align-center{{ $resClass }}" data-match-id="{{ (int)$match['match_id'] }}">
 
                         <div class="match-date-box text-center">
                             <span class="match-date">{{ $dt->format('d/m') }}</span>
@@ -107,6 +108,9 @@
                                 </span>
 
                             </div>
+                            @if (!$hasScore)
+                                <a class="badge-twitch-live" hidden target="_blank" rel="noopener"><i class="fa-brands fa-twitch"></i> EN DIRECT</a>
+                            @endif
                         </div>
 
                         <div class="match-action">

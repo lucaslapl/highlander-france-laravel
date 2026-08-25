@@ -568,6 +568,78 @@ body #main #content #join a:hover {
   border: 1px solid #38193d;
 }
 
+/* --- STREAMS TWITCH EN DIRECT --- */
+.badge-twitch-live {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: 8px;
+  padding: 3px 10px;
+  background: #e91916;
+  color: #fff;
+  font-size: 0.72em;
+  font-weight: bold;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  border-radius: 20px;
+  text-decoration: none;
+  box-shadow: 0 2px 8px rgba(233, 25, 22, 0.35);
+  transition: all 0.2s ease-in-out;
+}
+
+.badge-twitch-live:hover {
+  background: #ff2d2a;
+  transform: translateY(-1px);
+}
+
+.badge-twitch-live::before {
+  content: "";
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #fff;
+  animation: twitch-pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes twitch-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.35;
+  }
+}
+
+.twitch-live-banner {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 15px;
+  padding: 10px 15px;
+  background: rgba(233, 25, 22, 0.18);
+  border: 1px solid rgba(233, 25, 22, 0.45);
+  border-radius: 6px;
+  color: #ffb3b1;
+  font-size: 0.9em;
+  font-weight: bold;
+  text-decoration: none;
+  transition: all 0.2s ease-in-out;
+}
+
+.twitch-live-banner:hover {
+  background: rgba(233, 25, 22, 0.28);
+  color: #ffd6d5;
+}
+
+@media (max-width: 768px) {
+  .badge-twitch-live {
+    margin-left: 0;
+    margin-top: 4px;
+  }
+}
+
 /* --- LISTE DES MATCHS --- */
 .agenda-list {
   margin-top: 15px;

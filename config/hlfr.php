@@ -30,6 +30,16 @@ return [
     // Token partagé avec le bot Discord.
     'discord_webhook_token' => env('DISCORD_WEBHOOK_TOKEN', ''),
 
+    // API Twitch (https://dev.twitch.tv/console/apps, type Website, catégorie Other).
+    // Détection des chaînes en direct : badge "EN DIRECT" sur les matchs streamés.
+    // twitch_channels : logins minuscules séparés par des virgules.
+    'twitch_client_id' => env('TWITCH_CLIENT_ID', ''),
+    'twitch_client_secret' => env('TWITCH_CLIENT_SECRET', ''),
+    'twitch_channels' => array_values(array_filter(array_map(
+        static fn (string $c): string => mb_strtolower(trim($c)),
+        explode(',', (string) env('TWITCH_CHANNELS', ''))
+    ))),
+
     // ID du serveur Discord attendu (optionnel).
     'discord_guild_id' => env('DISCORD_GUILD_ID', ''),
 

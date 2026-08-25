@@ -8,6 +8,7 @@ use App\Models\PlayerRepository;
 use App\Services\LiveMatches;
 use App\Services\LogsTfApi;
 use App\Services\SteamId;
+use App\Services\TwitchLive;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -29,6 +30,19 @@ final class ApiController extends Controller
 
         return response()
             ->json(['data' => $matches])
+            ->header('Cache-Control', 'no-store');
+    }
+
+    /**
+     * Chaînes Twitch suivies actuellement en direct (+ matchs associés).
+     * Lecture pure du cache alimenté par app:sync-twitch : aucun appel
+     * HTTP externe dans la requête.
+     * GET /api/twitch-live
+     */
+    public function twitchLive(): JsonResponse
+    {
+        return response()
+            ->json(['data' => TwitchLive::status()])
             ->header('Cache-Control', 'no-store');
     }
 
