@@ -263,6 +263,9 @@
                 <label style="cursor: pointer;">
                     <input type="checkbox" id="twitch-auto-match" checked> Association automatique aux matchs ETF2L (par titre)
                 </label>
+                <label style="cursor: pointer;">
+                    <input type="checkbox" id="twitch-replace-all" checked> Remplacer tout le cache (retire les chaînes simulées précédemment)
+                </label>
             </div>
             <div style="display: flex; gap: 10px; flex-wrap: wrap;">
                 <button type="button" class="admin-btn admin-btn--primary" id="btn-twitch-simulate" style="--accent: #9146ff;">
@@ -477,7 +480,8 @@
             login: login,
             title: document.getElementById("twitch-title").value,
             viewers: document.getElementById("twitch-viewers").value,
-            auto_match: document.getElementById("twitch-auto-match").checked
+            auto_match: document.getElementById("twitch-auto-match").checked,
+            replace_all: document.getElementById("twitch-replace-all").checked
         }).then(function (res) {
             document.getElementById("twitch-result-card").style.display = "";
             document.getElementById("twitch-result-output").textContent =

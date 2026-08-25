@@ -259,7 +259,7 @@ final class AdminApiTestController extends Controller
 
     /**
      * POST /admin/api-test/twitch — simule une chaîne Twitch en direct.
-     * Body : { login, title, viewers, auto_match: bool, match_ids?: [] }
+     * Body : { login, title, viewers, auto_match: bool, replace_all: bool, match_ids?: [] }
      */
     public function twitchSimulate(Request $request): JsonResponse
     {
@@ -295,11 +295,16 @@ final class AdminApiTestController extends Controller
         $data = is_file($cacheFile) ? json_decode((string) file_get_contents($cacheFile), true) : null;
         $data = is_array($data) ? $data : [];
 
-        // Remplace toute entrée existante du même login, conserve les autres.
-        $channels = array_values(array_filter(
-            is_array($data['channels'] ?? null) ? $data['channels'] : [],
-            static fn ($c): bool => ! is_array($c) || (($c['login'] ?? '') !== $login)
-        ));
+        // Remplace toute entrée existante du même login, conserve les autres
+        // (sauf replace_all : on vide le cache pour un test isolé).
+        if ((bool) $request->boolean('replace_all')) {
+            $channels = [];
+        } else {
+            $channels = array_values(array_filter(
+                is_array($data['channels'] ?? null) ? $data['channels'] : [],
+                static fn ($c): bool => ! is_array($c) || (($c['login'] ?? '') !== $login)
+            ));
+        }
         $channels[] = $channel;
 
         $data['channels'] = $channels;

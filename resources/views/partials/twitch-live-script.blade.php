@@ -64,7 +64,7 @@
                 banner.href = unmatched[0].url;
                 banner.target = "_blank";
                 banner.rel = "noopener";
-                banner.textContent = "\uD83D\uDD34 Un match est stream\u00E9 en direct sur Twitch \u2014 " + unmatched[0].name + (unmatched.length > 1 ? " (+ " + (unmatched.length - 1) + ")" : "");
+                banner.textContent = "\uD83D\uDD34 Un match est stream\u00E9 en direct sur Twitch \u2014 " + (unmatched[0].display_name || unmatched[0].login || "cha\u00EEne inconnue") + (unmatched.length > 1 ? " (+ " + (unmatched.length - 1) + ")" : "");
                 list.insertBefore(banner, list.firstChild);
             }
         }
