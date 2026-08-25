@@ -1,5 +1,27 @@
 # Changelog — HLFR Live Match
 
+## 1.2.0 (2026-08-25)
+
+- **Faux matchs corrigés** : le match n'est plus armé sur n'importe quel
+  `round_start` en mode tournoi. Armement uniquement si le round démarre hors
+  waiting-for-players (donc après le ready-up des deux équipes) ET avec au
+  moins `hlfr_live_min_players` joueurs humains en équipe (défaut 16 ;
+  mettez 10 sur un serveur 6v6). Un joueur seul qui pick sa classe ne
+  déclenche plus rien.
+- **Fin de match quand le serveur se vide** : si tous les joueurs partent en
+  cours de match, le statut `ended` est envoyé au site après la grâce
+  `hlfr_live_empty_grace` (défaut 300 s). Auparavant le heartbeat renvoyait
+  `live` indéfiniment et le match restait affiché pour toujours.
+- **Stats comptées uniquement pendant un match armé** : kills/dmg/heal du
+  warmup DM ne polluent plus les compteurs.
+- **Cadence** : `hlfr_live_interval` par défaut ramené à 60 s (la valeur 120 s
+  entrait en collision avec le TTL côté site et pouvait faire clignoter le
+  match sur `/api/live-matches`).
+- La déconnexion d'un joueur ne provoque plus d'envoi immédiat de `live`
+  (le heartbeat suffit) ; `OnPluginEnd` et `sm_hlfr_live` hors match envoient
+  désormais réellement `ended`.
+- `.smx` fourni recompilé depuis cette source (SourceMod 1.12, spcomp64).
+
 ## 1.1.0 (2026-08-10)
 
 - **Stats de match par joueur** : kills, deaths, assists, dégâts (dmg) et soins

@@ -6,7 +6,7 @@
 #include <tf2_stocks>
 #include <ripext>
 
-#define PLUGIN_VERSION "1.1.0"
+#define PLUGIN_VERSION "1.2.0"
 
 public Plugin myinfo =
 {
@@ -23,6 +23,8 @@ ConVar g_hUrl;
 ConVar g_hInterval;
 ConVar g_hDebug;
 ConVar g_hRequireTournament;
+ConVar g_hMinPlayers;
+ConVar g_hEmptyGrace;
 ConVar g_hStvUrl;
 ConVar g_hStvIncludePassword;
 
@@ -41,6 +43,7 @@ bool   g_Live;           // un match de compétition est en cours
 int    g_ScoreRed;       // manches gagnées RED
 int    g_ScoreBlue;      // manches gagnées BLU
 int    g_StartedAt;      // timestamp du début du match
+int    g_EmptySince;     // timestamp depuis lequel le serveur est vide (0 = non vide)
 Handle g_hHeartbeat;     // timer périodique pendant le match
 bool   g_HttpPending;    // une requête HTTP est en vol (évite l'empilement)
 bool   g_SendEndedPending; // un statut "ended" attend la fin de la requête en vol
@@ -65,9 +68,11 @@ public void OnPluginStart()
 
 	g_hEnabled    = CreateConVar("hlfr_live_enable", "1", "Active/désactive l'envoi du statut live.", _, true, 0.0, true, 1.0);
 	g_hUrl        = CreateConVar("hlfr_live_url", "https://highlanderfrance.tf/api/server/live-status", "URL de l'endpoint live du site Highlander France.");
-	g_hInterval   = CreateConVar("hlfr_live_interval", "120.0", "Intervalle (secondes) entre deux mises à jour du statut pendant un match.", _, true, 5.0);
+	g_hInterval   = CreateConVar("hlfr_live_interval", "60.0", "Intervalle (secondes) entre deux mises à jour du statut pendant un match. Doit rester nettement inférieur au TTL côté site (120 s).", _, true, 5.0);
 	g_hDebug      = CreateConVar("hlfr_live_debug", "0", "Logs de debug supplémentaires dans la console du serveur.", _, true, 0.0, true, 1.0);
 	g_hRequireTournament = CreateConVar("hlfr_live_require_tournament", "1", "Exige mp_tournament pour considérer le match comme en direct. Mettez 0 sur un serveur 100% match (TFTrue).", _, true, 0.0, true, 1.0);
+	g_hMinPlayers = CreateConVar("hlfr_live_min_players", "16", "Nombre minimum de joueurs humains en équipe pour armer un match (16 = highlander, 10 = 6v6).", _, true, 0.0, true, 64.0);
+	g_hEmptyGrace = CreateConVar("hlfr_live_empty_grace", "300.0", "Délai (secondes) après lequel un serveur vide en cours de match est déclaré terminé auprès du site.", _, true, 30.0);
 	g_hStvUrl     = CreateConVar("hlfr_live_stv_url", "", "URL SourceTV manuelle (ex: steam://connect/185.xxx.x.x:27020). Vide = construction auto (hostip + tv_port). Utile derrière un NAT.");
 	g_hStvIncludePassword = CreateConVar("hlfr_live_stv_include_password", "0", "Envoyer le mot de passe SourceTV (tv_password) au site.", _, true, 0.0, true, 1.0);
 
@@ -128,7 +133,13 @@ public void OnMapStart()
 
 public void OnPluginEnd()
 {
+	bool wasLive = g_Live;
 	ResetMatchState();
+
+	if (wasLive)
+	{
+		SendStatus("ended");
+	}
 }
 
 void ResetMatchState()
@@ -137,6 +148,7 @@ void ResetMatchState()
 	g_ScoreRed = 0;
 	g_ScoreBlue = 0;
 	g_StartedAt = 0;
+	g_EmptySince = 0;
 
 	ResetStats();
 
@@ -166,12 +178,30 @@ public void OnClientPutInServer(int client)
 	}
 }
 
-public void OnClientDisconnect(int client)
+int CountHumansInTeams()
 {
-	if (g_Live)
+	int count = 0;
+
+	for (int i = 1; i <= MaxClients; i++)
 	{
-		SendStatus("live");
+		if (!IsClientInGame(i) || IsFakeClient(i) || IsClientSourceTV(i))
+		{
+			continue;
+		}
+
+		int team = GetClientTeam(i);
+		if (team == 2 || team == 3)
+		{
+			count++;
+		}
 	}
+
+	return count;
+}
+
+bool InWaitingForPlayers()
+{
+	return GameRules_GetProp("m_bInWaitingForPlayers") != 0;
 }
 
 bool ShouldArmMatch()
@@ -179,7 +209,19 @@ bool ShouldArmMatch()
 	bool requireTournament = GetConVarBool(g_hRequireTournament);
 	bool tournamentActive  = (g_hMPTournament != null && GetConVarBool(g_hMPTournament));
 
-	return !requireTournament || tournamentActive;
+	if (requireTournament && !tournamentActive)
+	{
+		return false;
+	}
+
+	// L'échauffement (DM ou non) se déroule pendant le waiting-for-players :
+	// on n'arme jamais dans cette phase.
+	if (InWaitingForPlayers())
+	{
+		return false;
+	}
+
+	return CountHumansInTeams() >= GetConVarInt(g_hMinPlayers);
 }
 
 void ArmMatch()
@@ -220,6 +262,26 @@ public Action Timer_Heartbeat(Handle timer)
 		return Plugin_Stop;
 	}
 
+	if (CountHumansInTeams() == 0)
+	{
+		int now = GetTime();
+		if (g_EmptySince == 0)
+		{
+			g_EmptySince = now;
+			LogMessage("[HLFR-Live] Serveur vide en cours de match : grâce de %.0f s avant 'ended'.", GetConVarFloat(g_hEmptyGrace));
+		}
+		else if (now - g_EmptySince >= GetConVarInt(g_hEmptyGrace))
+		{
+			LogMessage("[HLFR-Live] Serveur vide depuis %d s : fin du match côté site.", now - g_EmptySince);
+			ResetMatchState();
+			SendStatus("ended");
+			return Plugin_Stop;
+		}
+
+		return Plugin_Continue;
+	}
+
+	g_EmptySince = 0;
 	SendStatus("live");
 	return Plugin_Continue;
 }
@@ -235,7 +297,9 @@ public void Event_RoundStart(Event event, const char[] name, bool dontBroadcast)
 
 public void Event_RoundWin(Event event, const char[] name, bool dontBroadcast)
 {
-	if (!ShouldArmMatch())
+	// Le seuil de joueurs ne s'applique qu'à l'armement : une fois le match
+	// armé, les manches continuent d'être comptées même si des joueurs partent.
+	if (!g_Live && !ShouldArmMatch())
 	{
 		return;
 	}
@@ -261,6 +325,11 @@ public void Event_RoundWin(Event event, const char[] name, bool dontBroadcast)
 
 public void Event_PlayerDeath(Event event, const char[] name, bool dontBroadcast)
 {
+	if (!g_Live)
+	{
+		return;
+	}
+
 	int victim    = GetClientOfUserId(event.GetInt("victim"));
 	int attacker  = GetClientOfUserId(event.GetInt("attacker"));
 	int assister  = GetClientOfUserId(event.GetInt("assister"));
@@ -289,6 +358,11 @@ public void Event_PlayerDeath(Event event, const char[] name, bool dontBroadcast
 
 public void Event_PlayerHurt(Event event, const char[] name, bool dontBroadcast)
 {
+	if (!g_Live)
+	{
+		return;
+	}
+
 	int attacker = GetClientOfUserId(event.GetInt("attacker"));
 	int victim   = GetClientOfUserId(event.GetInt("userid"));
 
@@ -303,6 +377,11 @@ public void Event_PlayerHurt(Event event, const char[] name, bool dontBroadcast)
 
 public void Event_PlayerHealed(Event event, const char[] name, bool dontBroadcast)
 {
+	if (!g_Live)
+	{
+		return;
+	}
+
 	int healer = GetClientOfUserId(event.GetInt("healer"));
 
 	if (IsPlayerIndex(healer))
@@ -318,9 +397,8 @@ bool IsPlayerIndex(int client)
 
 public void Event_GameOver(Event event, const char[] name, bool dontBroadcast)
 {
-	bool tournamentActive = (g_hMPTournament != null && GetConVarBool(g_hMPTournament));
-
-	if (!g_Live && !tournamentActive)
+	// Un game_over ne clôt que si un match réellement armé est en cours.
+	if (!g_Live)
 	{
 		if (GetConVarBool(g_hDebug))
 		{
@@ -356,6 +434,7 @@ public Action Command_LiveSync(int client, int args)
 	else
 	{
 		status = "ended";
+		ResetMatchState();
 	}
 	if (SendStatus(status))
 	{
