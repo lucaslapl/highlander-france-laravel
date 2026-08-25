@@ -569,6 +569,12 @@ body #main #content #join a:hover {
 }
 
 /* --- STREAMS TWITCH EN DIRECT --- */
+/* L'attribut hidden est écrasé par display:inline-flex ci-dessous :
+   sans cette règle, le badge serait affiché en permanence. */
+.badge-twitch-live[hidden] {
+  display: none;
+}
+
 .badge-twitch-live {
   display: inline-flex;
   align-items: center;
