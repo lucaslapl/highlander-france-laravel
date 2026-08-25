@@ -83,6 +83,9 @@
             return;
         }
 
+        // Tri par score décroissant.
+        list.sort(function (a, b) { return (parseInt(b.score, 10) || 0) - (parseInt(a.score, 10) || 0); });
+
         tbody.innerHTML = list.map(function (p, i) { return playerRow(p, i + 1); }).join('');
     }
 

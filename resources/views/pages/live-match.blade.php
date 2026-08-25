@@ -42,8 +42,12 @@ function liveRowsHtml(array $players): string
         return '<tbody class="live-tbody"><tr><td colspan="4" class="no-data">Aucun joueur en jeu.</td></tr></tbody>';
     }
 
+    // Tri par score décroissant (copie pour ne pas altérer les données source).
+    $sorted = $players;
+    usort($sorted, static fn (array $a, array $b): int => ((int) ($b['score'] ?? 0)) <=> ((int) ($a['score'] ?? 0)));
+
     $html = '<tbody class="live-tbody">';
-    foreach ($players as $i => $p) {
+    foreach ($sorted as $i => $p) {
         $html .= liveRowHtml($p, $i + 1);
     }
 

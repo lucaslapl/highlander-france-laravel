@@ -33,7 +33,7 @@ final class AdminApiTestController extends Controller
 
     private const FAKE_MATCH_ID_MAX = 999999999;
 
-    private const CLASSES_9V9 = ['scout', 'scout', 'soldier', 'soldier', 'demoman', 'medic', 'heavy', 'engineer', 'sniper'];
+    private const CLASSES_9V9 = ['scout', 'scout', 'soldier', 'soldier', 'demoman', 'medic', 'heavyweapons', 'engineer', 'sniper'];
 
     /**
      * GET /admin/api-test — page du simulateur.
