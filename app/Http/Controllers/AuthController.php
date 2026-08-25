@@ -8,25 +8,29 @@ use App\Models\PlayerRepository;
 use App\Services\SteamApi;
 use App\Services\SteamId;
 use Illuminate\Contracts\View\View;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\Session;
-use LightOpenID;
+use xPaw\Steam\SteamOpenID;
 
 /**
  * Authentification par OpenID Steam (login, callback, logout).
+ *
+ * Utilise xPaw/SteamOpenID : implémentation minimale, figée sur le serveur
+ * Steam, sans découverte DNS (respecte la vie privée du serveur d'origine)
+ * et immunisée contre les erreurs des bibliothèques OpenID génériques
+ * (ex. « Path must not be empty » observé avec LightOpenID en production).
  */
 final class AuthController extends Controller
 {
     /**
      * GET /login — redirige vers l'OpenID Steam.
      */
-    public function login(): \Illuminate\Http\RedirectResponse|View
+    public function login(): RedirectResponse|View
     {
         try {
-            $openid = $this->openid();
-            $openid->returnUrl = site_url() . '/auth/callback';
-            $openid->identity = 'https://steamcommunity.com/openid';
+            $openid = new SteamOpenID(site_url() . '/auth/callback');
 
-            return redirect()->away($openid->authUrl());
+            return redirect()->away($openid->GetAuthUrl());
         } catch (\Throwable $e) {
             return view('pages.auth-error', [
                 'title' => 'Erreur de connexion - ' . config('app.name'),
@@ -38,25 +42,34 @@ final class AuthController extends Controller
     /**
      * GET /auth/callback — retour de Steam OpenID.
      */
-    public function callback(): View|\Illuminate\Http\RedirectResponse
+    public function callback(): View|RedirectResponse
     {
-        $openid = $this->openid();
+        try {
+            $openid = new SteamOpenID(site_url() . '/auth/callback');
 
-        if ($openid->mode == 'cancel') {
-            return view('pages.auth-error', [
-                'title' => 'Connexion annulée - ' . config('app.name'),
-                'message' => "Connexion annulée par l'utilisateur.",
-            ]);
-        }
+            // Connexion annulée par l'utilisateur sur Steam.
+            if (request()->query('openid_mode') === 'cancel') {
+                return view('pages.auth-error', [
+                    'title' => 'Connexion annulée - ' . config('app.name'),
+                    'message' => "Connexion annulée par l'utilisateur.",
+                ]);
+            }
 
-        if (!$openid->validate()) {
+            if (! $openid->ShouldValidate()) {
+                return view('pages.auth-error', [
+                    'title' => 'Erreur de connexion - ' . config('app.name'),
+                    'message' => 'La validation a échoué (mode OpenID inattendu).',
+                ]);
+            }
+
+            $steamid64 = $openid->Validate();
+        } catch (\Throwable $e) {
             return view('pages.auth-error', [
                 'title' => 'Erreur de connexion - ' . config('app.name'),
-                'message' => 'La validation a échoué.',
+                'message' => 'La validation a échoué : ' . $e->getMessage(),
             ]);
         }
 
-        $steamid64 = basename((string) $openid->identity);
         $steamid3 = SteamId::toSteamId3($steamid64);
 
         Session::regenerate();
@@ -91,23 +104,11 @@ final class AuthController extends Controller
     /**
      * GET /logout — détruit la session puis redirige vers l'accueil.
      */
-    public function logout(): \Illuminate\Http\RedirectResponse
+    public function logout(): RedirectResponse
     {
         Session::flush();
         Session::invalidate();
 
         return redirect('/');
-    }
-
-    /**
-     * Instance LightOpenID configurée pour l'environnement courant.
-     */
-    private function openid(): LightOpenID
-    {
-        $openid = new LightOpenID((string) parse_url(site_url(), PHP_URL_HOST));
-        // Politique SSL commune : vérifié en production, désactivé en WAMP (pas de bundle CA).
-        $openid->verify_peer = (bool) config('hlfr.curl_verify_ssl');
-
-        return $openid;
     }
 }

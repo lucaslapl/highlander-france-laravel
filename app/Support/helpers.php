@@ -96,10 +96,17 @@ if (! function_exists('hlfr_data_path')) {
     /**
      * Chemin absolu d'un fichier du répertoire de données applicatives
      * (caches JSON, logs CRON, état des matchs live).
+     *
+     * Le répertoire est créé automatiquement s'il n'existe pas (ce qui n'était
+     * pas garanti sur un déploiement à froid, d'où des caches « absents »).
      */
     function hlfr_data_path(string $file = ''): string
     {
         $dir = rtrim((string) config('hlfr.data_dir'), '/\\');
+
+        if (! is_dir($dir)) {
+            @mkdir($dir, 0775, true);
+        }
 
         return $file === '' ? $dir : $dir . DIRECTORY_SEPARATOR . $file;
     }

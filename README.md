@@ -25,11 +25,12 @@ Refonte du site MVC maison sous **Laravel 13** (PHP 8.3+, MySQL 8).
 | `bin/*.php` (11 scripts CRON)       | Commandes artisan `php artisan app:*`                |
 | `deploy/crontab.txt` (6 entrées)    | `routes/console.php` + 1 seule entrée crontab        |
 | `_scripts/stats.db` (SQLite)        | MySQL `highlander_france` (+ import via artisan)     |
-| `_scripts/*.json` (caches)          | `storage/app/hlfr/`                                  |
+| `_scripts/*.json` (caches)          | `storage/app/hlfr/` (créé automatiquement, API auto-réparantes) |
 | `app/Views/*.php`                   | `resources/views/**/*.blade.php`                     |
 | `_css/ _js/ _img/ _fonts/`          | `public/_css/ public/_js/ …` (chemins inchangés)     |
 | CSRF maison (`Services/Csrf`)       | CSRF Laravel (`@csrf`, exemptions : `api/server/*`, `api/discord/*`) |
 | Sessions PHP natives                | Sessions Laravel (fichiers)                          |
+| Auth Steam (`_libs/openid.php`)     | `xpaw/steam-openid` (Steam-only, sans découverte DNS) |
 
 ## Installation (développement)
 

@@ -36,6 +36,11 @@ final class ApiController extends Controller
      * Statistiques globales de la page d'accueil.
      * Le compteur de membres Discord (cache_discord_stats.json) est fusionné
      * s'il existe ; sinon la clé members est absente et la vue garde son fallback.
+     *
+     * Si le cache généré par le CRON est absent (déploiement à froid), on le
+     * recalcule depuis la base (matches_cache, hors blacklist et logs courts)
+     * pour que l'accueil s'affiche immédiatement, le CRON écrasant ensuite
+     * le fichier avec les chiffres exacts.
      */
     public function indexStats(): JsonResponse
     {
@@ -47,8 +52,12 @@ final class ApiController extends Controller
         }
 
         if (! is_array($stats)) {
-            $stats = [];
+            $stats = $this->computeIndexStatsFallback();
+            if ($stats !== null) {
+                @file_put_contents($cacheFile, json_encode($stats), LOCK_EX);
+            }
         }
+        $stats = $stats ?? [];
 
         $discordCacheFile = hlfr_data_path('cache_discord_stats.json');
         if (is_file($discordCacheFile)) {
@@ -60,6 +69,54 @@ final class ApiController extends Controller
         }
 
         return response()->json(['data' => $stats]);
+    }
+
+    /**
+     * Fallback rapide (sans appel à logs.tf) calqué sur la logique de
+     * UpdateIndexStatsService : matchs en cache, hors blacklist, hors logs
+     * courts, sans les 4 plus anciens de la liste.
+     *
+     * @return array<string, int>|null null si aucune donnée exploitable.
+     */
+    private function computeIndexStatsFallback(): ?array
+    {
+        try {
+            $minLength = (int) config('hlfr.min_match_length', 300);
+
+            $subOldest = \Illuminate\Support\Facades\DB::table('matches_cache')
+                ->orderBy('match_id')
+                ->limit(4)
+                ->pluck('match_id');
+
+            $ids = \Illuminate\Support\Facades\DB::table('matches_cache')
+                ->where('length', '>', 0)
+                ->where('length', '>=', $minLength)
+                ->whereNotIn('match_id', $subOldest)
+                ->whereNotIn('match_id', function ($q): void {
+                    $q->select('log_id')->from('log_blacklist');
+                })
+                ->pluck('match_id');
+
+            if ($ids->isEmpty()) {
+                return null;
+            }
+
+            $row = \Illuminate\Support\Facades\DB::table('matches_cache')
+                ->whereIn('match_id', $ids)
+                ->selectRaw('COUNT(*) AS nb, COALESCE(SUM(length), 0) AS total')
+                ->first();
+
+            if ($row === null) {
+                return null;
+            }
+
+            return [
+                'matches' => (int) $row->nb,
+                'hours' => (int) round((float) $row->total / 3600),
+            ];
+        } catch (\Throwable) {
+            return null;
+        }
     }
 
     /**
@@ -85,6 +142,17 @@ final class ApiController extends Controller
 
         $suffix = $category === 'matches' ? '' : '_' . $category;
         $file = hlfr_data_path('leaderboard_cache_' . $mode . $suffix . '.json');
+
+        // Déploiement à froid : le cache n'existe pas encore (généré par le CRON).
+        // On le régénère à la volée (requêtes DB uniquement, pas d'API externe)
+        // pour que le Hall of Fame s'affiche dès la première visite.
+        if (! is_file($file)) {
+            try {
+                (new \App\Services\Crons\GenerateJsonService())->run();
+            } catch (\Throwable) {
+                // On tente de servir quand même ci-dessous ; sinon 404.
+            }
+        }
 
         if (! is_file($file)) {
             return response()->json(['error' => 'Cache du leaderboard introuvable.'], 404);
