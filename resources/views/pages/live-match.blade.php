@@ -62,7 +62,7 @@ $stv = $entry['stv'] ?? null;
 
     <div class="matchlog-title flex align-center gap-10">
         <h2>{!! e($mapDisplay) !!}</h2>
-        <span class="live-badge"><span class="live-dot"></span> EN DIRECT</span>
+        <span class="live-badge"><span class="live-dot"></span> MIX EN COURS</span>
     </div>
 
     <div class="matchlog-meta flex align-center wrap">
@@ -119,7 +119,7 @@ $stv = $entry['stv'] ?? null;
                         <th>Joueur</th>
                         <th>Score</th>
                     </tr></thead>
-                    {{ liveRowsHtml($redPlayers) }}
+                    {!! liveRowsHtml($redPlayers) !!}
                 </table>
             </div>
         </div>
@@ -139,7 +139,7 @@ $stv = $entry['stv'] ?? null;
                         <th>Joueur</th>
                         <th>Score</th>
                     </tr></thead>
-                    {{ liveRowsHtml($bluePlayers) }}
+                    {!! liveRowsHtml($bluePlayers) !!}
                 </table>
             </div>
         </div>

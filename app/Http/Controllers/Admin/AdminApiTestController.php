@@ -87,7 +87,7 @@ final class AdminApiTestController extends Controller
 
         return response()->json([
             'success' => true,
-            'message' => 'Match live injecté sur "'.$server.'".',
+            'message' => 'Mix injecté sur "'.$server.'".',
             'payload' => $this->webhookExample($server, $payload),
             'state' => LiveMatches::get($server),
         ]);
@@ -166,7 +166,7 @@ final class AdminApiTestController extends Controller
 
         AdminLogger::log('api_test_live_purge');
 
-        return response()->json(['success' => true, 'message' => 'Cache des matchs en direct purgé.', 'state' => []]);
+        return response()->json(['success' => true, 'message' => 'Cache des mixs en cours purgé.', 'state' => []]);
     }
 
     /**

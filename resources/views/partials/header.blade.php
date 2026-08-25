@@ -30,7 +30,7 @@
 
         <a href="/live" id="liveNavBadge" class="nav-live-badge" hidden>
             <span class="live-dot" aria-hidden="true"></span>
-            <span class="live-text">EN DIRECT</span>
+            <span class="live-text">MIX EN COURS</span>
             <span class="live-map" id="liveNavMap"></span>
             <i class="fa-solid fa-chevron-right live-chevron" aria-hidden="true"></i>
         </a>

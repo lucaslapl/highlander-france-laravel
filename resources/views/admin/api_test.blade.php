@@ -13,12 +13,12 @@
 
 <div class="admin-header" style="--accent: #9b59b6;">
     <h2><i class="fa-solid fa-flask"></i> Simulateur d'API</h2>
-    <p>Injection de données de test dans les caches du site : matchs en direct, streams Twitch, matchs ETF2L.</p>
+    <p>Injection de données de test dans les caches du site : mixs en cours, streams Twitch, matchs ETF2L.</p>
     <p><span class="admin-legend">Attention</span> ces données sont visibles par tous les visiteurs tant qu'elles sont actives (TTL 2 min pour le live, 15 min pour Twitch).</p>
 </div>
 
 <div class="api-tabs" style="display: flex; gap: 8px; margin-bottom: 20px; flex-wrap: wrap;">
-    <button type="button" class="admin-btn api-tab-btn active" data-tab="live" style="--accent: #9b59b6;"><i class="fa-solid fa-tower-broadcast"></i> Match en direct</button>
+    <button type="button" class="admin-btn api-tab-btn active" data-tab="live" style="--accent: #9b59b6;"><i class="fa-solid fa-tower-broadcast"></i> Mix en cours</button>
     <button type="button" class="admin-btn api-tab-btn" data-tab="etf2l" style="--accent: #9b59b6;"><i class="fa-solid fa-calendar-days"></i> ETF2L</button>
     <button type="button" class="admin-btn api-tab-btn" data-tab="twitch" style="--accent: #9b59b6;"><i class="fa-brands fa-twitch"></i> Streams Twitch</button>
     <button type="button" class="admin-btn api-tab-btn" data-tab="explorer" style="--accent: #9b59b6;"><i class="fa-solid fa-code"></i> Explorateur GET</button>
@@ -114,7 +114,7 @@
                     · {{ count($entry['players']) }} joueurs · maj {{ date('H:i:s', (int) $entry['updated_at']) }}
                 </p>
             @empty
-                <p class="admin-empty">Aucun match en direct actuellement.</p>
+                <p class="admin-empty">Aucun mix en cours actuellement.</p>
             @endforelse
         </div>
     </div>
@@ -410,7 +410,7 @@
     });
 
     document.getElementById("btn-live-purge").addEventListener("click", function () {
-        if (!confirm("Purger TOUT le cache des matchs en direct ?")) { return; }
+        if (!confirm("Purger TOUT le cache des mixs en cours ?")) { return; }
         post("/admin/api-test/live/purge").then(function (res) { alert(res.message); if (res.success) { refreshLiveState(); } });
     });
 
@@ -419,7 +419,7 @@
             const box = document.getElementById("live-state-box");
             const rows = json.data || [];
             if (rows.length === 0) {
-                box.innerHTML = '<p class="admin-empty">Aucun match en direct actuellement.</p>';
+                box.innerHTML = '<p class="admin-empty">Aucun mix en cours actuellement.</p>';
                 return;
             }
             box.innerHTML = rows.map(function (m) {
