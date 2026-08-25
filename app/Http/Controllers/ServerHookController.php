@@ -54,9 +54,13 @@ final class ServerHookController extends Controller
 
         $accepted = LiveMatches::apply($server, $status, $body);
 
+        if (! $accepted) {
+            AdminLogger::log('webhook_live_status', null, 'IGNORED (statut obsolète ou sans joueur - ' . $who . ')');
+        }
+
         return response()->json([
             'success' => $accepted,
-            'message' => $accepted ? 'Statut mis à jour.' : 'Statut obsolète ignoré.',
+            'message' => $accepted ? 'Statut mis à jour.' : 'Statut obsolète ou sans joueur ignoré.',
         ]);
     }
 

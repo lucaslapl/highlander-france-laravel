@@ -45,6 +45,14 @@ final class LiveMatches
         if ($status === 'ended') {
             unset($data['servers'][$server]);
         } else {
+            $players = self::sanitizePlayers($payload['players'] ?? []);
+
+            // Filet de sécurité : un "live" sans aucun joueur valide est ignoré
+            // (faux positif du plugin, ex: un joueur seul en échauffement).
+            if ($players === []) {
+                return false;
+            }
+
             $data['servers'][$server] = [
                 'server' => $server,
                 'map' => (string) ($payload['map'] ?? ''),
@@ -55,7 +63,7 @@ final class LiveMatches
                     'red' => max(0, (int) ($payload['scores']['red'] ?? 0)),
                     'blue' => max(0, (int) ($payload['scores']['blue'] ?? 0)),
                 ],
-                'players' => self::sanitizePlayers($payload['players'] ?? []),
+                'players' => $players,
                 'stv' => self::sanitizeStv($payload['stv'] ?? null),
             ];
         }
