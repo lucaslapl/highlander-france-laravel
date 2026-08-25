@@ -93,14 +93,15 @@ final class PlayerRepository
 
     /**
      * Renseigne created_at si vide (première connexion d'un compte ancien).
+     *
+     * NB : on ne teste que IS NULL — l'ancien code SQLite comparait aussi à ''
+     * mais MySQL (mode strict) refuse la comparaison d'un DATETIME avec ''.
      */
     public function ensureCreatedAt(string $steamid3): void
     {
         DB::table('players_info')
             ->where('steamid', $steamid3)
-            ->where(function ($q): void {
-                $q->whereNull('created_at')->orWhere('created_at', '');
-            })
+            ->whereNull('created_at')
             ->update(['created_at' => now()]);
     }
 
