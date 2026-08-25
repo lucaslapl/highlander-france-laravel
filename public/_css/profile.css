@@ -1,0 +1,501 @@
+@charset "UTF-8";
+body #header {
+  height: 425px;
+  position: relative;
+}
+body #main {
+  min-height: 500px;
+  position: relative;
+}
+body #main #content .personnal-info .personnal-info__top {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 25px;
+  flex-wrap: wrap;
+}
+body #main #content .personnal-info .profile-header {
+  gap: 20px;
+  margin-bottom: 15px;
+}
+body #main #content .personnal-info .profile-header .profile-avatar {
+  width: 125px;
+  border-radius: 50%;
+}
+body #main #content .personnal-info .profile-header h2 {
+  font-size: 3em;
+}
+body #main #content .personnal-info .profile-header h2 .flag-icon {
+  width: auto;
+  height: 24px;
+  object-fit: contain;
+}
+body #main #content .personnal-info .profile-header span {
+  font-size: 0.7em;
+  font-weight: normal;
+}
+body #main #content .personnal-info .flag-icon {
+  width: auto;
+  height: 24px;
+  object-fit: contain;
+}
+body #main #content .personnal-info .steam-profile-link {
+  color: #fff;
+  text-decoration: none;
+  font-size: 1.3em;
+}
+body #main #content .personnal-info .activity-calendar {
+  position: relative;
+  background-color: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  padding: 12px 16px;
+  border-radius: 8px;
+  flex-shrink: 0;
+}
+body #main #content .personnal-info .activity-calendar h3 {
+  font-size: 1.05em;
+  margin: 0 0 4px;
+}
+body #main #content .personnal-info .activity-calendar__summary {
+  color: #ccc;
+  font-size: 0.8em;
+  margin: 0 0 10px;
+}
+body #main #content .personnal-info .activity-calendar__scroll {
+  overflow-x: auto;
+  padding-bottom: 4px;
+}
+body #main #content .personnal-info .activity-calendar__body {
+  display: grid;
+  grid-template-columns: 30px min-content;
+  grid-template-rows: 18px auto;
+  column-gap: 8px;
+  row-gap: 4px;
+}
+body #main #content .personnal-info .activity-calendar__months {
+  grid-column: 2;
+  grid-row: 1;
+  display: grid;
+  grid-template-columns: repeat(13, 1fr);
+  gap: 3px;
+}
+body #main #content .personnal-info .activity-calendar__months span {
+  font-size: 0.7em;
+  font-weight: 600;
+  color: #ccc;
+  text-transform: uppercase;
+  white-space: nowrap;
+  text-align: left;
+}
+body #main #content .personnal-info .activity-calendar__days {
+  grid-column: 1;
+  grid-row: 2;
+  display: grid;
+  grid-template-rows: repeat(7, 1fr);
+  gap: 3px;
+}
+body #main #content .personnal-info .activity-calendar__days span {
+  font-size: 0.6em;
+  color: #888;
+  text-transform: uppercase;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+}
+body #main #content .personnal-info .activity-calendar__grid {
+  grid-column: 2;
+  grid-row: 2;
+  display: grid;
+  grid-template-rows: repeat(7, 10px);
+  grid-template-columns: repeat(13, 10px);
+  grid-auto-flow: column;
+  gap: 3px;
+}
+body #main #content .personnal-info .activity-calendar__cell {
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+  background-color: rgba(255, 255, 255, 0.06);
+}
+body #main #content .personnal-info .activity-calendar__cell--1 {
+  background-color: rgba(255, 87, 34, 0.25);
+}
+body #main #content .personnal-info .activity-calendar__cell--2 {
+  background-color: rgba(255, 87, 34, 0.45);
+}
+body #main #content .personnal-info .activity-calendar__cell--3 {
+  background-color: rgba(255, 87, 34, 0.7);
+}
+body #main #content .personnal-info .activity-calendar__cell--4 {
+  background-color: #ff5722;
+}
+body #main #content .personnal-info .activity-calendar__legend {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 4px;
+  margin-top: 8px;
+  font-size: 0.65em;
+  color: #aaa;
+}
+body #main #content .personnal-info .activity-calendar__legend .activity-calendar__cell {
+  width: 9px;
+  height: 9px;
+  display: inline-block;
+}
+body #main #content .personnal-info .activity-calendar__tooltip {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 20;
+  background: #2a2a2a;
+  color: #fff;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 0.75em;
+  line-height: 1.3;
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: 0;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.5);
+  transition: opacity 0.12s ease;
+}
+body #main #content .personnal-info .activity-calendar__tooltip.is-visible {
+  opacity: 1;
+}
+body #main #content .player-stats h3 {
+  font-size: 2.5em;
+  margin: 15px 0;
+}
+body #main #content .player-stats .stats-grid {
+  display: grid;
+  gap: 15px;
+  margin-bottom: 25px;
+}
+body #main #content .player-stats .stats-grid.stats-key {
+  grid-template-columns: repeat(5, 1fr);
+}
+body #main #content .player-stats .stats-grid.stats-key .stat-label {
+  font-size: 0.8em;
+  color: #aaa;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 8px;
+}
+body #main #content .player-stats .stats-grid.stats-lists {
+  grid-template-columns: repeat(3, 1fr);
+  align-items: start;
+}
+body #main #content .player-stats .stats-grid.stats-combat {
+  grid-template-columns: 1fr;
+}
+body #main #content .player-stats .stats-grid.stats-combat .stat-label {
+  font-size: 0.8em;
+  color: #aaa;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 8px;
+}
+body #main #content .player-stats .box-stats {
+  background-color: rgba(255, 255, 255, 0.1);
+  padding: 15px 25px;
+  border-radius: 8px;
+}
+body #main #content .player-stats .box-stats p {
+  margin: 0;
+}
+body #main #content .player-stats .box-stats .stat-value {
+  font-size: 1.6em;
+  font-weight: bold;
+}
+body #main #content .player-stats .box-stats .box-title {
+  font-size: 1.15em;
+  font-weight: bold;
+  margin-bottom: 15px;
+}
+body #main #content .player-stats .box-stats.matches-played {
+  background-color: rgba(255, 255, 255, 0.2);
+}
+body #main #content .player-stats .box-stats.matches-played .stat-value {
+  font-size: 2.8em;
+}
+body #main #content .player-stats .stats-list {
+  list-style-type: none;
+  padding-left: 0;
+  margin: 0;
+}
+body #main #content .player-stats .stats-list li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+body #main #content .player-stats .stats-list li:last-child {
+  margin-bottom: 0;
+}
+body #main #content .player-stats .stats-list li .stat-value {
+  font-size: 1.2em;
+  color: #ccc;
+  font-weight: bold;
+}
+body #main #content .player-stats .classes-played .stats-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 15px;
+}
+body #main #content .player-stats .classes-played .stats-list li {
+  flex-direction: column;
+  justify-content: center;
+}
+body #main #content .player-stats .classes-played .stats-list li .stat-value {
+  margin-top: 5px;
+}
+body #main #content .player-stats .maps-played .maps-chart {
+  position: relative;
+  height: 190px;
+  width: 100%;
+}
+body #main #content .player-stats .maps-played .maps-chart canvas {
+  width: 100% !important;
+  height: 100% !important;
+}
+body #main #content .player-stats .classes-killed .classes-killed-chart {
+  position: relative;
+  height: 190px;
+  max-width: 240px;
+  margin: 0 auto 15px;
+}
+body #main #content .player-stats .classes-killed .classes-killed-chart canvas {
+  width: 100% !important;
+  height: 100% !important;
+}
+body #main #content .player-stats .classes-killed .classes-killed-legend {
+  list-style-type: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px 14px;
+}
+body #main #content .player-stats .classes-killed .classes-killed-legend__item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+body #main #content .player-stats .classes-killed .classes-killed-legend__item .class-icon {
+  width: 26px;
+  height: 26px;
+}
+body #main #content .player-stats .classes-killed .classes-killed-legend__name {
+  flex: 1;
+  color: #ccc;
+  font-size: 0.85em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+body #main #content .player-stats .classes-killed .classes-killed-legend__count {
+  font-size: 0.9em;
+  font-weight: bold;
+  color: #fff;
+  white-space: nowrap;
+}
+body #main #content .player-stats .classes-killed .classes-killed-legend__pct {
+  color: #aaa;
+  font-weight: normal;
+}
+body #main #content .player-stats .no-data {
+  font-style: italic;
+  color: #ccc;
+}
+body #main #content .player-stats .recent-matches {
+  overflow-x: auto;
+}
+body #main #content .player-stats .recent-matches h3 {
+  font-size: 1.6em;
+}
+body #main #content .player-stats .recent-matches .matches-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.95em;
+}
+body #main #content .player-stats .recent-matches .matches-table th,
+body #main #content .player-stats .recent-matches .matches-table td {
+  padding: 10px 12px;
+  text-align: left;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+body #main #content .player-stats .recent-matches .matches-table th {
+  font-size: 0.8em;
+  color: #aaa;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.15);
+}
+body #main #content .player-stats .recent-matches .matches-table .match-row {
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+}
+body #main #content .player-stats .recent-matches .matches-table .match-row:hover {
+  background-color: rgba(255, 255, 255, 0.06);
+}
+body #main #content .player-stats .recent-matches .matches-table .match-row td:first-child {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  white-space: nowrap;
+}
+body #main #content .player-stats .recent-matches .matches-table .match-result {
+  display: inline-block;
+  padding: 3px 10px;
+  border-radius: 4px;
+  font-size: 0.85em;
+  font-weight: bold;
+  white-space: nowrap;
+}
+body #main #content .player-stats .recent-matches .matches-table .match-result.result-win {
+  background-color: rgba(39, 174, 96, 0.25);
+  color: #2ecc71;
+}
+body #main #content .player-stats .recent-matches .matches-table .match-result.result-loss {
+  background-color: rgba(231, 76, 60, 0.25);
+  color: #e74c3c;
+}
+body #main #content .player-stats .recent-matches .matches-table .match-result.result-unknown {
+  background-color: rgba(255, 255, 255, 0.1);
+  color: #aaa;
+}
+body #main #content .player-stats {
+  /* --- Responsive : grille des statistiques --- */
+}
+@media all and (max-width: 1040px) {
+  body #main #content .player-stats .stats-grid.stats-key {
+    grid-template-columns: repeat(3, 1fr);
+  }
+  body #main #content .player-stats .stats-grid.stats-lists {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+@media all and (max-width: 870px) {
+  body #main #content .player-stats .stats-grid.stats-lists {
+    grid-template-columns: 1fr;
+  }
+}
+@media all and (max-width: 726px) {
+  body #main #content .player-stats .stats-grid.stats-key {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+@media all and (max-width: 560px) {
+  body #main #content .personnal-info .profile-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  body #main #content .personnal-info .profile-header h2 {
+    font-size: 2em;
+  }
+  body #main #content .personnal-info .profile-header .flex.align-center.gap-10 {
+    flex-wrap: wrap;
+  }
+  body #main #content .player-stats .stats-grid.stats-key {
+    grid-template-columns: 1fr;
+  }
+  body #main #content .player-stats .recent-matches {
+    overflow-x: auto;
+  }
+  body #main #content .player-stats .recent-matches .matches-table {
+    min-width: 520px;
+  }
+  body #main #content .player-stats .classes-killed .classes-killed-legend {
+    grid-template-columns: 1fr;
+  }
+}
+body #main #content .profile-tabs {
+  display: flex;
+  gap: 10px;
+  margin: 20px 0;
+  background: #141414;
+  padding: 6px;
+  border-radius: 8px;
+  width: fit-content;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+body #main #content .profile-tabs .profile-tab-btn {
+  background: transparent;
+  border: none;
+  color: #888;
+  padding: 8px 20px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  cursor: pointer;
+  border-radius: 6px;
+  text-decoration: none;
+  transition: all 0.25s ease-in-out;
+}
+body #main #content .profile-tabs .profile-tab-btn:hover:not(.active) {
+  background: rgba(255, 255, 255, 0.03);
+  color: #fff;
+}
+body #main #content .profile-tabs .profile-tab-btn.active {
+  background: #ff5722;
+  color: #fff;
+  box-shadow: 0 4px 12px rgba(255, 87, 34, 0.3);
+}
+
+/* --- Styles pour les icônes de classe --- */
+.class-icon {
+  width: 45px;
+  height: 45px;
+  display: block;
+  object-fit: contain;
+}
+
+.gap-10 {
+  gap: 10px;
+}
+
+.gap-15 {
+  gap: 15px;
+}
+
+.align-center {
+  align-items: center;
+}
+
+/* --- Badges de rôle sur les profils joueurs --- */
+body #main #content .personnal-info .staff-badges-container {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 4px;
+}
+body #main #content .personnal-info .badge-staff {
+  display: inline-block;
+  padding: 3px 10px;
+  font-size: 0.72em;
+  font-weight: bold;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  border-radius: 12px;
+  color: #fff;
+  background: #444;
+}
+body #main #content .personnal-info .badge-staff.badge-founder {
+  background-color: #f0ad4e;
+}
+body #main #content .personnal-info .badge-staff.badge-admin {
+  background-color: #d9534f;
+}
+body #main #content .personnal-info .badge-staff.badge-moderator {
+  background-color: #5bc0de;
+}
+body #main #content .personnal-info .badge-staff.badge-mentor {
+  background-color: #5cb85c;
+}
+body #main #content .personnal-info .badge-staff.badge-mixer {
+  background-color: #9b59b6;
+}
+
+/*# sourceMappingURL=profile.css.map */

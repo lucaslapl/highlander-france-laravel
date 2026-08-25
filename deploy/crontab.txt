@@ -1,0 +1,16 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# CRONTAB — Highlander France (Laravel)
+# ─────────────────────────────────────────────────────────────────────────────
+# À installer sur le serveur de production :
+#   crontab deploy/crontab.txt
+#
+# ⚠️ Adapter les chemins : <APP_ROOT> = chemin absolu vers highlander-france-laravel
+#    (ex : /var/www/highlander-france-laravel)
+# ⚠️ Utiliser le binaire PHP du serveur (php8.3… selon la config).
+#
+# Une seule entrée suffit : le planificateur Laravel (routes/console.php)
+# exécute les tâches aux fréquences définies, identiques à l'ancien crontab.
+* * * * * cd <APP_ROOT> && php artisan schedule:run >> /dev/null 2>&1
+
+# Optionnel mais recommandé : rotation des logs Laravel (évite les fichiers géants).
+# 0 0 * * 0 cd <APP_ROOT> && php artisan log:clear >> /dev/null 2>&1

@@ -1,0 +1,247 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\Models;
+
+use App\Services\MatchFormat;
+use App\Services\SteamId;
+use Illuminate\Support\Facades\DB;
+
+final class Etf2lRepository
+{
+    /**
+     * Prochains matchs des équipes françaises, du plus proche au plus lointain.
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    public function upcomingMatches(int $limit = 5): array
+    {
+        return DB::table('etf2l_matches')
+            ->where('match_date', '>=', time())
+            ->orderBy('match_date')
+            ->limit($limit)
+            ->get()
+            ->map(static fn ($row): array => (array) $row)
+            ->all();
+    }
+
+    /**
+     * Matchs terminés depuis moins de $hours heures (fenêtre de 48 h par
+     * défaut), du plus récent au plus ancien : résultats encore affichés
+     * sur la page d'accueil.
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    public function recentlyFinishedMatches(int $hours = 48, int $limit = 5): array
+    {
+        return DB::table('etf2l_matches')
+            ->where('match_date', '<', time())
+            ->where('match_date', '>=', time() - $hours * 3600)
+            ->orderByDesc('match_date')
+            ->orderByDesc('match_id')
+            ->limit($limit)
+            ->get()
+            ->map(static fn ($row): array => (array) $row)
+            ->all();
+    }
+
+    /**
+     * Matchs ETF2L pour le sitemap (id + horodatage).
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    public function sitemapMatches(): array
+    {
+        return DB::table('etf2l_matches')
+            ->select('match_id', 'match_date')
+            ->orderBy('match_date')
+            ->get()
+            ->map(static fn ($row): array => (array) $row)
+            ->all();
+    }
+
+    /**
+     * Matchs passés des équipes FR, du plus récent au plus ancien (paginé).
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    public function pastMatches(int $limit = 20, int $offset = 0): array
+    {
+        return DB::table('etf2l_matches')
+            ->where('match_date', '<', time())
+            ->orderByDesc('match_date')
+            ->orderByDesc('match_id')
+            ->skip($offset)
+            ->take($limit)
+            ->get()
+            ->map(static fn ($row): array => (array) $row)
+            ->all();
+    }
+
+    /**
+     * Nombre total de matchs passés des équipes FR.
+     */
+    public function countPastMatches(): int
+    {
+        return (int) DB::table('etf2l_matches')->where('match_date', '<', time())->count();
+    }
+
+    /**
+     * Détail d'un match ETF2L avec le roster des deux équipes.
+     */
+    public function etf2lMatchDetail(int $matchId): ?array
+    {
+        $match = DB::table('etf2l_matches')->where('match_id', $matchId)->first();
+
+        if ($match === null) {
+            return null;
+        }
+
+        $match = (array) $match;
+
+        $teams = [];
+        $steamid64s = [];
+
+        foreach ([1, 2] as $n) {
+            $teamId = (int) ($match['team' . $n . '_id'] ?? 0);
+
+            $teamRow = DB::table('etf2l_teams')->where('team_id', $teamId)->first();
+
+            // Équipe absente de la table (roster indisponible, ex. historique) :
+            // on s'appuie sur les infos du match pour toujours afficher les deux camps.
+            if ($teamRow === null) {
+                $team = [
+                    'team_id' => $teamId,
+                    'name' => $n === 1 ? ($match['team1_name'] ?? 'TBD') : ($match['team2_name'] ?? 'TBD'),
+                    'country' => $n === 1 ? ($match['team1_country'] ?? 'unknown') : ($match['team2_country'] ?? 'unknown'),
+                    'tag' => null,
+                ];
+            } else {
+                $team = (array) $teamRow;
+            }
+
+            if ($teamId > 0) {
+                $players = DB::table('etf2l_players')->where('team_id', $teamId)->get()->all();
+                $team['players'] = $this->sortPlayers(array_map(static fn ($p): array => (array) $p, $players));
+            } else {
+                $team['players'] = [];
+            }
+
+            foreach ($team['players'] as $p) {
+                if (!empty($p['steamid64'])) {
+                    $steamid64s[$p['steamid64']] = true;
+                }
+            }
+
+            $team['key'] = 'team' . $n;
+            $team['side'] = $n === 1 ? $match['team1_name'] : $match['team2_name'];
+            $teams[] = $team;
+        }
+
+        $sitePlayers = $this->existingOnSite(array_keys($steamid64s));
+
+        foreach ($teams as &$team) {
+            foreach ($team['players'] as &$p) {
+                $steamid64 = !empty($p['steamid64']) ? $p['steamid64'] : null;
+                $p['steamid64'] = $steamid64;
+                $p['exists_on_site'] = (bool) ($steamid64 !== null && isset($sitePlayers[$steamid64]));
+                $p['profile_url'] = $p['exists_on_site']
+                    ? '/profile/' . $steamid64
+                    : 'https://etf2l.org/forum/user/' . (int) $p['player_id'] . '/';
+            }
+            unset($p);
+        }
+        unset($team);
+
+        return [
+            'match' => $match,
+            'teams' => $teams,
+            'maps' => $this->buildMaps($match),
+        ];
+    }
+
+    /**
+     * Construit la liste des cartes avec leurs scores (par carte et global).
+     */
+    private function buildMaps(array $match): array
+    {
+        $maps = json_decode((string) ($match['maps'] ?? 'null'), true) ?? [];
+        $results = json_decode((string) ($match['map_results'] ?? 'null'), true) ?? [];
+        $resultsByOrder = [];
+
+        foreach ($results as $r) {
+            $resultsByOrder[(int) ($r['match_order'] ?? 0)] = $r;
+        }
+
+        $list = [];
+        foreach ($maps as $i => $map) {
+            $order = $i + 1;
+            $result = $resultsByOrder[$order] ?? null;
+
+            $entry = [
+                'order' => $order,
+                'map' => (string) $map,
+                'map_display' => MatchFormat::mapDisplay((string) $map),
+            ];
+
+            if ($result !== null) {
+                $entry['team1'] = (int) ($result['clan1'] ?? 0);
+                $entry['team2'] = (int) ($result['clan2'] ?? 0);
+                $entry['golden_cap'] = (bool) ($result['golden_cap'] ?? false);
+            }
+
+            $list[] = $entry;
+        }
+
+        return [
+            'maps' => $list,
+            'r1' => isset($match['r1']) && $match['r1'] !== null ? (int) $match['r1'] : null,
+            'r2' => isset($match['r2']) && $match['r2'] !== null ? (int) $match['r2'] : null,
+        ];
+    }
+
+    /**
+     * Trie les joueurs d'une équipe : les Leaders (et assimilés) d'abord, puis
+     * le reste par ordre alphabétique.
+     */
+    private function sortPlayers(array $players): array
+    {
+        usort($players, static function (array $a, array $b): int {
+            $ra = (strtolower((string) ($a['role'] ?? '')) === 'leader') ? 0 : 1;
+            $rb = (strtolower((string) ($b['role'] ?? '')) === 'leader') ? 0 : 1;
+
+            if ($ra !== $rb) {
+                return $ra <=> $rb;
+            }
+
+            return strcasecmp((string) ($a['name'] ?? ''), (string) ($b['name'] ?? ''));
+        });
+
+        return $players;
+    }
+
+    /**
+     * @return array<string, bool> map steamid64 => true pour les joueurs présents sur le site.
+     */
+    private function existingOnSite(array $steamid64s): array
+    {
+        if ($steamid64s === []) {
+            return [];
+        }
+
+        $steamid3s = array_map([SteamId::class, 'toSteamId3'], $steamid64s);
+
+        $rows = DB::table('players_info')->whereIn('steamid', $steamid3s)->pluck('steamid');
+
+        $map = [];
+        foreach ($rows as $steamid3) {
+            $steamid64 = SteamId::toSteamId64($steamid3);
+            if ($steamid64 !== null) {
+                $map[$steamid64] = true;
+            }
+        }
+
+        return $map;
+    }
+}
