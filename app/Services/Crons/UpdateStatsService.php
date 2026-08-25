@@ -127,7 +127,7 @@ final class UpdateStatsService
 
                     // Nouveau joueur inconnu en base : on synchronise son profil Steam.
                     if (!$repo->playerExists($steamid)) {
-                        $steamUrl = 'https://api.steampowered.com/ISteamUser/GetPlayerSummaries/v0002/?key=' . (string) env('STEAM_API_KEY', '') . '&steamids=' . $steamid;
+                        $steamUrl = 'https://api.steampowered.com/ISteamUser/GetPlayerSummaries/v0002/?key=' . (string) config('hlfr.steam_api_key', '') . '&steamids=' . $steamid;
                         $sData = JsonClient::get($steamUrl);
 
                         if (isset($sData['response']['players'][0])) {

@@ -13,6 +13,11 @@ return [
     // Doit rester à true en production.
     'curl_verify_ssl' => (bool) env('CURL_VERIFY_SSL', true),
 
+    // Clé API Steam (https://steamcommunity.com/dev/apikey).
+    // Toujours lire via config() : après `php artisan config:cache`,
+    // env() ne retourne plus rien depuis le code applicatif.
+    'steam_api_key' => env('STEAM_API_KEY', ''),
+
     // Durée minimale d'un log (secondes) : en dessous, blacklist automatique.
     'min_match_length' => (int) env('MIN_MATCH_LENGTH', 300),
 

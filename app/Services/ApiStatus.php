@@ -79,7 +79,7 @@ final class ApiStatus
         ];
 
         // --- Steam ---
-        $key = (string) env('STEAM_API_KEY', '');
+        $key = (string) config('hlfr.steam_api_key', '');
         if ($key === '') {
             $checks['steam'] = [
                 'api' => 'Steam',

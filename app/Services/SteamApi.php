@@ -13,7 +13,7 @@ final class SteamApi
 {
     private function key(): string
     {
-        return (string) config('hlfr.steam_api_key', env('STEAM_API_KEY', ''));
+        return (string) config('hlfr.steam_api_key', '');
     }
 
     private function request(string $url): ?array

@@ -28,7 +28,7 @@ final class SyncSteamService
         $logToken = AdminLogger::log(self::SCRIPT_NAME);
         $historyFile = hlfr_data_path('log_sync_steam.txt');
 
-        $apiKey = (string) env('STEAM_API_KEY', '');
+        $apiKey = (string) config('hlfr.steam_api_key', '');
         if ($apiKey === '') {
             throw new \RuntimeException("Clé d'API Steam manquante dans le fichier .env");
         }
