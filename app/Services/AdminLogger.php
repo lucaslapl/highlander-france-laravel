@@ -4,123 +4,215 @@ declare(strict_types=1);
 
 namespace App\Services;
 
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 
 /**
- * Journalisation et audit d'exécution des scripts CRON (cron_debug.log).
+ * Journalisation et audit d'exécution des scripts CRON, webhooks et tests
+ * API (table admin_logs).
+ *
+ * L'API historique est conservée : on appelle log($script) au début d'un
+ * traitement (ligne STARTED), puis log($script, $token, 'SUCCESS (...)') à
+ * la fin pour mettre à jour le statut de la même entrée.
  */
 final class AdminLogger
 {
-    private const LOG_FILE = 'cron_debug.log';
-
     /**
      * Enregistre le début (STARTED) ou la fin (SUCCESS / raison d'échec) d'un script.
      *
-     * @return string Le token unique du log généré (ou mis à jour).
+     * @return string L'identifiant du log généré (ou mis à jour).
      */
     public static function log(string $scriptName, ?string $updateId = null, string $status = 'STARTED'): string
     {
-        date_default_timezone_set('Europe/Paris');
+        if ($updateId !== null && ctype_digit($updateId)) {
+            self::finish((int) $updateId, $status);
 
-        // Mode "mise à jour" : on remplace la ligne STARTED par le statut final.
-        if ($updateId !== null) {
-            $file = hlfr_data_path(self::LOG_FILE);
-            if (is_file($file)) {
-                $content = (string) file_get_contents($file);
-                $search = "[TOKEN:{$updateId}] [STATUS:STARTED]";
-                $replace = "[TOKEN:{$updateId}] [STATUS:{$status}]";
-
-                if (strpos($content, $search) !== false) {
-                    file_put_contents($file, str_replace($search, $replace, $content), LOCK_EX);
-
-                    return $updateId;
-                }
-            }
+            return $updateId;
         }
 
-        $token = uniqid('req_', true);
-        $date = date('Y-m-d H:i:s');
-        $line = "[{$date}] [TOKEN:{$token}] [STATUS:{$status}] [SCRIPT: {$scriptName}] [BY: " . self::who() . ']' . PHP_EOL;
-
-        file_put_contents(hlfr_data_path(self::LOG_FILE), $line, FILE_APPEND | LOCK_EX);
-
-        return $token;
+        return (string) self::start($scriptName, $status);
     }
 
     /**
-     * Dernière exécution (SUCCESS/FAILED) de chaque script dans cron_debug.log.
+     * Dernière exécution terminée (SUCCESS/FAILED/IGNORED) de chaque script.
      *
      * @return array<string, array{status: string, message: string, date: string, ts: int}>
      */
     public static function lastRuns(): array
     {
-        $file = hlfr_data_path(self::LOG_FILE);
-        if (! is_file($file)) {
+        $ids = DB::table('admin_logs')
+            ->selectRaw('MAX(id) as id')
+            ->whereIn('status', ['success', 'failed', 'ignored'])
+            ->groupBy('script')
+            ->pluck('id');
+
+        if ($ids->isEmpty()) {
             return [];
         }
-
-        $lines = file($file, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
-        if ($lines === false) {
-            return [];
-        }
-
-        $lines = array_slice($lines, -2000);
 
         $last = [];
-        foreach ($lines as $line) {
-            if (! preg_match('/\[SCRIPT:\s*([a-z0-9_\.]+)\]/i', $line, $m)) {
-                continue;
-            }
-            $script = $m[1];
-
-            if (! preg_match('/^\[(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2})\].*\[STATUS:(.*?)\]\s*\[SCRIPT:/i', $line, $m2)) {
-                continue;
-            }
-            $status = $m2[2];
-            if (strpos($status, 'STARTED') !== false) {
+        foreach (DB::table('admin_logs')->whereIn('id', $ids)->get() as $row) {
+            if ($row->finished_at === null) {
                 continue;
             }
 
-            $dt = \DateTime::createFromFormat('Y-m-d H:i:s', $m2[1], new \DateTimeZone('Europe/Paris'));
+            $finished = Carbon::parse($row->finished_at)->setTimezone('Europe/Paris');
+            $message = ucfirst($row->status) . ($row->message !== null && $row->message !== '' ? " ({$row->message})" : '');
 
-            $last[$script] = [
-                'status' => str_starts_with($status, 'FAILED') ? 'failed' : 'success',
-                'message' => $status,
-                'date' => $m2[1],
-                'ts' => $dt ? $dt->getTimestamp() : 0,
+            $last[$row->script] = [
+                'status' => $row->status === 'failed' ? 'failed' : 'success',
+                'message' => $message,
+                'date' => $finished->format('Y-m-d H:i:s'),
+                'ts' => $finished->getTimestamp(),
             ];
         }
 
         return $last;
     }
 
-    private static function who(): string
+    private static function start(string $script, string $rawStatus): int
     {
-        if (app()->runningInConsole()) {
-            return 'SERVER (CLI / CRON)';
+        ['context' => $context, 'steamid' => $steamid, 'name' => $name, 'ip' => $ip] = self::actor();
+
+        // Log à entrée unique (ex: webhook) : déjà terminé dès l'écriture.
+        if (str_starts_with(strtoupper(trim($rawStatus)), 'STARTED')) {
+            $status = 'started';
+            $message = null;
+            $startedAt = Carbon::now();
+            $finishedAt = null;
+        } else {
+            [$base, $message] = self::parseStatus($rawStatus);
+            $status = strtolower($base);
+            $startedAt = $finishedAt = Carbon::now();
         }
 
-        $steamid64 = $_SESSION['steamid'] ?? 'Pas de SteamID';
+        return (int) DB::table('admin_logs')->insertGetId([
+            'script' => $script,
+            'status' => $status,
+            'message' => $message,
+            'context' => $context,
+            'user_steamid' => $steamid,
+            'user_name' => $name,
+            'ip' => $ip,
+            'started_at' => $startedAt,
+            'finished_at' => $finishedAt,
+        ]);
+    }
 
-        $ip = request()->ip() ?? 'IP Inconnue';
-        if (request()->headers->has('X-Forwarded-For')) {
-            $ip = trim(explode(',', (string) request()->header('X-Forwarded-For'))[0]);
+    /**
+     * Met à jour une entrée STARTED avec son statut final.
+     * Format historique accepté : "SUCCESS (détail)" / "FAILED (raison)" / "IGNORED (...)".
+     */
+    private static function finish(int $id, string $rawStatus): void
+    {
+        [$base, $message] = self::parseStatus($rawStatus);
+        $finishedAt = Carbon::now();
+
+        // Filet de sécurité : l'entrée STARTED a disparu (purge concurrente...)
+        // → on enregistre quand même le statut final dans une nouvelle ligne.
+        $existing = DB::table('admin_logs')->where('id', $id)->first();
+
+        if ($existing === null) {
+            ['context' => $context, 'steamid' => $steamid, 'name' => $name, 'ip' => $ip] = self::actor();
+
+            DB::table('admin_logs')->insert([
+                'script' => 'inconnu',
+                'status' => strtolower($base),
+                'message' => $message,
+                'context' => $context,
+                'user_steamid' => $steamid,
+                'user_name' => $name,
+                'ip' => $ip,
+                'started_at' => $finishedAt,
+                'finished_at' => $finishedAt,
+            ]);
+
+            return;
+        }
+
+        // Déjà finalisée (double appel de fin) : on ne touche à rien.
+        if ($existing->status !== 'started') {
+            return;
+        }
+
+        DB::table('admin_logs')
+            ->where('id', $id)
+            ->update([
+                'status' => strtolower($base),
+                'message' => $message,
+                'finished_at' => $finishedAt,
+            ]);
+    }
+
+    /**
+     * Découpe un libellé brut ("SUCCESS (3 logs traités)") en base + message.
+     *
+     * @return array{0: string, 1: ?string}
+     */
+    private static function parseStatus(string $rawStatus): array
+    {
+        $trimmed = trim($rawStatus);
+
+        if (preg_match('/^(SUCCESS|FAILED|IGNORED)\b\s*\((.*)\)\s*$/is', $trimmed, $m)) {
+            return [strtoupper($m[1]), trim($m[2]) !== '' ? trim($m[2]) : null];
+        }
+
+        // Libellé sans parenthèses ou non standard : conservé tel quel.
+        return [str_starts_with(strtoupper($trimmed), 'FAILED') ? 'FAILED' : 'SUCCESS', $trimmed];
+    }
+
+    /**
+     * Origine de l'appel : tâche planifiée, webhook serveur/bot Discord ou
+     * utilisateur web (avec steamid + pseudo depuis la session Laravel).
+     *
+     * @return array{context: string, steamid: ?string, name: string, ip: ?string}
+     */
+    private static function actor(): array
+    {
+        if (app()->runningInConsole()) {
+            return ['context' => 'cli', 'steamid' => null, 'name' => 'SERVER (CLI / CRON)', 'ip' => null];
+        }
+
+        $request = request();
+
+        if ($request !== null && ($request->is('api/server/*') || $request->is('api/discord/*'))) {
+            return ['context' => 'webhook', 'steamid' => null, 'name' => 'SERVER WEBHOOK', 'ip' => self::clientIp($request)];
+        }
+
+        if ($request === null) {
+            return ['context' => 'web', 'steamid' => null, 'name' => 'Visiteur', 'ip' => null];
+        }
+
+        $steamid64 = Auth::steamId64();
+
+        if ($steamid64 === null) {
+            return ['context' => 'web', 'steamid' => null, 'name' => 'Visiteur', 'ip' => self::clientIp($request)];
         }
 
         $pseudo = 'Inconnu';
-        if (isset($_SESSION['steamid'])) {
-            try {
-                $player = DB::table('players_info')
-                    ->where('steamid', SteamId::toSteamId3((string) $steamid64))
-                    ->first();
-                if ($player) {
-                    $pseudo = $player->display_name;
-                }
-            } catch (\Exception) {
-                $pseudo = 'Erreur BDD';
+        try {
+            $player = DB::table('players_info')
+                ->where('steamid', SteamId::toSteamId3($steamid64))
+                ->first();
+            if ($player !== null) {
+                $pseudo = $player->display_name ?: ($player->name ?: 'Inconnu');
+            }
+        } catch (\Exception) {
+            $pseudo = 'Erreur BDD';
+        }
+
+        return ['context' => 'web', 'steamid' => $steamid64, 'name' => $pseudo, 'ip' => self::clientIp($request)];
+    }
+
+    private static function clientIp(\Illuminate\Http\Request $request): string
+    {
+        if ($request->headers->has('X-Forwarded-For')) {
+            $forwarded = trim(explode(',', (string) $request->header('X-Forwarded-For'))[0]);
+            if ($forwarded !== '') {
+                return $forwarded;
             }
         }
 
-        return "Web User: {$pseudo} ({$steamid64}) - IP: {$ip}";
+        return (string) ($request->ip() ?? 'IP Inconnue');
     }
 }

@@ -61,7 +61,7 @@ final class ApiStatus
             'http_code' => $r['http_code'],
             'latency_ms' => $r['latency_ms'],
             'message' => $this->message($valid, $r),
-            'script' => 'app:sync-etf2l',
+            'script' => 'sync_etf2l.php',
         ];
 
         // --- logs.tf ---
@@ -75,7 +75,7 @@ final class ApiStatus
             'http_code' => $r['http_code'],
             'latency_ms' => $r['latency_ms'],
             'message' => $this->message($valid, $r),
-            'script' => 'app:update-stats',
+            'script' => 'update_stats.php',
         ];
 
         // --- Steam ---
@@ -104,7 +104,7 @@ final class ApiStatus
                 'message' => $valid
                     ? 'API opérationnelle'
                     : (is_array($resp) && ! empty($resp['error']) ? 'Réponse Steam invalide (clé ?)' : $this->message($valid, $r)),
-                'script' => 'app:sync-steam',
+                'script' => 'sync_steam.php',
             ];
         }
 

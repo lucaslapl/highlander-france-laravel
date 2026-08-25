@@ -205,53 +205,50 @@ final class AdminCronController extends Controller
     {
         Auth::requireAdmin();
 
-        $logFile = hlfr_data_path('cron_debug.log');
-        $fileExists = false;
-        $fileSize = '0 Octets';
-        $bytes = 0;
-        $logContent = '';
-
-        if (is_file($logFile)) {
-            $fileExists = true;
-            $bytes = (int) filesize($logFile);
-
-            if ($bytes >= 1048576) {
-                $fileSize = number_format($bytes / 1048576, 2) . ' Mo';
-            } elseif ($bytes >= 1024) {
-                $fileSize = number_format($bytes / 1024, 2) . ' Ko';
-            } else {
-                $fileSize = $bytes . ' Octets';
-            }
-
-            $fileLines = file($logFile);
-            if ($fileLines !== false) {
-                $lastLines = array_slice($fileLines, -100);
-                $logContent = implode('', array_reverse($lastLines));
-            }
-
-            if ($logContent === '') {
-                $logContent = 'Le fichier de log existe mais il est actuellement vide.';
-            }
-        } else {
-            $logContent = "Aucun enregistrement trouvé.\nLe fichier 'cron_debug.log' n'a pas encore été généré dans le répertoire de données.";
-        }
-
         if ($request->isMethod('POST') && $request->has('clear_logs')) {
-            if ($fileExists) {
-                file_put_contents($logFile, '');
-            }
+            DB::table('admin_logs')->delete();
 
             return redirect('/admin/view-logs')->with('success', "Le journal d'erreurs a été réinitialisé avec succès !");
         }
 
+        $scriptFilter = trim((string) $request->input('script', ''));
+        $statusFilter = (string) $request->input('status', '');
+        $statusValues = ['started', 'success', 'failed', 'ignored'];
+
+        $query = DB::table('admin_logs')->orderByDesc('id');
+
+        if ($scriptFilter !== '') {
+            $query->where('script', $scriptFilter);
+        }
+        if (in_array($statusFilter, $statusValues, true)) {
+            $query->where('status', $statusFilter);
+        }
+
+        $total = DB::table('admin_logs')->count();
+
+        $logs = $query->paginate(50)->withQueryString()->through(static function (\stdClass $row): \stdClass {
+            $started = \Carbon\Carbon::parse($row->started_at)->setTimezone('Europe/Paris');
+            $row->date_display = $started->format('d/m/Y H:i:s');
+            $row->duration_display = null;
+            if ($row->finished_at !== null) {
+                $seconds = max(0, (int) round(abs(strtotime($row->finished_at) - strtotime($row->started_at))));
+                $row->duration_display = $seconds >= 60
+                    ? intdiv($seconds, 60) . ' min ' . ($seconds % 60) . ' s'
+                    : $seconds . ' s';
+            }
+
+            return $row;
+        });
+
         return view('admin.view_logs', [
             'title' => 'Admin - Journaux Système',
-            'description' => 'Inspecteur de journaux (cron_debug.log).',
+            'description' => 'Inspecteur de journaux (table admin_logs).',
             'styles' => ['/_css/admin.css'],
-            'fileSize' => $fileSize,
-            'fileExists' => $fileExists,
-            'bytes' => $bytes,
-            'logContent' => $logContent,
+            'logs' => $logs,
+            'scripts' => DB::table('admin_logs')->select('script')->distinct()->orderBy('script')->pluck('script'),
+            'scriptFilter' => $scriptFilter,
+            'statusFilter' => in_array($statusFilter, $statusValues, true) ? $statusFilter : '',
+            'total' => $total,
         ]);
     }
 
