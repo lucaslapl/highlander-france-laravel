@@ -45,12 +45,16 @@ final class GenerateJsonService
             'kills' => [
                 'value_key' => 'value',
                 'suffix'    => '_kills',
+                // NB : toutes les colonnes non aggregees figurent dans le
+                // GROUP BY (compatibilite ONLY_FULL_GROUP_BY / MariaDB).
+                // Le join est 1:1 (steamid = cle primaire), le resultat est
+                // donc identique a un groupement par steamid seul.
                 'sql'       => "SELECT COALESCE(p.display_name, p.name) AS name,
                                        p.avatar, p.steamid, SUM(pm.kills) AS value
                                 FROM player_matches pm
                                 JOIN players_info p ON p.steamid = pm.steamid
                                 WHERE pm.game_mode = ? AND p.created_at IS NOT NULL
-                                GROUP BY pm.steamid
+                                GROUP BY pm.steamid, p.display_name, p.name, p.avatar
                                 HAVING COUNT(*) >= " . self::MIN_MATCHES . "
                                 ORDER BY value DESC LIMIT 18",
             ],
@@ -62,7 +66,7 @@ final class GenerateJsonService
                                 FROM player_matches pm
                                 JOIN players_info p ON p.steamid = pm.steamid
                                 WHERE pm.game_mode = ? AND p.created_at IS NOT NULL
-                                GROUP BY pm.steamid
+                                GROUP BY pm.steamid, p.display_name, p.name, p.avatar
                                 HAVING COUNT(*) >= " . self::MIN_MATCHES . "
                                 ORDER BY value DESC LIMIT 18",
             ],
@@ -75,7 +79,7 @@ final class GenerateJsonService
                                 FROM player_matches pm
                                 JOIN players_info p ON p.steamid = pm.steamid
                                 WHERE pm.game_mode = ? AND p.created_at IS NOT NULL
-                                GROUP BY pm.steamid
+                                GROUP BY pm.steamid, p.display_name, p.name, p.avatar
                                 HAVING COUNT(*) >= " . self::MIN_MATCHES . " AND value IS NOT NULL
                                 ORDER BY value DESC LIMIT 18",
             ],

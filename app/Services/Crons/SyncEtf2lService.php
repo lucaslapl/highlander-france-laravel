@@ -205,22 +205,24 @@ final class SyncEtf2lService
         );
 
         $upsertedCount = 0;
+        // NB : syntaxe VALUES(col) requise pour MariaDB (l'alias de ligne
+        // "AS new_row" n'existe que sur MySQL >= 8.0.19).
         $stmt = $this->db->prepare('
             INSERT INTO etf2l_matches (match_id, team1_name, team2_name, match_date, competition_name, team1_country, team2_country, team1_id, team2_id, maps, r1, r2, map_results)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) AS new_row
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ON DUPLICATE KEY UPDATE
-                team1_name = new_row.team1_name,
-                team2_name = new_row.team2_name,
-                match_date = new_row.match_date,
-                competition_name = new_row.competition_name,
-                team1_country = new_row.team1_country,
-                team2_country = new_row.team2_country,
-                team1_id = new_row.team1_id,
-                team2_id = new_row.team2_id,
-                maps = COALESCE(new_row.maps, etf2l_matches.maps),
-                r1 = COALESCE(new_row.r1, etf2l_matches.r1),
-                r2 = COALESCE(new_row.r2, etf2l_matches.r2),
-                map_results = COALESCE(new_row.map_results, etf2l_matches.map_results)
+                team1_name = VALUES(team1_name),
+                team2_name = VALUES(team2_name),
+                match_date = VALUES(match_date),
+                competition_name = VALUES(competition_name),
+                team1_country = VALUES(team1_country),
+                team2_country = VALUES(team2_country),
+                team1_id = VALUES(team1_id),
+                team2_id = VALUES(team2_id),
+                maps = COALESCE(VALUES(maps), maps),
+                r1 = COALESCE(VALUES(r1), r1),
+                r2 = COALESCE(VALUES(r2), r2),
+                map_results = COALESCE(VALUES(map_results), map_results)
         ');
 
         $matchTeamIds = [];

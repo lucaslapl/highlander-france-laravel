@@ -46,10 +46,12 @@ final class MatchStatsRepository
 
     public function incrementPlayerStat(string $steamid, string $gameMode): void
     {
-        DB::table('player_stats')->upsert(
-            ['steamid' => $steamid, 'count' => 1, 'game_mode' => $gameMode],
-            ['steamid', 'game_mode'],
-            [DB::raw('count = count + 1')],
+        // NB : statement SQL brut — le query builder upsert() n'accepte que des
+        // noms de colonnes en mise a jour, pas d'expression "count + 1".
+        DB::statement(
+            'INSERT INTO player_stats (steamid, count, game_mode) VALUES (?, 1, ?)
+             ON DUPLICATE KEY UPDATE count = count + 1',
+            [$steamid, $gameMode],
         );
     }
 

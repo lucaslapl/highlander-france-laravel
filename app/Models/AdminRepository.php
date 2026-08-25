@@ -279,12 +279,12 @@ final class AdminRepository
             DB::table('player_stats')->where('count', '<=', 0)->delete();
 
             // Ré-incrémente le nouveau mode pour chaque joueur du log.
+            $inc = DB::getPdo()->prepare(
+                'INSERT INTO player_stats (steamid, count, game_mode) VALUES (?, 1, ?)
+                 ON DUPLICATE KEY UPDATE count = count + 1'
+            );
             foreach ($steamids as $steamid) {
-                DB::table('player_stats')->upsert(
-                    ['steamid' => $steamid, 'count' => 1, 'game_mode' => $mode],
-                    ['steamid', 'game_mode'],
-                    [DB::raw('count = count + 1')],
-                );
+                $inc->execute([$steamid, $mode]);
             }
 
             DB::commit();
