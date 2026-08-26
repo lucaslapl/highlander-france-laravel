@@ -8,10 +8,12 @@ use App\Models\Etf2lRepository;
 use App\Models\MatchLogRepository;
 use App\Models\PlayerRepository;
 use App\Services\Auth;
+use App\Services\CountryFlags;
 use App\Services\LiveMatches;
 use App\Services\MatchFormat;
 use App\Services\SteamId;
 use Illuminate\Contracts\View\View;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 
@@ -19,7 +21,7 @@ final class PageController extends Controller
 {
     public function home(): View
     {
-        $repo = new Etf2lRepository();
+        $repo = new Etf2lRepository;
         $prochainsMatchs = $repo->upcomingMatches(5);
         $matchsRecents = $repo->recentlyFinishedMatches(48, 5);
 
@@ -42,38 +44,38 @@ final class PageController extends Controller
             abort(404);
         }
 
-        $detail = (new Etf2lRepository())->etf2lMatchDetail($matchId);
+        $detail = (new Etf2lRepository)->etf2lMatchDetail($matchId);
 
         if ($detail === null) {
             abort(404);
         }
 
         $match = $detail['match'];
-        $dt = new \DateTime('@' . (int) $match['match_date']);
+        $dt = new \DateTime('@'.(int) $match['match_date']);
         $dt->setTimezone(new \DateTimeZone('Europe/Paris'));
         $teamNames = array_filter([
             (string) ($match['team1_name'] ?? ''),
             (string) ($match['team2_name'] ?? ''),
         ]);
         $matchTitle = implode(' VS ', array_values($teamNames));
-        $description = 'Match ETF2L ' . e((string) ($match['competition_name'] ?? 'Highlander'))
-            . ' : ' . $matchTitle . ' (' . $dt->format('d/m/Y à H:i') . '). '
-            . 'Consultez les rosters des deux équipes et les scores des maps.';
+        $description = 'Match ETF2L '.e((string) ($match['competition_name'] ?? 'Highlander'))
+            .' : '.$matchTitle.' ('.$dt->format('d/m/Y à H:i').'). '
+            .'Consultez les rosters des deux équipes et les scores des maps.';
 
         $structuredData = [
             '@context' => 'https://schema.org',
             '@type' => 'SportsEvent',
-            'name' => $matchTitle . ' - ' . ($match['competition_name'] ?? 'ETF2L'),
+            'name' => $matchTitle.' - '.($match['competition_name'] ?? 'ETF2L'),
             'description' => $description,
             'startDate' => $dt->format('c'),
             'eventStatus' => 'https://schema.org/EventScheduled',
             'eventAttendanceMode' => 'https://schema.org/OnlineEventAttendanceMode',
-            'url' => site_url() . '/match/' . (int) $match['match_id'],
+            'url' => site_url().'/match/'.(int) $match['match_id'],
             'sport' => 'Team Fortress 2',
             'location' => [
                 '@type' => 'Place',
                 'name' => 'ETF2L',
-                'url' => 'https://etf2l.org/matches/' . (int) $match['match_id'],
+                'url' => 'https://etf2l.org/matches/'.(int) $match['match_id'],
             ],
             'competitor' => array_map(static function (array $team): array {
                 return [
@@ -88,7 +90,7 @@ final class PageController extends Controller
         ];
 
         return view('pages.etf2l-match', [
-            'title' => 'Highlander France - ' . $matchTitle . ' | ETF2L',
+            'title' => 'Highlander France - '.$matchTitle.' | ETF2L',
             'description' => $description,
             'structuredData' => $structuredData,
             'match' => $match,
@@ -115,7 +117,7 @@ final class PageController extends Controller
         $perPage = 20;
         $page = max(1, (int) $request->query('page', '1'));
 
-        $repo = new Etf2lRepository();
+        $repo = new Etf2lRepository;
         $total = $repo->countPastMatches();
         $totalPages = max(1, (int) ceil($total / $perPage));
         $page = min($page, $totalPages);
@@ -132,9 +134,73 @@ final class PageController extends Controller
         ]);
     }
 
+    /**
+     * Liste des joueurs inscrits (GET /joueurs) : connexion Steam requise.
+     * Recherche par pseudo, tri (alphabétique / division HL / division 6s)
+     * et pagination manuelle (même pattern que /matchs).
+     */
+    public function joueurs(Request $request): View|RedirectResponse
+    {
+        if (! Auth::isLoggedIn()) {
+            return redirect('/login');
+        }
+
+        $search = trim((string) $request->query('q', ''));
+        if (mb_strlen($search) > 50) {
+            $search = mb_substr($search, 0, 50);
+        }
+
+        $sort = (string) $request->query('sort', 'hl');
+        if (! in_array($sort, ['name', 'hl', 'div6'], true)) {
+            $sort = 'hl';
+        }
+
+        $dir = strtolower((string) $request->query('dir', 'asc'));
+        $dir = in_array($dir, ['asc', 'desc'], true) ? $dir : 'asc';
+
+        $perPage = 25;
+        $page = max(1, (int) $request->query('page', '1'));
+
+        $repo = new PlayerRepository;
+        $result = $repo->registeredPlayers($search, $sort, $dir, $perPage, $page);
+
+        $totalPages = max(1, (int) ceil($result['total'] / $perPage));
+        $page = min($page, $totalPages);
+
+        // Classes les plus jouées pour les joueurs de la page courante.
+        $topClasses = $repo->topClasses(array_column($result['rows'], 'steamid'));
+
+        foreach ($result['rows'] as &$row) {
+            $row['final_name'] = ($row['display_name'] ?? '') !== ''
+                ? $row['display_name']
+                : ($row['name'] ?? 'Joueur');
+            $steamid64 = SteamId::toSteamId64((string) $row['steamid']);
+            $row['profile_url'] = $steamid64 !== null ? '/profile/'.$steamid64 : null;
+            $row['classes'] = $topClasses[$row['steamid']] ?? [];
+            $row['flag_url'] = CountryFlags::flag(isset($row['country']) && $row['country'] !== '' ? (string) $row['country'] : null);
+            $row['country_label'] = config('hlfr.countries')[(string) ($row['country'] ?? '')] ?? ucfirst((string) ($row['country'] ?? 'Inconnu'));
+        }
+        unset($row);
+
+        $description = 'Liste des joueurs inscrits sur Highlander France : divisions ETF2L (Highlander et 6v6), classes les plus jouées et nationalité.';
+
+        return view('pages.joueurs', [
+            'title' => 'Highlander France - Joueurs inscrits',
+            'description' => $description,
+            'players' => $result['rows'],
+            'totalPlayers' => $result['total'],
+            'search' => $search,
+            'sort' => $sort,
+            'dir' => $dir,
+            'currentPage' => $page,
+            'totalPages' => $totalPages,
+            'perPage' => $perPage,
+        ]);
+    }
+
     public function staff(): View
     {
-        $members = (new PlayerRepository())->staffMembers();
+        $members = (new PlayerRepository)->staffMembers();
 
         $groups = ['founders' => [], 'mentors' => [], 'mixers' => [], 'moderators' => []];
         $roleMap = [
@@ -146,8 +212,8 @@ final class PageController extends Controller
 
         foreach ($members as $member) {
             $member = (array) $member;
-            $member['final_name'] = !empty($member['display_name']) ? $member['display_name'] : $member['name'];
-            $member['profile_url'] = '/profile/' . SteamId::toSteamId64($member['steamid']);
+            $member['final_name'] = ! empty($member['display_name']) ? $member['display_name'] : $member['name'];
+            $member['profile_url'] = '/profile/'.SteamId::toSteamId64($member['steamid']);
 
             foreach ($roleMap as $group => $column) {
                 if ((int) $member[$column] === 1) {
@@ -194,36 +260,36 @@ final class PageController extends Controller
      */
     public function sitemap(): Response
     {
-        $logs = (new MatchLogRepository())->sitemapLogs();
-        $players = (new PlayerRepository())->allSteamIds();
-        $etf2lMatches = (new Etf2lRepository())->sitemapMatches();
+        $logs = (new MatchLogRepository)->sitemapLogs();
+        $players = (new PlayerRepository)->allSteamIds();
+        $etf2lMatches = (new Etf2lRepository)->sitemapMatches();
 
         $base = site_url();
 
         // Pages statiques : [path, priority, changefreq]
         $staticPages = [
-            '/'                => [1.0, 'always'],
-            '/staff'           => [0.8, 'monthly'],
-            '/hall-of-fame'    => [0.8, 'daily'],
-            '/match-logs'      => [0.8, 'daily'],
-            '/matchs'          => [0.8, 'daily'],
+            '/' => [1.0, 'always'],
+            '/staff' => [0.8, 'monthly'],
+            '/hall-of-fame' => [0.8, 'daily'],
+            '/match-logs' => [0.8, 'daily'],
+            '/matchs' => [0.8, 'daily'],
             '/confidentialite' => [0.3, 'yearly'],
         ];
 
         $block = static function (string $url, ?string $lastmod, float $priority, string $changefreq): string {
-            $out = "  <url>\n    <loc>" . e($url) . "</loc>\n";
+            $out = "  <url>\n    <loc>".e($url)."</loc>\n";
             if ($lastmod !== null) {
-                $out .= "    <lastmod>" . $lastmod . "</lastmod>\n";
+                $out .= '    <lastmod>'.$lastmod."</lastmod>\n";
             }
-            $out .= "    <priority>" . rtrim(rtrim(number_format($priority, 1), '0'), '.') . "</priority>\n";
-            $out .= "    <changefreq>" . $changefreq . "</changefreq>\n  </url>";
+            $out .= '    <priority>'.rtrim(rtrim(number_format($priority, 1), '0'), '.')."</priority>\n";
+            $out .= '    <changefreq>'.$changefreq."</changefreq>\n  </url>";
 
             return $out;
         };
 
         $lines = [];
         foreach ($staticPages as $path => [$priority, $change]) {
-            $lines[] = $block($base . $path, null, $priority, $change);
+            $lines[] = $block($base.$path, null, $priority, $change);
         }
 
         // Dernier match comme référence de fraîcheur pour /match-logs et l'accueil.
@@ -244,7 +310,7 @@ final class PageController extends Controller
             } elseif ($lastMatchDate !== null) {
                 $lastmod = date('Y-m-d', $lastMatchDate);
             }
-            $lines[] = $block($base . '/log/' . $log['id'], $lastmod, 0.5, 'weekly');
+            $lines[] = $block($base.'/log/'.$log['id'], $lastmod, 0.5, 'weekly');
         }
 
         foreach ($players as $steamid3) {
@@ -252,7 +318,7 @@ final class PageController extends Controller
             if ($steamid64 === null) {
                 continue;
             }
-            $lines[] = $block($base . '/profile/' . $steamid64, null, 0.4, 'monthly');
+            $lines[] = $block($base.'/profile/'.$steamid64, null, 0.4, 'monthly');
         }
 
         // Matchs ETF2L à venir (contenu éphémère mais indexable tant qu'ils existent).
@@ -260,12 +326,12 @@ final class PageController extends Controller
             $lastmod = isset($match['match_date']) && is_numeric($match['match_date']) && (int) $match['match_date'] > 0
                 ? date('Y-m-d', (int) $match['match_date'])
                 : null;
-            $lines[] = $block($base . '/match/' . (int) $match['match_id'], $lastmod, 0.6, 'daily');
+            $lines[] = $block($base.'/match/'.(int) $match['match_id'], $lastmod, 0.6, 'daily');
         }
 
-        $xml = '<?xml version="1.0" encoding="UTF-8"?>' . "\n"
-            . '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">' . "\n"
-            . implode("\n", $lines) . "\n</urlset>";
+        $xml = '<?xml version="1.0" encoding="UTF-8"?>'."\n"
+            .'<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">'."\n"
+            .implode("\n", $lines)."\n</urlset>";
 
         return response($xml, 200, ['Content-Type' => 'application/xml; charset=utf-8']);
     }
@@ -301,7 +367,7 @@ final class PageController extends Controller
         $blueScore = (int) ($entry['scores']['blue'] ?? 0);
 
         return view('pages.live-match', [
-            'title' => 'Highlander France - ' . $mapDisplay . ' | En direct',
+            'title' => 'Highlander France - '.$mapDisplay.' | En direct',
             'description' => site_description(),
             'server' => $server,
             'entry' => $entry,
@@ -326,7 +392,7 @@ final class PageController extends Controller
             abort(400);
         }
 
-        $repo = new MatchLogRepository();
+        $repo = new MatchLogRepository;
 
         if (in_array($logId, $repo->blacklistedIds(), true)) {
             abort(404);
@@ -375,7 +441,7 @@ final class PageController extends Controller
         $matchDate = $log['date'] !== null ? date('d/m/Y à H:i', (int) $log['date']) : null;
 
         return view('pages.match-log', [
-            'title' => 'Highlander France - ' . MatchFormat::mapDisplay((string) $log['map_name']) . ' | ' . $gameModeLabel,
+            'title' => 'Highlander France - '.MatchFormat::mapDisplay((string) $log['map_name']).' | '.$gameModeLabel,
             'description' => site_description(),
             'ogType' => 'article',
             'logId' => $logId,

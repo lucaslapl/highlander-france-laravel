@@ -2189,3 +2189,153 @@ body #nav .nav-content .nav-live-badge[hidden] {
     grid-template-columns: 1fr;
   }
 }
+
+/* --- JOUEURS INSCRITS (/joueurs) --- */
+.joueurs-container {
+  max-width: 1000px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.joueurs-search {
+  margin: 15px 0;
+}
+
+.joueurs-search-input {
+  background: rgba(0, 0, 0, 0.4);
+  border: 1px solid #38193d;
+  color: #eee;
+  padding: 8px 12px;
+  border-radius: 6px;
+  font-size: 14px;
+  min-width: 220px;
+}
+.joueurs-search-input:focus {
+  outline: none;
+  border-color: #72227d;
+}
+
+.joueurs-search-btn {
+  background: #72227d;
+  color: white;
+  border: none;
+  padding: 9px 16px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: background 0.2s;
+}
+.joueurs-search-btn:hover {
+  background: #fbb7fb;
+  color: #000;
+}
+
+.joueurs-search-reset {
+  color: #999;
+  text-decoration: none;
+  font-size: 16px;
+}
+.joueurs-search-reset:hover {
+  color: #f35f5f;
+}
+
+.joueurs-table-wrapper {
+  overflow-x: auto;
+}
+
+.joueurs-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+.joueurs-table th,
+.joueurs-table td {
+  padding: 10px 12px;
+  text-align: left;
+  border-bottom: 1px solid rgba(56, 25, 61, 0.6);
+}
+.joueurs-table th a {
+  color: #fbb7fb;
+  text-decoration: none;
+  text-transform: uppercase;
+  font-size: 12px;
+  letter-spacing: 0.5px;
+}
+.joueurs-table th a:hover {
+  color: #fff;
+}
+.joueurs-table th a i {
+  margin-left: 5px;
+}
+.joueurs-table tbody tr:hover {
+  background: rgba(114, 34, 125, 0.12);
+}
+
+.joueurs-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 4px;
+  object-fit: cover;
+  flex-shrink: 0;
+}
+
+.joueurs-name a {
+  color: #fbb7fb;
+  text-decoration: none;
+  font-weight: bold;
+}
+.joueurs-name a:hover {
+  text-decoration: underline;
+}
+
+.division-badge {
+  display: inline-block;
+  background: rgba(55, 34, 58, 0.9);
+  border: 1px solid #38193d;
+  color: #fbb7fb;
+  padding: 3px 10px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: bold;
+  white-space: nowrap;
+}
+.division-badge.division-6s {
+  color: #ffd24d;
+}
+
+.division-none {
+  color: #666;
+}
+
+.joueurs-classes {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.joueurs-class-icon {
+  width: 24px;
+  height: 24px;
+  vertical-align: middle;
+}
+
+.joueurs-flag {
+  width: 24px;
+  height: 16px;
+  object-fit: cover;
+  border-radius: 2px;
+}
+
+@media all and (max-width: 700px) {
+  .joueurs-search-input {
+    min-width: 0;
+    width: 100%;
+  }
+  .joueurs-search {
+    flex-wrap: wrap;
+  }
+  .joueurs-table .col-classes,
+  .joueurs-table .col-country {
+    display: none;
+  }
+}

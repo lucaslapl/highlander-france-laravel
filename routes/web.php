@@ -17,6 +17,7 @@ use Illuminate\Support\Facades\Route;
 Route::get('/', [PageController::class, 'home']);
 Route::get('/index', [PageController::class, 'home']);
 Route::get('/staff', [PageController::class, 'staff']);
+Route::get('/joueurs', [PageController::class, 'joueurs']);
 Route::get('/hall-of-fame', [PageController::class, 'hallOfFame']);
 Route::get('/match-logs', [PageController::class, 'matchLogs']);
 Route::get('/log/{id}', [PageController::class, 'matchLog'])->whereNumber('id');
