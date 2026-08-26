@@ -2288,85 +2288,19 @@ body #nav .nav-content .nav-live-badge[hidden] {
   text-decoration: underline;
 }
 
-.joueurs-player-cell {
-  display: flex;
-  flex-direction: column;
-  gap: 5px;
-}
-
-.joueurs-badges {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 5px;
-  margin-top: 2px;
-}
-
-.badge-staff {
+.division-badge {
   display: inline-block;
-  padding: 2px 8px;
-  font-size: 10px;
+  background: rgba(55, 34, 58, 0.9);
+  border: 1px solid #38193d;
+  color: #fbb7fb;
+  padding: 3px 10px;
+  border-radius: 20px;
+  font-size: 12px;
   font-weight: bold;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  border-radius: 10px;
   white-space: nowrap;
 }
-
-.badge-staff.badge-founder {
-  background: #393d3b;
-  border: 1px solid #f0ad4e;
-  color: #f0ad4e;
-}
-.badge-staff.badge-admin {
-  background: #393d3b;
-  border: 1px solid #d9534f;
-  color: #d9534f;
-}
-.badge-staff.badge-moderator {
-  background: #393d3b;
-  border: 1px solid #5bc0de;
-  color: #5bc0de;
-}
-.badge-staff.badge-mentor {
-  background: #393d3b;
-  border: 1px solid #5cb85c;
-  color: #5cb85c;
-}
-.badge-staff.badge-mixer {
-  background: #393d3b;
-  border: 1px solid #9b59b6;
-  color: #9b59b6;
-}
-
-.badge-staff.badge-level {
-  background: #393d3b;
-  border: 1px solid #555;
-  color: #bbb;
-  cursor: help;
-}
-.badge-staff.badge-level.badge-level-0 {
-  border-color: #ffd700;
-  color: #ffd700;
-}
-.badge-staff.badge-level.badge-level-1 {
-  border-color: #c0c0c0;
-  color: #d8d8d8;
-}
-.badge-staff.badge-level.badge-level-2 {
-  border-color: #8fbcbb;
-  color: #a3c4c3;
-}
-.badge-staff.badge-level.badge-level-3 {
-  border-color: #7a6e5a;
-  color: #8c7e6a;
-}
-.badge-staff.badge-level.badge-level-4 {
-  border-color: #5f6368;
-  color: #73777b;
-}
-.badge-staff.badge-level.badge-level-5 {
-  border-color: #4e5254;
-  color: #626567;
+.division-badge.division-6s {
+  color: #ffd24d;
 }
 
 .division-none {
