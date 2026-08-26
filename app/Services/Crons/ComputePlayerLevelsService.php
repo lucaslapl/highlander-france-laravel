@@ -14,9 +14,10 @@ use Illuminate\Support\Facades\DB;
  *
  * Principe : un joueur affiche la division de ses derniers matchs, mais les
  * remplacements ("mercs") dans d'autres équipes faussent cette image. On
- * calcule donc, par mode de jeu (9v9 / 6s), la moyenne des tiers des
- * 3 dernières compétitions jouées avec son équipe officielle :
- *  - forfaits (defaultwin) et matchs sans division exclus ;
+ * calcule donc, par mode de jeu (9v9 / 6s), la moyenne des rangs canoniques
+ * des divisions des 3 dernières saisons officielles jouées avec son équipe :
+ *  - seules les catégories "Highlander Season" / "6v6 Season" comptent ;
+ *  - forfaits (defaultwin) et divisions non normalisables exclus ;
  *  - l'équipe jouée par match est déduite du champ was_in_team renvoyé par
  *    l'API, et seuls les matchs de l'équipe majoritaire de la compétition
  *    sont comptés (élimination naturelle des matchs de remplacement).
@@ -42,10 +43,60 @@ final class ComputePlayerLevelsService
     /** Nombre de compétitions (les plus récentes) prises en compte par mode. */
     private const MAX_COMPETITIONS_PER_MODE = 3;
 
+    /** Seules les saisons officielles sont prises en compte (pas les coupes). */
+    private const SEASON_CATEGORIES = [
+        'Highlander Season',
+        '6v6 Season',
+    ];
+
     /** Type de compétition API => game_mode utilisé sur le site. */
     private const MODE_MAP = [
         'Highlander' => '9v9',
         '6v6' => '6s',
+    ];
+
+    /**
+     * Échelles canoniques par mode : rang => libellé affiché. La moyenne est
+     * calculée sur ces rangs (les tiers bruts de l'API étant incohérents,
+     * notamment en 6v6), puis arrondie vers le rang le plus proche.
+     */
+    private const CANONICAL_LADDERS = [
+        '9v9' => ['Premiership', 'High', 'Mid', 'Low', 'Open'],
+        '6s' => ['Top Division', 'Division 2', 'Division 3', 'Division 4', 'Low', 'Fresh'],
+    ];
+
+    /**
+     * Normalisation des noms de division API vers un rang canonique, par mode.
+     * Première règle qui matche gagne. Les divisions vieilles époque 6v6
+     * ("Open", "Division 5/6") correspondent au "Low" actuel. Un nom sans
+     * règle => match exclu du calcul.
+     *
+     * @var array<string, array<string, int>>
+     */
+    private const DIVISION_RULES = [
+        '9v9' => [
+            '/prem/i' => 0,
+            '/high/i' => 1,
+            '/mid/i' => 2,
+            '/low/i' => 3,
+            '/open/i' => 4,
+            // Vieilles échelles HL : Premiership + Division 1 à 6
+            // (Div 1-2 => High, Div 3-4 => Mid, Div 5-6 => Low/Open).
+            '/division\s*[12]|div\.?\s*[12]/i' => 1,
+            '/division\s*[34]|div\.?\s*[34]/i' => 2,
+            '/division\s*5|div\.?\s*5/i' => 3,
+            '/division\s*6|div\.?\s*6/i' => 4,
+        ],
+        '6s' => [
+            '/top|prem/i' => 0,
+            '/division\s*2|div\.?\s*2/i' => 1,
+            // Vieille division "Mid" 6v6 : niveau Div 3/4 de l'époque.
+            '/\bmid\b/i' => 2,
+            '/division\s*3|div\.?\s*3/i' => 2,
+            '/division\s*4|div\.?\s*4/i' => 3,
+            '/\blow\b/i' => 4,
+            '/fresh|\bopen\b|division\s*[56]/i' => 4,
+        ],
     ];
 
     private \PDO $db;
@@ -236,8 +287,8 @@ final class ComputePlayerLevelsService
         // n'a plus aucun résultat disparaît).
         $deleteStmt = $this->db->prepare('DELETE FROM player_levels WHERE steamid = ?');
         $insertStmt = $this->db->prepare(
-            'REPLACE INTO player_levels (steamid, game_mode, tier_moyen, division_label, nb_matchs_comptes, nb_competitions, computed_at)
-             VALUES (?, ?, ?, ?, ?, ?, ?)'
+            'REPLACE INTO player_levels (steamid, game_mode, tier_moyen, division_label, nb_matchs_comptes, nb_competitions, last_match_time, computed_at)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?)'
         );
 
         $this->db->beginTransaction();
@@ -253,6 +304,7 @@ final class ComputePlayerLevelsService
                     $level['division_label'],
                     $level['nb_matchs_comptes'],
                     $level['nb_competitions'],
+                    $level['last_match_time'],
                     time(),
                 ]);
             }
@@ -271,12 +323,13 @@ final class ComputePlayerLevelsService
      * par mode de jeu.
      *
      * @param  array<int, array<string, mixed>> $results
-     * @return array<int, array{game_mode: string, tier_moyen: float|null, division_label: string|null, nb_matchs_comptes: int, nb_competitions: int}>
+     * @return array<int, array{game_mode: string, tier_moyen: float|null, division_label: string|null, nb_matchs_comptes: int, nb_competitions: int, last_match_time: int}>
      */
     public function levelsFromResults(array $results): array
     {
-        // 1. Normalisation : on ne garde que les matchs exploitables (mode connu,
-        // division tierée, pas de forfait, équipe identifiable via was_in_team).
+        // 1. Normalisation : on ne garde que les matchs exploitables (saison
+        // officielle d'un mode connu, division normalisable, pas de forfait,
+        // équipe identifiable via was_in_team).
         $byCompetition = [];
 
         foreach ($results as $r) {
@@ -285,13 +338,22 @@ final class ComputePlayerLevelsService
                 continue;
             }
 
+            if (!in_array((string) ($r['competition']['category'] ?? ''), self::SEASON_CATEGORIES, true)) {
+                continue;
+            }
+
             if (!empty($r['defaultwin'])) {
                 continue;
             }
 
-            $tier = $r['division']['tier'] ?? null;
             $divisionName = $r['division']['name'] ?? null;
-            if (!is_int($tier) || !is_string($divisionName) || $divisionName === '') {
+            if (!is_string($divisionName) || $divisionName === '') {
+                continue;
+            }
+
+            $gameMode = self::MODE_MAP[$type];
+            $rank = $this->canonicalRank($gameMode, $divisionName);
+            if ($rank === null) {
                 continue;
             }
 
@@ -308,7 +370,7 @@ final class ComputePlayerLevelsService
             $comp = &$byCompetition[$compId];
             if (!isset($comp)) {
                 $comp = [
-                    'game_mode' => self::MODE_MAP[$type],
+                    'game_mode' => $gameMode,
                     'time' => 0,
                     'team_counts' => [],
                     'matches' => [],
@@ -317,7 +379,7 @@ final class ComputePlayerLevelsService
 
             $comp['time'] = max($comp['time'], (int) ($r['time'] ?? 0));
             $comp['team_counts'][$teamId] = ($comp['team_counts'][$teamId] ?? 0) + 1;
-            $comp['matches'][] = ['team_id' => $teamId, 'tier' => $tier, 'division' => $divisionName];
+            $comp['matches'][] = ['team_id' => $teamId, 'rank' => $rank];
         }
 
         // Brise la référence héritée de la boucle (pitfall foreach/référence).
@@ -352,21 +414,41 @@ final class ComputePlayerLevelsService
                 continue;
             }
 
-            $tiers = array_map(static fn (array $m): int => $m['tier'], $matches);
-            $average = array_sum($tiers) / count($tiers);
+            $ranks = array_map(static fn (array $m): int => $m['rank'], $matches);
+            $average = array_sum($ranks) / count($ranks);
+            $targetRank = min(max((int) round($average), 0), count(self::CANONICAL_LADDERS[$gameMode]) - 1);
 
             $levels[] = [
                 'game_mode' => $gameMode,
                 'tier_moyen' => round($average, 2),
-                'division_label' => $this->labelForTier($matches, $average),
+                'division_label' => self::CANONICAL_LADDERS[$gameMode][$targetRank],
                 'nb_matchs_comptes' => count($matches),
                 'nb_competitions' => count($kept),
+                'last_match_time' => max(array_map(
+                    static fn (array $c): int => $c['time'],
+                    $kept
+                )),
             ];
         }
 
         usort($levels, static fn (array $a, array $b): int => strcmp($a['game_mode'], $b['game_mode']));
 
         return $levels;
+    }
+
+    /**
+     * Rang canonique d'une division (0 = plus haut niveau) selon les règles de
+     * nommage par mode, ou null si la division n'est pas normalisable.
+     */
+    private function canonicalRank(string $gameMode, string $divisionName): ?int
+    {
+        foreach (self::DIVISION_RULES[$gameMode] ?? [] as $pattern => $rank) {
+            if (preg_match($pattern, $divisionName) === 1) {
+                return $rank;
+            }
+        }
+
+        return null;
     }
 
     /**
@@ -386,38 +468,5 @@ final class ComputePlayerLevelsService
 
         return count($marked) === 1 && $marked[0] > 0 ? $marked[0] : null;
     }
-
-    /**
-     * Libellé de division correspondant au tier moyen : nom de division le plus
-     * fréquent chez le joueur pour le tier arrondi, sinon le tier disponible
-     * le plus proche.
-     *
-     * @param  array<int, array{team_id: int, tier: int, division: string}> $matches
-     */
-    private function labelForTier(array $matches, float $averageTier): ?string
-    {
-        $namesByTier = [];
-        foreach ($matches as $m) {
-            $namesByTier[$m['tier']][$m['division']] = ($namesByTier[$m['tier']][$m['division']] ?? 0) + 1;
-        }
-
-        $targetTier = (int) round($averageTier);
-
-        while ($targetTier >= 0) {
-            $candidate = $namesByTier[$targetTier] ?? null;
-            if ($candidate !== null) {
-                arsort($candidate);
-
-                return (string) array_key_first($candidate);
-            }
-            $targetTier--;
-        }
-
-        // Aucun tier inférieur ou égal : on prend le plus bas disponible.
-        ksort($namesByTier);
-        $lowest = array_key_first($namesByTier);
-        arsort($namesByTier[$lowest]);
-
-        return (string) array_key_first($namesByTier[$lowest]);
-    }
 }
+

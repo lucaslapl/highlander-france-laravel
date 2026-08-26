@@ -29,9 +29,11 @@ $rolesConfig = [
                     @if (!empty($level['division_label']))
                         @php
                             $modeLabel = $level['game_mode'] === '9v9' ? 'HL' : '6s';
+                            $lastYear = !empty($level['last_match_time']) ? date('Y', (int) $level['last_match_time']) : null;
                             $tooltip = 'Division moyenne ETF2L en ' . ($level['game_mode'] === '9v9' ? 'Highlander' : '6v6')
-                                . ', calculée sur ses ' . (int) $level['nb_competitions'] . ' dernière(s) compétition(s) avec son équipe officielle'
-                                . ' (' . (int) $level['nb_matchs_comptes'] . ' matchs — remplacements et forfaits exclus).';
+                                . ', calculée sur ses ' . (int) $level['nb_competitions'] . ' dernière(s) saison(s) officielle(s) avec son équipe'
+                                . ' (' . (int) $level['nb_matchs_comptes'] . ' matchs — remplacements et forfaits exclus)'
+                                . ($lastYear !== null ? ', données jusqu\'en ' . $lastYear : '') . '.';
                         @endphp
                         <span class="badge-staff badge-level" title="{{ $tooltip }}">
                             {{ $modeLabel }} · {{ $level['division_label'] }}

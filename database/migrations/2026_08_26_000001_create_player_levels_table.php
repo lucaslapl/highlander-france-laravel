@@ -20,6 +20,7 @@ return new class extends Migration
             $table->string('division_label', 64)->default(null)->nullable();
             $table->integer('nb_matchs_comptes')->default(0);
             $table->integer('nb_competitions')->default(0);
+            $table->unsignedBigInteger('last_match_time');
             $table->unsignedBigInteger('computed_at');
 
             $table->primary(['steamid', 'game_mode']);
