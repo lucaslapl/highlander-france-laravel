@@ -13,6 +13,7 @@ use App\Services\LiveMatches;
 use App\Services\MatchFormat;
 use App\Services\SteamId;
 use Illuminate\Contracts\View\View;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
@@ -260,78 +261,80 @@ final class PageController extends Controller
      */
     public function sitemap(): Response
     {
-        $logs = (new MatchLogRepository)->sitemapLogs();
-        $players = (new PlayerRepository)->allSteamIds();
-        $etf2lMatches = (new Etf2lRepository)->sitemapMatches();
+        $xml = Cache::remember('sitemap', now()->addHour(), function (): string {
+            $logs = (new MatchLogRepository)->sitemapLogs();
+            $players = (new PlayerRepository)->allSteamIds();
+            $etf2lMatches = (new Etf2lRepository)->sitemapMatches();
 
-        $base = site_url();
+            $base = site_url();
 
-        // Pages statiques : [path, priority, changefreq]
-        $staticPages = [
-            '/' => [1.0, 'always'],
-            '/staff' => [0.8, 'monthly'],
-            '/hall-of-fame' => [0.8, 'daily'],
-            '/match-logs' => [0.8, 'daily'],
-            '/matchs' => [0.8, 'daily'],
-            '/confidentialite' => [0.3, 'yearly'],
-        ];
+            // Pages statiques : [path, priority, changefreq]
+            $staticPages = [
+                '/' => [1.0, 'always'],
+                '/staff' => [0.8, 'monthly'],
+                '/hall-of-fame' => [0.8, 'daily'],
+                '/match-logs' => [0.8, 'daily'],
+                '/matchs' => [0.8, 'daily'],
+                '/confidentialite' => [0.3, 'yearly'],
+            ];
 
-        $block = static function (string $url, ?string $lastmod, float $priority, string $changefreq): string {
-            $out = "  <url>\n    <loc>".e($url)."</loc>\n";
-            if ($lastmod !== null) {
-                $out .= '    <lastmod>'.$lastmod."</lastmod>\n";
+            $block = static function (string $url, ?string $lastmod, float $priority, string $changefreq): string {
+                $out = "  <url>\n    <loc>".e($url)."</loc>\n";
+                if ($lastmod !== null) {
+                    $out .= '    <lastmod>'.$lastmod."</lastmod>\n";
+                }
+                $out .= '    <priority>'.rtrim(rtrim(number_format($priority, 1), '0'), '.')."</priority>\n";
+                $out .= '    <changefreq>'.$changefreq."</changefreq>\n  </url>";
+
+                return $out;
+            };
+
+            $lines = [];
+            foreach ($staticPages as $path => [$priority, $change]) {
+                $lines[] = $block($base.$path, null, $priority, $change);
             }
-            $out .= '    <priority>'.rtrim(rtrim(number_format($priority, 1), '0'), '.')."</priority>\n";
-            $out .= '    <changefreq>'.$changefreq."</changefreq>\n  </url>";
 
-            return $out;
-        };
-
-        $lines = [];
-        foreach ($staticPages as $path => [$priority, $change]) {
-            $lines[] = $block($base.$path, null, $priority, $change);
-        }
-
-        // Dernier match comme référence de fraîcheur pour /match-logs et l'accueil.
-        $lastMatchDate = null;
-        if ($logs !== []) {
-            foreach ($logs as $log) {
-                if (is_int($log['date'])) {
-                    $lastMatchDate = $log['date'];
-                    break;
+            // Dernier match comme référence de fraîcheur pour /match-logs et l'accueil.
+            $lastMatchDate = null;
+            if ($logs !== []) {
+                foreach ($logs as $log) {
+                    if (is_int($log['date'])) {
+                        $lastMatchDate = $log['date'];
+                        break;
+                    }
                 }
             }
-        }
 
-        foreach ($logs as $log) {
-            $lastmod = null;
-            if (is_int($log['date']) && $log['date'] > 0) {
-                $lastmod = date('Y-m-d', $log['date']);
-            } elseif ($lastMatchDate !== null) {
-                $lastmod = date('Y-m-d', $lastMatchDate);
+            foreach ($logs as $log) {
+                $lastmod = null;
+                if (is_int($log['date']) && $log['date'] > 0) {
+                    $lastmod = date('Y-m-d', $log['date']);
+                } elseif ($lastMatchDate !== null) {
+                    $lastmod = date('Y-m-d', $lastMatchDate);
+                }
+                $lines[] = $block($base.'/log/'.$log['id'], $lastmod, 0.5, 'weekly');
             }
-            $lines[] = $block($base.'/log/'.$log['id'], $lastmod, 0.5, 'weekly');
-        }
 
-        foreach ($players as $steamid3) {
-            $steamid64 = SteamId::toSteamId64($steamid3);
-            if ($steamid64 === null) {
-                continue;
+            foreach ($players as $steamid3) {
+                $steamid64 = SteamId::toSteamId64($steamid3);
+                if ($steamid64 === null) {
+                    continue;
+                }
+                $lines[] = $block($base.'/profile/'.$steamid64, null, 0.4, 'monthly');
             }
-            $lines[] = $block($base.'/profile/'.$steamid64, null, 0.4, 'monthly');
-        }
 
-        // Matchs ETF2L à venir (contenu éphémère mais indexable tant qu'ils existent).
-        foreach ($etf2lMatches as $match) {
-            $lastmod = isset($match['match_date']) && is_numeric($match['match_date']) && (int) $match['match_date'] > 0
-                ? date('Y-m-d', (int) $match['match_date'])
-                : null;
-            $lines[] = $block($base.'/match/'.(int) $match['match_id'], $lastmod, 0.6, 'daily');
-        }
+            // Matchs ETF2L à venir (contenu éphémère mais indexable tant qu'ils existent).
+            foreach ($etf2lMatches as $match) {
+                $lastmod = isset($match['match_date']) && is_numeric($match['match_date']) && (int) $match['match_date'] > 0
+                    ? date('Y-m-d', (int) $match['match_date'])
+                    : null;
+                $lines[] = $block($base.'/match/'.(int) $match['match_id'], $lastmod, 0.6, 'daily');
+            }
 
-        $xml = '<?xml version="1.0" encoding="UTF-8"?>'."\n"
-            .'<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">'."\n"
-            .implode("\n", $lines)."\n</urlset>";
+            return '<?xml version="1.0" encoding="UTF-8"?>'."\n"
+                .'<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">'."\n"
+                .implode("\n", $lines)."\n</urlset>";
+        });
 
         return response($xml, 200, ['Content-Type' => 'application/xml; charset=utf-8']);
     }
@@ -369,6 +372,7 @@ final class PageController extends Controller
         return view('pages.live-match', [
             'title' => 'Highlander France - '.$mapDisplay.' | En direct',
             'description' => site_description(),
+            'noIndex' => true,
             'server' => $server,
             'entry' => $entry,
             'mapDisplay' => $mapDisplay,

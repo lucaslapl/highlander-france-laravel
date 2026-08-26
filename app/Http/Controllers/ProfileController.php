@@ -399,6 +399,16 @@ final class ProfileController extends Controller
             }
         }
 
+        $structuredData = [
+            '@context' => 'https://schema.org',
+            '@type' => 'ProfilePage',
+            'mainEntity' => [
+                '@type' => 'Person',
+                'name' => $data['playerName'],
+                'url' => site_url().'/profile/'.$data['steamid64'],
+            ],
+        ];
+
         return array_merge($data, [
             'description' => site_description(),
             'styles' => ['/_css/profile.css'],
@@ -415,6 +425,7 @@ final class ProfileController extends Controller
             'profileLinks' => config('hlfr.profile_links'),
             'profileGear' => config('hlfr.profile_gear'),
             'age' => $age,
+            'structuredData' => $structuredData,
         ]);
     }
 

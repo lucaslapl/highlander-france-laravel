@@ -7,7 +7,7 @@
     <div class="head-content flex space-between align-center">
         <div class="flex justify-center align-center">
             <a href="https://highlanderfrance.tf">
-                <img class="header-logo" src="/_img/hf.webp" alt="Logo Highlander France" aria-label="Redirection vers la page d'accueil">
+                <img class="header-logo" src="/_img/hf.webp" alt="Logo Highlander France" aria-label="Redirection vers la page d'accueil" fetchpriority="high" width="64" height="64">
             </a>
             <h1>
                 Highlander France
@@ -27,7 +27,7 @@
             <span class="bar"></span>
         </button>
 
-        <a href="/index" class="nav-brand" aria-label="Highlander France — Retour à l'accueil">
+        <a href="/" class="nav-brand" aria-label="Highlander France — Retour à l'accueil">
             <img src="/_img/hf.webp" alt="" width="40" height="40">
         </a>
 
@@ -40,7 +40,7 @@
 
         <div class="nav-menu" id="nav-menu">
             <ul class="nav-links">
-                <li><a href="/index" class="{{ $currentPath === '/' ? 'active' : '' }}">Accueil</a></li>
+                <li><a href="/" class="{{ $currentPath === '/' ? 'active' : '' }}">Accueil</a></li>
                 <li><a href="/staff" class="{{ $currentPath === '/staff' ? 'active' : '' }}">L'équipe</a></li>
                 <li><a href="/joueurs" class="{{ $currentPath === '/joueurs' ? 'active' : '' }}">Joueurs</a></li>
                 <li><a href="/hall-of-fame" class="{{ $currentPath === '/hall-of-fame' ? 'active' : '' }}">Hall of Fame</a></li>
@@ -51,7 +51,10 @@
                 <div id="session-profile">
                     @if ($isLoggedIn)
                         <a href="/profile/dashboard" class="{{ $currentPath === '/profile/dashboard' ? 'active' : '' }}">Mon Profil</a>
-                        <a href="/logout">Déconnexion</a>
+                        <form action="/logout" method="POST" style="display:inline">
+                            @csrf
+                            <button type="submit" style="background:none;border:none;color:inherit;cursor:pointer;padding:0;font:inherit;">Déconnexion</button>
+                        </form>
                     @else
                         <a href="/login" class="btn-steam-login">
                             <i class="fa-brands fa-steam"></i>

@@ -15,13 +15,13 @@ use Illuminate\Support\Facades\Route;
 
 // ─── Pages publiques ──────────────────────────────────────────────────────────
 Route::get('/', [PageController::class, 'home']);
-Route::get('/index', [PageController::class, 'home']);
+Route::permanentRedirect('/index', '/');
 Route::get('/staff', [PageController::class, 'staff']);
 Route::get('/joueurs', [PageController::class, 'joueurs']);
 Route::get('/hall-of-fame', [PageController::class, 'hallOfFame']);
 Route::get('/match-logs', [PageController::class, 'matchLogs']);
 Route::get('/log/{id}', [PageController::class, 'matchLog'])->whereNumber('id');
-Route::get('/log/match-log', [PageController::class, 'matchLog']);
+Route::permanentRedirect('/log/match-log', '/match-logs');
 Route::get('/match/{id}', [PageController::class, 'etf2lMatch'])->whereNumber('id');
 Route::get('/matchs', [PageController::class, 'etf2lMatches']);
 Route::get('/confidentialite', [PageController::class, 'privacy']);
@@ -80,13 +80,13 @@ Route::middleware('admin')->prefix('admin')->group(function (): void {
 // ─── Authentification Steam ──────────────────────────────────────────────────
 Route::get('/login', [AuthController::class, 'login']);
 Route::get('/auth/callback', [AuthController::class, 'callback']);
-Route::get('/logout', [AuthController::class, 'logout']);
+Route::post('/logout', [AuthController::class, 'logout']);
 
 // ─── Profils ─────────────────────────────────────────────────────────────────
 Route::get('/profile/dashboard', [ProfileController::class, 'dashboard']);
 Route::get('/profile/edit', [ProfileController::class, 'edit']);
 Route::get('/profile/{steamid}', [ProfileController::class, 'profil']);
-Route::get('/profile/profil', [ProfileController::class, 'profil']);
+Route::permanentRedirect('/profile/profil', '/profile/dashboard');
 Route::post('/profile/update-name', [ProfileController::class, 'updateName']);
 Route::post('/profile/update-country', [ProfileController::class, 'updateCountry']);
 Route::post('/profile/update-links', [ProfileController::class, 'updateLinks']);
