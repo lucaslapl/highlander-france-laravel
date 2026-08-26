@@ -4,7 +4,6 @@
 @section('description', $description)
 
 @php
-    // URL préservant recherche + tri, avec page optionnelle.
     $withParams = static function (array $overrides) use ($search, $sort, $dir): string {
         $params = array_filter(
             array_merge(['q' => $search, 'sort' => $sort, 'dir' => $dir], $overrides),
@@ -15,6 +14,26 @@
         return '/joueurs' . ($query !== '' ? '?' . $query : '');
     };
     $pageUrl = static fn (int $p) => $withParams($p > 1 ? ['page' => $p] : []);
+
+    $rolesConfig = [
+        'is_founder'   => 'Fondateur',
+        'is_admin'     => 'Admin',
+        'is_moderator' => 'Modérateur',
+        'is_mentor'    => 'Mentor',
+        'is_mixer'     => 'Mixer',
+    ];
+
+    $divisionBadgeClass = static function (?float $tier): string {
+        if ($tier === null) {
+            return 'badge-level-unknown';
+        }
+
+        return 'badge-level-'.(int) round($tier);
+    };
+
+    $hasDivisions = static function (array $player): bool {
+        return ! empty($player['hl_division']) || ! empty($player['div6_division']);
+    };
 @endphp
 
 @section('content')
@@ -51,18 +70,6 @@
                                 @if ($sort === 'name')<i class="fa-solid {{ $dir === 'asc' ? 'fa-arrow-down-a-z' : 'fa-arrow-up-a-z' }}"></i>@endif
                             </a>
                         </th>
-                        <th class="col-division">
-                            <a href="{{ $withParams(['sort' => 'hl', 'dir' => $sort === 'hl' && $dir === 'asc' ? 'desc' : 'asc']) }}">
-                                Div. HL
-                                @if ($sort === 'hl')<i class="fa-solid fa-sort{{ $dir === 'asc' ? '-down' : '-up' }}"></i>@endif
-                            </a>
-                        </th>
-                        <th class="col-division">
-                            <a href="{{ $withParams(['sort' => 'div6', 'dir' => $sort === 'div6' && $dir === 'asc' ? 'desc' : 'asc']) }}">
-                                Div. 6s
-                                @if ($sort === 'div6')<i class="fa-solid fa-sort{{ $dir === 'asc' ? '-down' : '-up' }}"></i>@endif
-                            </a>
-                        </th>
                         <th class="col-classes">Classes les plus jouées</th>
                         <th class="col-country">Pays</th>
                     </tr>
@@ -71,32 +78,37 @@
                     @foreach ($players as $player)
                         <tr>
                             <td class="col-player">
-                                <div class="flex align-center gap-10">
-                                    @if (!empty($player['avatar']))
-                                        <img loading="lazy" decoding="async" src="{!! e($player['avatar']) !!}" alt="" class="joueurs-avatar">
-                                    @endif
-                                    <span class="joueurs-name">
-                                        @if (!empty($player['profile_url']))
-                                            <a href="{!! e($player['profile_url']) !!}">{!! e($player['final_name']) !!}</a>
-                                        @else
-                                            {!! e($player['final_name']) !!}
+                                <div class="joueurs-player-cell">
+                                    <div class="flex align-center gap-10">
+                                        @if (!empty($player['avatar']))
+                                            <img loading="lazy" decoding="async" src="{!! e($player['avatar']) !!}" alt="" class="joueurs-avatar">
                                         @endif
-                                    </span>
+                                        <span class="joueurs-name">
+                                            @if (!empty($player['profile_url']))
+                                                <a href="{!! e($player['profile_url']) !!}">{!! e($player['final_name']) !!}</a>
+                                            @else
+                                                {!! e($player['final_name']) !!}
+                                            @endif
+                                        </span>
+                                    </div>
+                                    @if (!empty($player['hl_division']) || !empty($player['div6_division']) || !empty($player['is_founder']) || !empty($player['is_admin']) || !empty($player['is_moderator']) || !empty($player['is_mentor']) || !empty($player['is_mixer']))
+                                        <div class="joueurs-badges">
+                                            @foreach ($rolesConfig as $dbKey => $label)
+                                                @if (!empty($player[$dbKey]))
+                                                    <span class="badge-staff badge-{{ $dbKey === 'is_moderator' ? 'moderator' : str_replace('is_', '', $dbKey) }}">{!! e($label) !!}</span>
+                                                @endif
+                                            @endforeach
+
+                                            @if (!empty($player['hl_division']))
+                                                <span class="badge-staff badge-level {{ $divisionBadgeClass($player['hl_tier'] ?? null) }}" title="Division moyenne Highlander, pondérée sur les 4 dernières saisons officielles">HL&thinsp;·&thinsp;{!! e($player['hl_division']) !!}</span>
+                                            @endif
+
+                                            @if (!empty($player['div6_division']))
+                                                <span class="badge-staff badge-level {{ $divisionBadgeClass($player['div6_tier'] ?? null) }}" title="Division moyenne 6v6, pondérée sur les 4 dernières saisons officielles">6s&thinsp;·&thinsp;{!! e($player['div6_division']) !!}</span>
+                                            @endif
+                                        </div>
+                                    @endif
                                 </div>
-                            </td>
-                            <td class="col-division">
-                                @if (!empty($player['hl_division']))
-                                    <span class="division-badge division-hl">{{ e($player['hl_division']) }}</span>
-                                @else
-                                    <span class="division-none">—</span>
-                                @endif
-                            </td>
-                            <td class="col-division">
-                                @if (!empty($player['div6_division']))
-                                    <span class="division-badge division-6s">{{ e($player['div6_division']) }}</span>
-                                @else
-                                    <span class="division-none">—</span>
-                                @endif
                             </td>
                             <td class="col-classes">
                                 @if (!empty($player['classes']))

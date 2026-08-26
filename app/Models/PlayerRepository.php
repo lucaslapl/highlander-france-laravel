@@ -150,8 +150,15 @@ final class PlayerRepository
                 'pi.display_name',
                 'pi.avatar',
                 'pi.country',
+                'pi.is_founder',
+                'pi.is_admin',
+                'pi.is_moderator',
+                'pi.is_mentor',
+                'pi.is_mixer',
                 'hl.division_label AS hl_division',
+                'hl.tier_moyen AS hl_tier',
                 'six.division_label AS div6_division',
+                'six.tier_moyen AS div6_tier',
             );
 
         if ($search !== '') {
