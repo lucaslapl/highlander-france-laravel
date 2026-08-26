@@ -25,6 +25,14 @@ $rolesConfig = [
             </div>
 
             <div class="staff-badges-container">
+                @foreach ($rolesConfig as $dbKey => $badgeInfo)
+                    @if (isset($player[$dbKey]) && ($player[$dbKey] == 1 || $player[$dbKey] === true))
+                        <span class="badge-staff {{ $badgeInfo['class'] }}">
+                            {!! e($badgeInfo['label']) !!}
+                        </span>
+                    @endif
+                @endforeach
+
                 @foreach (($etf2lLevels ?? []) as $level)
                     @if (!empty($level['division_label']))
                         @php
@@ -34,17 +42,10 @@ $rolesConfig = [
                                 . ', calculée sur ses ' . (int) $level['nb_competitions'] . ' dernière(s) saison(s) officielle(s) avec son équipe'
                                 . ' (' . (int) $level['nb_matchs_comptes'] . ' matchs — remplacements et forfaits exclus)'
                                 . ($lastYear !== null ? ', données jusqu\'en ' . $lastYear : '') . '.';
+                            $tier = isset($level['tier_moyen']) ? (int) round((float) $level['tier_moyen']) : null;
                         @endphp
-                        <span class="badge-staff badge-level" title="{{ $tooltip }}">
+                        <span class="badge-staff badge-level badge-level-{{ $tier !== null ? $tier : 'unknown' }}" title="{{ $tooltip }}">
                             {{ $modeLabel }} · {{ $level['division_label'] }}
-                        </span>
-                    @endif
-                @endforeach
-
-                @foreach ($rolesConfig as $dbKey => $badgeInfo)
-                    @if (isset($player[$dbKey]) && ($player[$dbKey] == 1 || $player[$dbKey] === true))
-                        <span class="badge-staff {{ $badgeInfo['class'] }}">
-                            {!! e($badgeInfo['label']) !!}
                         </span>
                     @endif
                 @endforeach
