@@ -30,7 +30,7 @@ if (! function_exists('site_url')) {
 
         $scheme = Request::getScheme();
 
-        return $scheme . '://' . $host;
+        return $scheme.'://'.$host;
     }
 }
 
@@ -40,7 +40,7 @@ if (! function_exists('current_url')) {
      */
     function current_url(): string
     {
-        return site_url() . Request::getRequestUri();
+        return site_url().Request::getRequestUri();
     }
 }
 
@@ -52,7 +52,7 @@ if (! function_exists('canonical_url')) {
     {
         $path = Request::getPathInfo();
 
-        return site_url() . ($path !== '' ? $path : '/');
+        return site_url().($path !== '' ? $path : '/');
     }
 }
 
@@ -62,7 +62,7 @@ if (! function_exists('site_description')) {
      */
     function site_description(): string
     {
-        return config('app.name') . ' est une communauté compétitive francophone de Team Fortress 2, offrant un espace pour les joueurs de tous niveaux pour apprendre, jouer et progresser ensemble.';
+        return config('app.name').' est une communauté compétitive francophone de Team Fortress 2, offrant un espace pour les joueurs de tous niveaux pour apprendre, jouer et progresser ensemble.';
     }
 }
 
@@ -88,7 +88,7 @@ if (! function_exists('hlfr_asset')) {
         $file = public_path($path);
         $version = is_file($file) ? (string) filemtime($file) : '0';
 
-        return $path . '?v=' . $version;
+        return $path.'?v='.$version;
     }
 }
 
@@ -104,10 +104,18 @@ if (! function_exists('hlfr_data_path')) {
     {
         $dir = rtrim((string) config('hlfr.data_dir'), '/\\');
 
+        // Chemin relatif (ex. HLFR_DATA_DIR=storage/app/hlfr) : l'ancrer à la
+        // racine de l'app, sinon la résolution dépend du répertoire de travail
+        // courant (CLI = racine, PHP-FPM = docroot) et le web lit un autre
+        // répertoire que celui écrit par le CRON.
+        if ($dir !== '' && ! preg_match('#^(?:[a-zA-Z]:[/\\\\]|/)#', $dir)) {
+            $dir = base_path($dir);
+        }
+
         if (! is_dir($dir)) {
             @mkdir($dir, 0775, true);
         }
 
-        return $file === '' ? $dir : $dir . DIRECTORY_SEPARATOR . $file;
+        return $file === '' ? $dir : $dir.DIRECTORY_SEPARATOR.$file;
     }
 }
