@@ -14,7 +14,7 @@ final class ComputePlayerLevelsServiceTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        $this->service = new ComputePlayerLevelsService();
+        $this->service = new ComputePlayerLevelsService;
     }
 
     public function test_exclut_forfaits_divisions_non_normalisables_et_coupes(): void
@@ -59,12 +59,12 @@ final class ComputePlayerLevelsServiceTest extends TestCase
         $this->assertSame(1, $levels[0]['nb_competitions']);
     }
 
-    public function test_separe_9v9_et_6v6_et_garde_les_trois_dernieres_saisons(): void
+    public function test_separe_9v9_et_6v6_et_garde_les_quatre_dernieres_saisons(): void
     {
         $results = [];
 
-        // 4 saisons Highlander (seules les 3 plus récentes comptent).
-        foreach ([100 => 100, 101 => 200, 102 => 300, 103 => 400] as $compId => $time) {
+        // 5 saisons Highlander (seules les 4 plus récentes comptent).
+        foreach ([100 => 100, 101 => 200, 102 => 300, 103 => 400, 105 => 500] as $compId => $time) {
             for ($i = 0; $i < 2; $i++) {
                 $results[] = $this->apiResult('Highlander', $compId, 'Mid', team: 10, time: $time);
             }
@@ -87,8 +87,8 @@ final class ComputePlayerLevelsServiceTest extends TestCase
 
         $hl = $levels[1];
         $this->assertSame('9v9', $hl['game_mode']);
-        $this->assertSame(6, $hl['nb_matchs_comptes']);
-        $this->assertSame(3, $hl['nb_competitions']);
+        $this->assertSame(8, $hl['nb_matchs_comptes']);
+        $this->assertSame(4, $hl['nb_competitions']);
         $this->assertSame(2.0, $hl['tier_moyen']);
         $this->assertSame('Mid', $hl['division_label']);
     }
@@ -133,7 +133,7 @@ final class ComputePlayerLevelsServiceTest extends TestCase
         $levels = $this->service->levelsFromResults($results);
 
         $this->assertCount(1, $levels);
-        $this->assertSame(2.0, $levels[0]['tier_moyen']);
+        $this->assertSame(3.0, $levels[0]['tier_moyen']);
         $this->assertSame('Division 3', $levels[0]['division_label']);
     }
 
@@ -150,11 +150,79 @@ final class ComputePlayerLevelsServiceTest extends TestCase
 
         $levels = $this->service->levelsFromResults($results);
 
-        // Seules les 3 saisons les plus récentes comptent (Div1, Div2A, Div3)
-        // => rangs 1 + 1 + 2, moyenne 1.33 arrondie au rang 1 => High.
-        $this->assertEqualsWithDelta(4 / 3, $levels[0]['tier_moyen'], 0.01);
+        // Seules les 4 saisons les plus récentes comptent (Div1, Div2A, Div3,
+        // Div4B) => rangs 1 + 1 + 2 + 2, moyenne 1.5 arrondie au rang 1 => High.
+        $this->assertEqualsWithDelta(1.5, $levels[0]['tier_moyen'], 0.01);
         $this->assertSame('High', $levels[0]['division_label']);
-        $this->assertSame(3, $levels[0]['nb_matchs_comptes']);
+        $this->assertSame(4, $levels[0]['nb_matchs_comptes']);
+    }
+
+    public function test_division_1_et_high_sont_reconnues_en_6s(): void
+    {
+        $results = [
+            // Saisons récentes nommées selon l'échelle ETF2L actuelle.
+            $this->apiResult('6v6', 100, 'Division 1', team: 10, time: 200),
+            $this->apiResult('6v6', 101, 'High', team: 10, time: 100),
+        ];
+
+        $levels = $this->service->levelsFromResults($results);
+
+        $this->assertCount(1, $levels);
+        $this->assertSame('6s', $levels[0]['game_mode']);
+        $this->assertSame(1.0, $levels[0]['tier_moyen']);
+        $this->assertSame('Division 1', $levels[0]['division_label']);
+    }
+
+    public function test_le_tier_api_est_prioritaire_sur_le_nom_de_division(): void
+    {
+        $results = [
+            // Nom non normalisable mais tier valide : compté via le tier.
+            $this->apiResult('6v6', 100, 'Megalodon', team: 10, time: 300, tier: 0),
+            // Tier hors échelle : repli sur la normalisation du nom.
+            $this->apiResult('6v6', 101, 'Division 2', team: 10, time: 200, tier: 99),
+        ];
+
+        $levels = $this->service->levelsFromResults($results);
+
+        $this->assertCount(1, $levels);
+        // Rangs 0 (tier API) + 2 (regex) => moyenne 1.0 => Division 1.
+        $this->assertSame(1.0, $levels[0]['tier_moyen']);
+        $this->assertSame('Division 1', $levels[0]['division_label']);
+    }
+
+    public function test_une_egalite_exacte_avantage_le_joueur(): void
+    {
+        $results = [
+            $this->apiResult('6v6', 100, 'Top Division', team: 10, time: 200),
+            $this->apiResult('6v6', 101, 'Division 1', team: 10, time: 100),
+        ];
+
+        $levels = $this->service->levelsFromResults($results);
+
+        // Moyenne 0.5 exactement : arrondi demi-inférieur => rang 0.
+        $this->assertSame(0.5, $levels[0]['tier_moyen']);
+        $this->assertSame('Top Division', $levels[0]['division_label']);
+    }
+
+    public function test_la_moyenne_est_ponderee_par_le_nombre_de_matchs(): void
+    {
+        $results = [
+            // Une seule match en Top Division...
+            $this->apiResult('6v6', 100, 'Top Division', team: 10, time: 200),
+            // ...contre quatre en Division 1.
+            $this->apiResult('6v6', 101, 'Division 1', team: 10, time: 100),
+            $this->apiResult('6v6', 101, 'Division 1', team: 10, time: 110),
+            $this->apiResult('6v6', 101, 'Division 1', team: 10, time: 120),
+            $this->apiResult('6v6', 101, 'Division 1', team: 10, time: 130),
+        ];
+
+        $levels = $this->service->levelsFromResults($results);
+
+        // Moyenne pondérée (0 + 4×1) / 5 = 0.8 => rang 1 ; une moyenne
+        // par compétition (0.5, avantage au joueur) aurait donné le rang 0.
+        $this->assertEqualsWithDelta(0.8, $levels[0]['tier_moyen'], 0.01);
+        $this->assertSame('Division 1', $levels[0]['division_label']);
+        $this->assertSame(5, $levels[0]['nb_matchs_comptes']);
     }
 
     public function test_l_annee_du_dernier_match_pris_en_compte_est_stockee(): void
@@ -181,18 +249,21 @@ final class ComputePlayerLevelsServiceTest extends TestCase
         int $time = 0,
         bool $defaultwin = false,
         string $category = 'Highlander Season',
+        ?int $tier = null,
     ): array {
         return [
             'clan1' => ['id' => $team, 'was_in_team' => true],
             'clan2' => ['id' => $team + 1000, 'was_in_team' => false],
             'competition' => [
                 'id' => $competitionId,
-                'name' => 'Comp ' . $competitionId,
+                'name' => 'Comp '.$competitionId,
                 'type' => $type,
                 'category' => $category,
             ],
             'defaultwin' => $defaultwin,
-            'division' => $division === null ? null : ['id' => 1, 'name' => $division, 'tier' => 0],
+            // Tier absent par défaut : force le passage par la normalisation
+            // regex du nom (comme sur les vieilles entrées de l'API).
+            'division' => $division === null ? null : ['id' => 1, 'name' => $division, 'tier' => $tier],
             'r1' => 6,
             'r2' => 0,
             'round' => 'Week 1',

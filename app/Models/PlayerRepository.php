@@ -72,7 +72,7 @@ final class PlayerRepository
      */
     private const DIVISION_ORDER = [
         '9v9' => ['Premiership', 'High', 'Mid', 'Low', 'Open'],
-        '6s' => ['Top Division', 'Division 2', 'Division 3', 'Division 4', 'Low', 'Fresh'],
+        '6s' => ['Top Division', 'Division 1', 'Division 2', 'Division 3', 'Division 4', 'Low', 'Fresh'],
     ];
 
     /**

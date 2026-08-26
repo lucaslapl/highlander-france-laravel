@@ -15,7 +15,8 @@ use Illuminate\Support\Facades\DB;
  * Principe : un joueur affiche la division de ses derniers matchs, mais les
  * remplacements ("mercs") dans d'autres équipes faussent cette image. On
  * calcule donc, par mode de jeu (9v9 / 6s), la moyenne des rangs canoniques
- * des divisions des 3 dernières saisons officielles jouées avec son équipe :
+ * des divisions des 4 dernières saisons officielles jouées avec son équipe
+ * (pondérée par le nombre de matchs, arrondi favorable au joueur) :
  *  - seules les catégories "Highlander Season" / "6v6 Season" comptent ;
  *  - forfaits (defaultwin) et divisions non normalisables exclus ;
  *  - l'équipe jouée par match est déduite du champ was_in_team renvoyé par
@@ -41,7 +42,7 @@ final class ComputePlayerLevelsService
     private const RESULTS_PER_PAGE = 50;
 
     /** Nombre de compétitions (les plus récentes) prises en compte par mode. */
-    private const MAX_COMPETITIONS_PER_MODE = 3;
+    private const MAX_COMPETITIONS_PER_MODE = 4;
 
     /** Seules les saisons officielles sont prises en compte (pas les coupes). */
     private const SEASON_CATEGORIES = [
@@ -56,20 +57,22 @@ final class ComputePlayerLevelsService
     ];
 
     /**
-     * Échelles canoniques par mode : rang => libellé affiché. La moyenne est
-     * calculée sur ces rangs (les tiers bruts de l'API étant incohérents,
-     * notamment en 6v6), puis arrondie vers le rang le plus proche.
+     * Échelles canoniques par mode : rang => libellé affiché. Le rang est
+     * déterminé en priorité par le champ "tier" de l'API (aligné sur ces
+     * échelles), puis à défaut par normalisation regex du nom de division,
+     * puis arrondi (favorable au joueur) vers le rang le plus proche.
      */
     private const CANONICAL_LADDERS = [
         '9v9' => ['Premiership', 'High', 'Mid', 'Low', 'Open'],
-        '6s' => ['Top Division', 'Division 2', 'Division 3', 'Division 4', 'Low', 'Fresh'],
+        '6s' => ['Top Division', 'Division 1', 'Division 2', 'Division 3', 'Division 4', 'Low', 'Fresh'],
     ];
 
     /**
-     * Normalisation des noms de division API vers un rang canonique, par mode.
-     * Première règle qui matche gagne. Les divisions vieilles époque 6v6
-     * ("Open", "Division 5/6") correspondent au "Low" actuel. Un nom sans
-     * règle => match exclu du calcul.
+     * Normalisation des noms de division API vers un rang canonique, par mode
+     * (fallback quand le tier API est absent). Première règle qui matche
+     * gagne. Les divisions vieilles époque 6v6 ("Open", "Division 5/6")
+     * correspondent au "Low" actuel. Un nom sans règle => match exclu du
+     * calcul.
      *
      * @var array<string, array<string, int>>
      */
@@ -89,13 +92,15 @@ final class ComputePlayerLevelsService
         ],
         '6s' => [
             '/top|prem/i' => 0,
-            '/division\s*2|div\.?\s*2/i' => 1,
+            // Échelle actuelle : Division 1 / "High" juste sous la Top Division.
+            '/division\s*1|div\.?\s*1|\bhigh\b/i' => 1,
+            '/division\s*2|div\.?\s*2/i' => 2,
             // Vieille division "Mid" 6v6 : niveau Div 3/4 de l'époque.
-            '/\bmid\b/i' => 2,
-            '/division\s*3|div\.?\s*3/i' => 2,
-            '/division\s*4|div\.?\s*4/i' => 3,
-            '/\blow\b/i' => 4,
-            '/fresh|\bopen\b|division\s*[56]/i' => 4,
+            '/\bmid\b/i' => 3,
+            '/division\s*3|div\.?\s*3/i' => 3,
+            '/division\s*4|div\.?\s*4/i' => 4,
+            '/\blow\b/i' => 5,
+            '/fresh|\bopen\b|division\s*[56]/i' => 5,
         ],
     ];
 
@@ -166,14 +171,16 @@ final class ComputePlayerLevelsService
             $meta = JsonClient::getWithMeta($url, self::HTTP_TIMEOUT_S, 'Highlander France Bot/1.0', ['Accept: application/json']);
 
             if ($meta['curl_error'] !== '') {
-                $lastError = 'erreur cURL : ' . $meta['curl_error'];
+                $lastError = 'erreur cURL : '.$meta['curl_error'];
+
                 continue;
             }
 
-            if (!is_array($meta['data'])) {
+            if (! is_array($meta['data'])) {
                 // Réponse non décodable en JSON : le plus souvent une page HTML
                 // d'erreur (Cloudflare / 429) renvoyée à la place du payload.
-                $lastError = 'HTTP ' . $meta['http_code'] . ' avec réponse non-JSON';
+                $lastError = 'HTTP '.$meta['http_code'].' avec réponse non-JSON';
+
                 continue;
             }
 
@@ -189,14 +196,14 @@ final class ComputePlayerLevelsService
                 return [];
             }
 
-            if (!in_array($code, [429, 500, 502, 503, 504], true)) {
+            if (! in_array($code, [429, 500, 502, 503, 504], true)) {
                 throw new \RuntimeException("L'API ETF2L a répondu négativement pour {$url} : HTTP {$code}");
             }
 
-            $lastError = 'HTTP ' . $code . ' (réponse transitoire)';
+            $lastError = 'HTTP '.$code.' (réponse transitoire)';
         }
 
-        throw new \RuntimeException("Appel API ETF2L impossible après {$attempts} tentatives ({$url}) : " . $lastError);
+        throw new \RuntimeException("Appel API ETF2L impossible après {$attempts} tentatives ({$url}) : ".$lastError);
     }
 
     /**
@@ -209,7 +216,7 @@ final class ComputePlayerLevelsService
         $results = [];
 
         for ($page = 1; ; $page++) {
-            $url = 'https://api-v2.etf2l.org/player/' . $steamid64 . '/results?limit=' . self::RESULTS_PER_PAGE . '&page=' . $page;
+            $url = 'https://api-v2.etf2l.org/player/'.$steamid64.'/results?limit='.self::RESULTS_PER_PAGE.'&page='.$page;
             $responseObj = $this->cachedGet($url);
 
             $pageResults = $responseObj['data'] ?? [];
@@ -231,7 +238,7 @@ final class ComputePlayerLevelsService
         // Une seule exécution à la fois : un cron qui chevauche un run manuel
         // doublerait le taux d'appels et déclencherait le throttle de l'API.
         $lock = fopen(hlfr_data_path(self::LOCK_FILE), 'c');
-        if ($lock === false || !flock($lock, LOCK_EX | LOCK_NB)) {
+        if ($lock === false || ! flock($lock, LOCK_EX | LOCK_NB)) {
             if (is_resource($lock)) {
                 fclose($lock);
             }
@@ -258,7 +265,7 @@ final class ComputePlayerLevelsService
         // Joueurs inscrits = ceux qui se sont connectés via Steam
         // (created_at renseigné par createIfMissing / ensureCreatedAt au login).
         $registered = $this->db
-            ->query("SELECT steamid FROM players_info WHERE created_at IS NOT NULL ORDER BY steamid")
+            ->query('SELECT steamid FROM players_info WHERE created_at IS NOT NULL ORDER BY steamid')
             ->fetchAll(\PDO::FETCH_COLUMN);
 
         $computed = 0;
@@ -270,14 +277,14 @@ final class ComputePlayerLevelsService
                 $computed += $this->computePlayer((string) $steamid3);
             } catch (\Throwable $e) {
                 $failed++;
-                $errors[] = $steamid3 . ' : ' . $e->getMessage();
-                error_log('Calcul niveau joueur ' . $steamid3 . ' : ' . $e->getMessage());
+                $errors[] = $steamid3.' : '.$e->getMessage();
+                error_log('Calcul niveau joueur '.$steamid3.' : '.$e->getMessage());
             }
         }
 
-        $statusMsg = 'SUCCESS (' . count($registered) . ' joueur(s) traité(s), '
-            . $computed . ' niveau(x) calculé(s)'
-            . ($failed > 0 ? ', ' . $failed . ' en échec' : '') . ')';
+        $statusMsg = 'SUCCESS ('.count($registered).' joueur(s) traité(s), '
+            .$computed.' niveau(x) calculé(s)'
+            .($failed > 0 ? ', '.$failed.' en échec' : '').')';
         AdminLogger::log(self::SCRIPT_NAME, $logToken, $statusMsg);
 
         // Les premières erreurs sont remontées telles quelles dans la console
@@ -286,12 +293,12 @@ final class ComputePlayerLevelsService
         $errorReport = '';
         if ($errors !== []) {
             $shown = array_slice($errors, 0, 5);
-            $errorReport = "\n\nErreurs (" . $failed . ") :\n- " . implode("\n- ", $shown)
-                . ($failed > 5 ? "\n… et " . ($failed - 5) . " autre(s) (voir log PHP)" : '');
+            $errorReport = "\n\nErreurs (".$failed.") :\n- ".implode("\n- ", $shown)
+                .($failed > 5 ? "\n… et ".($failed - 5).' autre(s) (voir log PHP)' : '');
         }
 
-        return 'Niveaux calculés pour ' . $computed . ' mode(s) de jeu sur ' . count($registered) . ' joueur(s) inscrit(s)'
-            . ($failed > 0 ? ' — attention : ' . $failed . ' joueur(s) en échec' : '') . '.' . $errorReport;
+        return 'Niveaux calculés pour '.$computed.' mode(s) de jeu sur '.count($registered).' joueur(s) inscrit(s)'
+            .($failed > 0 ? ' — attention : '.$failed.' joueur(s) en échec' : '').'.'.$errorReport;
     }
 
     /**
@@ -350,7 +357,7 @@ final class ComputePlayerLevelsService
      * Coeur du calcul : transforme une liste de résultats bruts API en niveaux
      * par mode de jeu.
      *
-     * @param  array<int, array<string, mixed>> $results
+     * @param  array<int, array<string, mixed>>  $results
      * @return array<int, array{game_mode: string, tier_moyen: float|null, division_label: string|null, nb_matchs_comptes: int, nb_competitions: int, last_match_time: int}>
      */
     public function levelsFromResults(array $results): array
@@ -362,25 +369,25 @@ final class ComputePlayerLevelsService
 
         foreach ($results as $r) {
             $type = (string) ($r['competition']['type'] ?? '');
-            if (!isset(self::MODE_MAP[$type])) {
+            if (! isset(self::MODE_MAP[$type])) {
                 continue;
             }
 
-            if (!in_array((string) ($r['competition']['category'] ?? ''), self::SEASON_CATEGORIES, true)) {
+            if (! in_array((string) ($r['competition']['category'] ?? ''), self::SEASON_CATEGORIES, true)) {
                 continue;
             }
 
-            if (!empty($r['defaultwin'])) {
+            if (! empty($r['defaultwin'])) {
                 continue;
             }
 
-            $divisionName = $r['division']['name'] ?? null;
-            if (!is_string($divisionName) || $divisionName === '') {
+            $division = $r['division'] ?? null;
+            if (! is_array($division)) {
                 continue;
             }
 
             $gameMode = self::MODE_MAP[$type];
-            $rank = $this->canonicalRank($gameMode, $divisionName);
+            $rank = $this->resolveRank($gameMode, $division);
             if ($rank === null) {
                 continue;
             }
@@ -396,7 +403,7 @@ final class ComputePlayerLevelsService
             }
 
             $comp = &$byCompetition[$compId];
-            if (!isset($comp)) {
+            if (! isset($comp)) {
                 $comp = [
                     'game_mode' => $gameMode,
                     'time' => 0,
@@ -443,8 +450,12 @@ final class ComputePlayerLevelsService
             }
 
             $ranks = array_map(static fn (array $m): int => $m['rank'], $matches);
+            // Pondérée par le nombre de matchs (chaque compétition contribue
+            // autant de fois qu'elle a de matchs comptés dans la fusion).
             $average = array_sum($ranks) / count($ranks);
-            $targetRank = min(max((int) round($average), 0), count(self::CANONICAL_LADDERS[$gameMode]) - 1);
+            // Arrondi demi-inférieur : en cas d'égalité exacte (x,5), avantage
+            // au joueur (division la plus haute des deux).
+            $targetRank = min(max((int) ceil($average - 0.5), 0), count(self::CANONICAL_LADDERS[$gameMode]) - 1);
 
             $levels[] = [
                 'game_mode' => $gameMode,
@@ -462,6 +473,28 @@ final class ComputePlayerLevelsService
         usort($levels, static fn (array $a, array $b): int => strcmp($a['game_mode'], $b['game_mode']));
 
         return $levels;
+    }
+
+    /**
+     * Rang canonique d'une division : le tier fourni par l'API est la source
+     * primaire (aligné sur l'échelle canonique), le nom normalisé par regex
+     * sert de fallback quand le tier est absent ou hors échelle.
+     *
+     * @param  array<string, mixed>  $division  Bloc "division" d'un résultat API.
+     */
+    private function resolveRank(string $gameMode, array $division): ?int
+    {
+        $tier = $division['tier'] ?? null;
+        if (is_int($tier) && $tier >= 0 && $tier < count(self::CANONICAL_LADDERS[$gameMode])) {
+            return $tier;
+        }
+
+        $name = $division['name'] ?? null;
+        if (! is_string($name) || $name === '') {
+            return null;
+        }
+
+        return $this->canonicalRank($gameMode, $name);
     }
 
     /**
@@ -497,4 +530,3 @@ final class ComputePlayerLevelsService
         return count($marked) === 1 && $marked[0] > 0 ? $marked[0] : null;
     }
 }
-
