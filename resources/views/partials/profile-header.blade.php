@@ -25,6 +25,20 @@ $rolesConfig = [
             </div>
 
             <div class="staff-badges-container">
+                @foreach (($etf2lLevels ?? []) as $level)
+                    @if (!empty($level['division_label']))
+                        @php
+                            $modeLabel = $level['game_mode'] === '9v9' ? 'HL' : '6s';
+                            $tooltip = 'Division moyenne ETF2L en ' . ($level['game_mode'] === '9v9' ? 'Highlander' : '6v6')
+                                . ', calculée sur ses ' . (int) $level['nb_competitions'] . ' dernière(s) compétition(s) avec son équipe officielle'
+                                . ' (' . (int) $level['nb_matchs_comptes'] . ' matchs — remplacements et forfaits exclus).';
+                        @endphp
+                        <span class="badge-staff badge-level" title="{{ $tooltip }}">
+                            {{ $modeLabel }} · {{ $level['division_label'] }}
+                        </span>
+                    @endif
+                @endforeach
+
                 @foreach ($rolesConfig as $dbKey => $badgeInfo)
                     @if (isset($player[$dbKey]) && ($player[$dbKey] == 1 || $player[$dbKey] === true))
                         <span class="badge-staff {{ $badgeInfo['class'] }}">

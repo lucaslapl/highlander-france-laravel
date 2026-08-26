@@ -29,6 +29,7 @@
             <option value="" disabled selected>-- Choisir un script --</option>
             <option value="etf2l_matches" {{ $selectedAction === 'etf2l_matches' ? 'selected' : '' }}>Récupération des matchs ETF2L FR (sync_etf2l.php)</option>
             <option value="etf2l_backfill" {{ $selectedAction === 'etf2l_backfill' ? 'selected' : '' }}>Backfill historique ETF2L 180 jours (backfill_etf2l_history.php)</option>
+            <option value="compute_player_levels" {{ $selectedAction === 'compute_player_levels' ? 'selected' : '' }}>Calcul des niveaux des joueurs inscrits (compute_player_levels.php)</option>
             <option value="index_stats" {{ $selectedAction === 'index_stats' ? 'selected' : '' }}>Mise à jour des stats de la page d'accueil (update_index_stats.php)</option>
             <option value="match_stats" {{ $selectedAction === 'match_stats' ? 'selected' : '' }}>Mise à jour des stats de match pour les joueurs (update_stats.php)</option>
             <option value="sync_with_steam" {{ $selectedAction === 'sync_with_steam' ? 'selected' : '' }}>Synchronisation avec Steam (sync_steam.php)</option>

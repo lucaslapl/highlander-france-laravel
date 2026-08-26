@@ -25,6 +25,9 @@ Schedule::command('app:generate-json')->everyThreeHours();
 // Agenda des matchs ETF2L français.
 Schedule::command('app:sync-etf2l')->everyThirtyMinutes();
 
+// Niveaux réels des joueurs inscrits (division moyenne ETF2L par mode).
+Schedule::command('app:compute-player-levels')->weeklyOn(0, '5:00');
+
 // Chaînes Twitch en direct (badge "EN DIRECT" sur les matchs streamés).
 Schedule::command('app:sync-twitch')->everyMinute();
 

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers;
 
+use App\Models\Etf2lRepository;
 use App\Models\PlayerRepository;
 use App\Models\PlayerStatsRepository;
 use App\Services\Auth;
@@ -23,11 +24,13 @@ final class ProfileController extends Controller
 
     private PlayerRepository $players;
     private PlayerStatsRepository $stats;
+    private Etf2lRepository $etf2l;
 
     public function __construct()
     {
         $this->players = new PlayerRepository();
         $this->stats = new PlayerStatsRepository();
+        $this->etf2l = new Etf2lRepository();
     }
 
     /**
@@ -230,6 +233,7 @@ final class ProfileController extends Controller
             'dateFormatee' => !empty($rawDate) ? date('d/m/Y', strtotime((string) $rawDate)) : false,
             'countries' => config('hlfr.countries'),
             'country' => $data['player']['country'] ?? null,
+            'etf2lLevels' => $this->etf2l->playerLevels($steamid3),
         ]);
     }
 

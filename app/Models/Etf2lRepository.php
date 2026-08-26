@@ -88,6 +88,21 @@ final class Etf2lRepository
     }
 
     /**
+     * Niveaux calculés d'un joueur (division moyenne par mode de jeu).
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    public function playerLevels(string $steamid3): array
+    {
+        return DB::table('player_levels')
+            ->where('steamid', $steamid3)
+            ->orderBy('game_mode')
+            ->get()
+            ->map(static fn ($row): array => (array) $row)
+            ->all();
+    }
+
+    /**
      * Détail d'un match ETF2L avec le roster des deux équipes.
      */
     public function etf2lMatchDetail(int $matchId): ?array

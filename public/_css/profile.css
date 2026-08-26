@@ -497,5 +497,9 @@ body #main #content .personnal-info .badge-staff.badge-mentor {
 body #main #content .personnal-info .badge-staff.badge-mixer {
   background-color: #9b59b6;
 }
+body #main #content .personnal-info .badge-staff.badge-level {
+  background-color: #e67e22;
+  cursor: help;
+}
 
 /*# sourceMappingURL=profile.css.map */
