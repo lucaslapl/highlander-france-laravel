@@ -28,6 +28,8 @@
 
     @include('partials.profile-header')
 
+    @include('partials.profile-about')
+
     <h3>Informations personnelles</h3>
     <p>SteamID : {!! e($steamid3) !!}</p>
 
@@ -85,7 +87,79 @@
                 <button type="submit" class="btn-submit-country">Confirmer</button>
             </div>
         </form>
-    @endif
+    <h3>Mes liens</h3>
+
+    <div class="dashboard-box">
+        <p class="info-text">Facultatif — ces liens sont affichés sur votre profil public et modifiables à tout moment.</p>
+
+        <form action="/profile/update-links" method="POST" class="flex flex-column gap-10">
+            @csrf
+
+            @foreach ($profileLinks as $field => $meta)
+                <div class="form-group">
+                    <label for="{!! e($field) !!}" class="flex align-center gap-10">
+                        <i class="{!! e($meta['icon']) !!} profile-link-icon-label"></i>
+                        {!! e($meta['label']) !!} :
+                    </label>
+                    <input
+                        type="text"
+                        id="{!! e($field) !!}"
+                        name="{!! e($field) !!}"
+                        value="{!! e($player[$field] ?? '') !!}"
+                        placeholder="{!! e($meta['placeholder'] ?? '') !!}"
+                        maxlength="{!! e($meta['type'] === 'url' ? 255 : $meta['max_length']) !!}"
+                        class="form-control">
+                </div>
+            @endforeach
+
+            <button type="submit" class="btn-submit" style="background: #525252; border: 1px solid #333; color: white; padding: 8px; border-radius: 4px; width: 190px;">
+                <i class="fa-solid fa-floppy-disk"></i> Enregistrer mes liens
+            </button>
+        </form>
+    </div>
+
+    <h3>Infos personnelles</h3>
+
+    <div class="dashboard-box">
+        <p class="info-text">Facultatif — renseignez uniquement ce que vous souhaitez rendre visible sur votre profil public. Modifiable à tout moment.</p>
+
+        <form action="/profile/update-personal-info" method="POST" class="flex flex-column gap-10">
+            @csrf
+
+            <div class="form-group">
+                <label for="birthdate"><i class="fa-solid fa-cake-candles"></i> Date de naissance :</label>
+                <input
+                    type="date"
+                    id="birthdate"
+                    name="birthdate"
+                    value="{!! e($player['birthdate'] ?? '') !!}"
+                    min="1900-01-01"
+                    max="{!! e(now()->toDateString()) !!}"
+                    class="form-control">
+            </div>
+
+            @foreach ($profileGear as $field => $meta)
+                <div class="form-group">
+                    <label for="{!! e($field) !!}" class="flex align-center gap-10">
+                        <i class="{!! e($meta['icon']) !!} profile-link-icon-label"></i>
+                        {!! e($meta['label']) !!} :
+                    </label>
+                    <input
+                        type="text"
+                        id="{!! e($field) !!}"
+                        name="{!! e($field) !!}"
+                        value="{!! e($player[$field] ?? '') !!}"
+                        placeholder="Ex. : Wooting 60HE, Logitech G Pro X Superlight 2, ZOWIE XL2546K..."
+                        maxlength="100"
+                        class="form-control">
+                </div>
+            @endforeach
+
+            <button type="submit" class="btn-submit" style="background: #525252; border: 1px solid #333; color: white; padding: 8px; border-radius: 4px; width: 190px;">
+                <i class="fa-solid fa-floppy-disk"></i> Enregistrer
+            </button>
+        </form>
+    </div>
 </div>
 
 <br>

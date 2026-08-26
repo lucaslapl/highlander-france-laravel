@@ -49,6 +49,36 @@ $rolesConfig = [
                     @endif
                 @endforeach
             </div>
+
+            @php
+                $hasLinks = false;
+                foreach (($profileLinks ?? []) as $field => $meta) {
+                    if (!empty($player[$field])) {
+                        $hasLinks = true;
+                        break;
+                    }
+                }
+            @endphp
+
+            @if ($hasLinks)
+                <div class="profile-links-row flex align-center gap-10">
+                    @foreach (($profileLinks ?? []) as $field => $meta)
+                        @if (!empty($player[$field]))
+                            @if ($meta['type'] === 'url')
+                                <a href="{!! e($player[$field]) !!}" target="_blank" rel="noopener noreferrer"
+                                   class="profile-link-icon" title="{{ $meta['label'] }}" aria-label="{{ $meta['label'] }}">
+                                    <i class="{!! e($meta['icon']) !!}"></i>
+                                </a>
+                            @else
+                                <span class="profile-link-icon profile-link-icon--tag"
+                                      title="{{ $meta['label'] }} : {!! e($player[$field]) !!}">
+                                    <i class="{!! e($meta['icon']) !!}"></i>
+                                </span>
+                            @endif
+                        @endif
+                    @endforeach
+                </div>
+            @endif
         </div>
     </div>
 

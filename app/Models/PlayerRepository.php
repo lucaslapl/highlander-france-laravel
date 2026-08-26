@@ -257,6 +257,38 @@ final class PlayerRepository
         return true;
     }
 
+    /**
+     * Enregistre les liens externes du profil (facultatifs, modifiables à volonté).
+     * Les clés du tableau doivent correspondre aux colonnes de players_info.
+     *
+     * @param  array<string, string|null>  $links
+     */
+    public function updateProfileLinks(string $steamid3, array $links): bool
+    {
+        $allowed = array_keys(config('hlfr.profile_links'));
+        $data = array_intersect_key($links, array_flip($allowed));
+
+        if ($data === []) {
+            return false;
+        }
+
+        return DB::table('players_info')->where('steamid', $steamid3)->update($data) >= 0;
+    }
+
+    /**
+     * Enregistre la date de naissance et le matériel (facultatifs, modifiables à volonté).
+     *
+     * @param  array<string, string|null>  $gear
+     */
+    public function updatePersonalInfo(string $steamid3, ?string $birthdate, array $gear): bool
+    {
+        $allowed = array_keys(config('hlfr.profile_gear'));
+        $data = array_intersect_key($gear, array_flip($allowed));
+        $data['birthdate'] = $birthdate;
+
+        return DB::table('players_info')->where('steamid', $steamid3)->update($data) >= 0;
+    }
+
     public function hasCountryLocked(string $steamid3): bool
     {
         $value = DB::table('players_info')->where('steamid', $steamid3)->value('country_locked');

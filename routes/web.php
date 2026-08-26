@@ -88,3 +88,5 @@ Route::get('/profile/{steamid}', [ProfileController::class, 'profil']);
 Route::get('/profile/profil', [ProfileController::class, 'profil']);
 Route::post('/profile/update-name', [ProfileController::class, 'updateName']);
 Route::post('/profile/update-country', [ProfileController::class, 'updateCountry']);
+Route::post('/profile/update-links', [ProfileController::class, 'updateLinks']);
+Route::post('/profile/update-personal-info', [ProfileController::class, 'updatePersonalInfo']);

@@ -502,4 +502,48 @@ body #main #content .personnal-info .badge-staff.badge-level {
   cursor: help;
 }
 
+/* --- Liens externes sur les profils joueurs --- */
+body #main #content .personnal-info .profile-links-row {
+  margin-top: 8px;
+}
+body #main #content .personnal-info .profile-link-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.1);
+  color: #ccc;
+  font-size: 0.95em;
+  text-decoration: none;
+  transition: background-color 0.15s ease-in-out, color 0.15s ease-in-out;
+}
+body #main #content .personnal-info .profile-link-icon:hover {
+  background: #ff5722;
+  color: #fff;
+}
+body #main #content .personnal-info .profile-link-icon--tag {
+  cursor: help;
+}
+.profile-link-icon-label {
+  color: #ff5722;
+}
+
+/* --- Section "À propos" des profils joueurs --- */
+body #main #content .profile-about h3 {
+  margin: 15px 0;
+}
+body #main #content .profile-about .profile-about__box p {
+  margin-bottom: 10px;
+}
+body #main #content .profile-about .profile-about__box p:last-child {
+  margin-bottom: 0;
+}
+body #main #content .profile-about .profile-about__box i {
+  color: #ff5722;
+  min-width: 20px;
+  text-align: center;
+}
+
 /*# sourceMappingURL=profile.css.map */

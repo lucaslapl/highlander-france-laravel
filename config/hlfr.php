@@ -43,6 +43,68 @@ return [
     // ID du serveur Discord attendu (optionnel).
     'discord_guild_id' => env('DISCORD_GUILD_ID', ''),
 
+    // Liens externes renseignés volontairement par les joueurs sur leur profil.
+    // 'domains' : whitelist de domaines autorisés pour valider l'URL saisie.
+    // Le champ discord_tag est un pseudo (pas une URL), d'où 'type' => 'tag'.
+    'profile_links' => [
+        'etf2l_url' => [
+            'label' => 'Profil ETF2L',
+            'icon' => 'fa-solid fa-shield-halved',
+            'type' => 'url',
+            'domains' => ['etf2l.org'],
+            'placeholder' => 'https://etf2l.org/forum/user/12345/',
+        ],
+        'rgl_url' => [
+            'label' => 'Profil RGL.gg',
+            'icon' => 'fa-solid fa-trophy',
+            'type' => 'url',
+            'domains' => ['rgl.gg'],
+            'placeholder' => 'https://rgl.gg/Public/PlayerProfile?p=76561198012345678',
+        ],
+        'logstf_url' => [
+            'label' => 'Profil logs.tf',
+            'icon' => 'fa-solid fa-chart-line',
+            'type' => 'url',
+            'domains' => ['logs.tf'],
+            'placeholder' => 'https://logs.tf/profile/76561198012345678',
+        ],
+        'twitch_url' => [
+            'label' => 'Chaîne Twitch',
+            'icon' => 'fa-brands fa-twitch',
+            'type' => 'url',
+            'domains' => ['twitch.tv'],
+            'placeholder' => 'https://www.twitch.tv/pseudo',
+        ],
+        'x_url' => [
+            'label' => 'Compte X / Twitter',
+            'icon' => 'fa-brands fa-x-twitter',
+            'type' => 'url',
+            'domains' => ['x.com', 'twitter.com'],
+            'placeholder' => 'https://x.com/pseudo',
+        ],
+        'youtube_url' => [
+            'label' => 'Chaîne YouTube',
+            'icon' => 'fa-brands fa-youtube',
+            'type' => 'url',
+            'domains' => ['youtube.com', 'youtu.be'],
+            'placeholder' => 'https://www.youtube.com/@pseudo',
+        ],
+        'discord_tag' => [
+            'label' => 'Pseudo Discord',
+            'icon' => 'fa-brands fa-discord',
+            'type' => 'tag',
+            'max_length' => 64,
+            'placeholder' => 'pseudo',
+        ],
+    ],
+
+    // Matériel renseigné volontairement par les joueurs sur leur profil.
+    'profile_gear' => [
+        'gear_keyboard' => ['label' => 'Clavier', 'icon' => 'fa-solid fa-keyboard'],
+        'gear_mouse' => ['label' => 'Souris', 'icon' => 'fa-solid fa-computer-mouse'],
+        'gear_monitor' => ['label' => 'Écran', 'icon' => 'fa-solid fa-desktop'],
+    ],
+
     // Nationalités proposées sur le profil (codes -> libellés).
     'countries' => [
         'fr' => 'France',

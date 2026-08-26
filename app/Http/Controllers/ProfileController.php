@@ -10,6 +10,7 @@ use App\Models\PlayerStatsRepository;
 use App\Services\Auth;
 use App\Services\SteamApi;
 use App\Services\SteamId;
+use Carbon\Carbon;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -23,14 +24,16 @@ final class ProfileController extends Controller
     private const MODES = ['6s', '9v9'];
 
     private PlayerRepository $players;
+
     private PlayerStatsRepository $stats;
+
     private Etf2lRepository $etf2l;
 
     public function __construct()
     {
-        $this->players = new PlayerRepository();
-        $this->stats = new PlayerStatsRepository();
-        $this->etf2l = new Etf2lRepository();
+        $this->players = new PlayerRepository;
+        $this->stats = new PlayerStatsRepository;
+        $this->etf2l = new Etf2lRepository;
     }
 
     /**
@@ -54,7 +57,7 @@ final class ProfileController extends Controller
         $playerName = $player['display_name'] ?? $player['name'];
 
         return view('pages.profile.profil', $this->pageData([
-            'title' => 'Highlander France - Profil de ' . $playerName,
+            'title' => 'Highlander France - Profil de '.$playerName,
             'player' => $player,
             'playerName' => $playerName,
             'steamid64' => $steamid64,
@@ -85,7 +88,7 @@ final class ProfileController extends Controller
         // Synchronisation Steam si jamais faite ou périmée (> 24h)
         $lastUpdate = (int) ($user['last_updated'] ?? 0);
         if (empty($user['name']) || $lastUpdate < time() - 86400) {
-            (new SteamApi())->syncProfile($steamid3);
+            (new SteamApi)->syncProfile($steamid3);
             $user = $this->players->findById($steamid3) ?? $user;
         }
 
@@ -142,7 +145,7 @@ final class ProfileController extends Controller
     public function updateCountry(Request $request): RedirectResponse
     {
         if (! Auth::isLoggedIn()) {
-            return $this->flashError("Action refusée : vous devez être connecté pour modifier votre nationalité.", '/');
+            return $this->flashError('Action refusée : vous devez être connecté pour modifier votre nationalité.', '/');
         }
 
         $steamid3 = SteamId::toSteamId3((string) Auth::steamId64());
@@ -153,14 +156,138 @@ final class ProfileController extends Controller
         }
 
         if ($this->players->hasCountryLocked($steamid3)) {
-            return $this->flashError("Votre nationalité est déjà verrouillée et ne peut plus être modifiée.", '/profile/dashboard');
+            return $this->flashError('Votre nationalité est déjà verrouillée et ne peut plus être modifiée.', '/profile/dashboard');
         }
 
         if ($this->players->updateCountry($steamid3, $chosenCountry)) {
-            return $this->flashSuccess("Votre nationalité a été enregistrée avec succès !", '/profile/dashboard');
+            return $this->flashSuccess('Votre nationalité a été enregistrée avec succès !', '/profile/dashboard');
         }
 
         return $this->flashError("Une erreur est survenue lors de l'enregistrement.", '/profile/dashboard');
+    }
+
+    /**
+     * POST /profile/update-links — liens externes du profil (facultatifs, modifiables à volonté).
+     */
+    public function updateLinks(Request $request): RedirectResponse
+    {
+        if (! Auth::isLoggedIn()) {
+            return $this->flashError('Action refusée : vous devez être connecté pour modifier vos liens.', '/');
+        }
+
+        $steamid3 = SteamId::toSteamId3((string) Auth::steamId64());
+        $links = [];
+
+        foreach (config('hlfr.profile_links') as $field => $meta) {
+            $raw = trim((string) $request->input($field, ''));
+
+            // Champ vide : on efface le lien enregistré.
+            if ($raw === '') {
+                $links[$field] = null;
+
+                continue;
+            }
+
+            $raw = strip_tags($raw);
+
+            if ($meta['type'] === 'url') {
+                $error = $this->validateProfileUrl($raw, $meta['domains']);
+                if ($error !== null) {
+                    return $this->flashError($error, '/profile/dashboard');
+                }
+            } else {
+                if (mb_strlen($raw) > (int) $meta['max_length']) {
+                    return $this->flashError(sprintf(
+                        'Le champ « %s » ne doit pas dépasser %d caractères.',
+                        $meta['label'],
+                        (int) $meta['max_length']
+                    ), '/profile/dashboard');
+                }
+            }
+
+            $links[$field] = $raw;
+        }
+
+        if ($this->players->updateProfileLinks($steamid3, $links)) {
+            return $this->flashSuccess('Vos liens ont été enregistrés avec succès !', '/profile/dashboard');
+        }
+
+        return $this->flashError("Une erreur est survenue lors de l'enregistrement.", '/profile/dashboard');
+    }
+
+    /**
+     * POST /profile/update-personal-info — date de naissance et matériel (facultatifs).
+     */
+    public function updatePersonalInfo(Request $request): RedirectResponse
+    {
+        if (! Auth::isLoggedIn()) {
+            return $this->flashError('Action refusée : vous devez être connecté pour modifier ces informations.', '/');
+        }
+
+        $steamid3 = SteamId::toSteamId3((string) Auth::steamId64());
+
+        // Date de naissance : facultative, mais valide si renseignée.
+        $birthdateRaw = trim((string) $request->input('birthdate', ''));
+        $birthdate = null;
+
+        if ($birthdateRaw !== '') {
+            $date = \DateTime::createFromFormat('Y-m-d', $birthdateRaw);
+
+            if ($date === false || $date->format('Y-m-d') !== $birthdateRaw || $date > new \DateTime || $date->format('Y') < 1900) {
+                return $this->flashError('Date de naissance invalide.', '/profile/dashboard');
+            }
+
+            $birthdate = $date->format('Y-m-d');
+        }
+
+        $gear = [];
+
+        foreach (config('hlfr.profile_gear') as $field => $meta) {
+            $raw = trim(strip_tags((string) $request->input($field, '')));
+
+            if ($raw === '') {
+                $gear[$field] = null;
+
+                continue;
+            }
+
+            if (mb_strlen($raw) > 100) {
+                return $this->flashError(sprintf(
+                    'Le champ « %s » ne doit pas dépasser 100 caractères.',
+                    $meta['label']
+                ), '/profile/dashboard');
+            }
+
+            $gear[$field] = $raw;
+        }
+
+        if ($this->players->updatePersonalInfo($steamid3, $birthdate, $gear)) {
+            return $this->flashSuccess('Vos informations personnelles ont été enregistrées !', '/profile/dashboard');
+        }
+
+        return $this->flashError("Une erreur est survenue lors de l'enregistrement.", '/profile/dashboard');
+    }
+
+    /**
+     * Vérifie qu'une URL saisie par un joueur pointe vers un domaine autorisé.
+     *
+     * @param  array<int, string>  $allowedDomains
+     */
+    private function validateProfileUrl(string $url, array $allowedDomains): ?string
+    {
+        if (mb_strlen($url) > 255 || filter_var($url, FILTER_VALIDATE_URL) === false) {
+            return 'URL invalide.';
+        }
+
+        $host = strtolower((string) parse_url($url, PHP_URL_HOST));
+
+        foreach ($allowedDomains as $domain) {
+            if ($host === $domain || str_ends_with($host, '.'.$domain)) {
+                return null;
+            }
+        }
+
+        return sprintf("L'URL saisie ne pointe pas vers un domaine autorisé (%s).", implode(', ', $allowedDomains));
     }
 
     /**
@@ -193,18 +320,18 @@ final class ProfileController extends Controller
         $matchStats = $this->stats->aggregate($steamid3, $mode);
 
         return [
-            'total_matches'  => $this->stats->totalMatches($steamid3, $mode),
-            'top_maps'       => $this->stats->topMaps($steamid3, $mode),
+            'total_matches' => $this->stats->totalMatches($steamid3, $mode),
+            'top_maps' => $this->stats->topMaps($steamid3, $mode),
             'classes_played' => $this->stats->classesPlayed($steamid3, $mode),
             'recent_matches' => $this->stats->recentMatches($steamid3, $mode),
-            'average_dpm'    => $matchStats['average_dpm'],
-            'average_dtpm'   => $matchStats['average_dtpm'],
+            'average_dpm' => $matchStats['average_dpm'],
+            'average_dtpm' => $matchStats['average_dtpm'],
             'total_airshots' => $matchStats['total_airshots'],
             'total_captures' => $matchStats['total_captures'],
-            'total_kills'    => $matchStats['total_kills'],
-            'total_deaths'   => $matchStats['total_deaths'],
-            'total_assists'  => $matchStats['total_assists'],
-            'kd_ratio'       => $matchStats['kd_ratio'],
+            'total_kills' => $matchStats['total_kills'],
+            'total_deaths' => $matchStats['total_deaths'],
+            'total_assists' => $matchStats['total_assists'],
+            'kd_ratio' => $matchStats['kd_ratio'],
             'classes_killed' => $matchStats['classes_killed'],
         ];
     }
@@ -212,7 +339,7 @@ final class ProfileController extends Controller
     /**
      * Données communes aux pages profil / dashboard (stats 9v9 + activité).
      *
-     * @param  array<string, mixed> $data
+     * @param  array<string, mixed>  $data
      * @return array<string, mixed>
      */
     private function pageData(array $data): array
@@ -220,6 +347,16 @@ final class ProfileController extends Controller
         $steamid3 = $data['steamid3'];
 
         $rawDate = $data['player']['created_at'] ?? null;
+
+        // Âge calculé depuis la date de naissance (facultative).
+        $age = null;
+        if (! empty($data['player']['birthdate'])) {
+            try {
+                $age = Carbon::parse($data['player']['birthdate'])->age;
+            } catch (\Throwable) {
+                $age = null;
+            }
+        }
 
         return array_merge($data, [
             'description' => site_description(),
@@ -230,10 +367,13 @@ final class ProfileController extends Controller
             ],
             'stats' => $this->statsForMode($steamid3, '9v9'),
             'activityData' => $this->stats->activity($steamid3),
-            'dateFormatee' => !empty($rawDate) ? date('d/m/Y', strtotime((string) $rawDate)) : false,
+            'dateFormatee' => ! empty($rawDate) ? date('d/m/Y', strtotime((string) $rawDate)) : false,
             'countries' => config('hlfr.countries'),
             'country' => $data['player']['country'] ?? null,
             'etf2lLevels' => $this->etf2l->playerLevels($steamid3),
+            'profileLinks' => config('hlfr.profile_links'),
+            'profileGear' => config('hlfr.profile_gear'),
+            'age' => $age,
         ]);
     }
 
