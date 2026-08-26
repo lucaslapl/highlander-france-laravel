@@ -14,29 +14,30 @@
     }
 @endphp
 
-@if (count($aboutLinks) > 0 || $age !== null || count($aboutGear) > 0)
-    <div class="profile-cards-row">
+<div class="profile-cards-row">
 
-        @if (count($aboutLinks) > 0)
-            <div class="profile-info-card">
-                <h4><i class="fa-solid fa-link"></i> Liens</h4>
-                <div class="flex align-center gap-10" style="flex-wrap: wrap;">
-                    @foreach ($aboutLinks as $link)
-                        @if ($link['meta']['type'] === 'url')
-                            <a href="{!! e($link['value']) !!}" target="_blank" rel="noopener noreferrer"
-                               class="profile-link-icon" title="{{ $link['meta']['label'] }}" aria-label="{{ $link['meta']['label'] }}">
-                                <i class="{!! e($link['meta']['icon']) !!}"></i>
-                            </a>
-                        @else
-                            <span class="profile-link-icon profile-link-icon--tag"
-                                  title="{{ $link['meta']['label'] }} : {!! e($link['value']) !!}">
-                                <i class="{!! e($link['meta']['icon']) !!}"></i>
-                            </span>
-                        @endif
-                    @endforeach
-                </div>
+        <div class="profile-info-card">
+            <h4><i class="fa-solid fa-link"></i> Liens</h4>
+            <div class="flex align-center gap-10" style="flex-wrap: wrap;">
+                <a href="https://steamcommunity.com/profiles/{!! e($steamid64) !!}" target="_blank" rel="noopener noreferrer"
+                   class="profile-link-icon" title="Profil Steam" aria-label="Profil Steam">
+                    <i class="fa-brands fa-steam"></i>
+                </a>
+                @foreach ($aboutLinks as $link)
+                    @if ($link['meta']['type'] === 'url')
+                        <a href="{!! e($link['value']) !!}" target="_blank" rel="noopener noreferrer"
+                           class="profile-link-icon" title="{{ $link['meta']['label'] }}" aria-label="{{ $link['meta']['label'] }}">
+                            <i class="{!! e($link['meta']['icon']) !!}"></i>
+                        </a>
+                    @else
+                        <span class="profile-link-icon profile-link-icon--tag"
+                              title="{{ $link['meta']['label'] }} : {!! e($link['value']) !!}">
+                            <i class="{!! e($link['meta']['icon']) !!}"></i>
+                        </span>
+                    @endif
+                @endforeach
             </div>
-        @endif
+        </div>
 
         @if ($age !== null)
             <div class="profile-info-card">
@@ -45,12 +46,6 @@
                     <i class="fa-solid fa-cake-candles"></i>
                     <span><strong>{!! e($age) !!}</strong> ans</span>
                 </p>
-                @if (!empty($country))
-                    <p class="flex align-center gap-10">
-                        <img loading="lazy" decoding="async" src="/_img/flags/{!! e($country) !!}.gif" alt="{!! e($countries[$country] ?? $country) !!}" class="flag-icon">
-                        <span>{!! e($countries[$country] ?? strtoupper($country)) !!}</span>
-                    </p>
-                @endif
             </div>
         @endif
 
@@ -67,4 +62,4 @@
         @endif
 
     </div>
-@endif
+</div>

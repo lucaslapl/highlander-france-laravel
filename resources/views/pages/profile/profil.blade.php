@@ -33,10 +33,6 @@
     @include('partials.profile-header')
 
     @include('partials.profile-about')
-
-    <a href="https://steamcommunity.com/profiles/{!! e($steamid64) !!}" target="_blank" class="steam-profile-link" style="margin-top: 15px; display: inline-block;">
-        <i class="fab fa-steam"></i> Profil Steam
-    </a>
 </div>
 
 <br>
