@@ -30,138 +30,27 @@
 
     @include('partials.profile-about')
 
-    <h3>Informations personnelles</h3>
-    <p>SteamID : {!! e($steamid3) !!}</p>
-
-    <br>
-
-    <div class="dashboard-box">
-        <h3>Votre pseudo</h3>
-
-        @if ($nameChanged === 1)
-            <p>Pseudo enregistré : <strong>{!! e($player['display_name']) !!}</strong></p>
-        @else
-            <p class="info-text"><strong>Attention :</strong> Ce changement est <strong>unique et définitif</strong>. Vous ne pourrez plus le modifier par la suite.</p>
-
-            <form action="/profile/update-name" method="POST" class="flex flex-column gap-10">
-                @csrf
-                <div class="form-group">
-                    <label for="display_name">Nouveau pseudo :</label>
-                    <input
-                        type="text"
-                        id="display_name"
-                        name="display_name"
-                        value="{!! e($player['display_name'] ?? $player['name']) !!}"
-                        maxlength="32"
-                        required
-                        class="form-control">
-                </div>
-
-                <button type="submit" name="action" value="update_name" class="btn-submit" onclick="return confirm('Êtes-vous sûr ? Ce changement est définitif et unique !');" style="background: #525252; border: 1px solid #333; color: white; padding: 8px; border-radius: 4px;width: 190px;">
-                    <i class="fa-solid fa-floppy-disk"></i> Confirmer définitivement
-                </button>
-            </form>
-        @endif
+    <div class="dashboard-actions flex align-center gap-15">
+        <a href="/profile/edit" class="btn-edit-profile">
+            <i class="fa-solid fa-pen-to-square"></i> Modifier mes informations
+        </a>
+        <span class="steamid-hint">SteamID : {!! e($steamid3) !!}</span>
     </div>
 
-    <h3>Nationalité</h3>
-
-    @if ($isLocked && !empty($country))
-        <div class="flex align-center gap-10">
-            <img loading="lazy" decoding="async" src="/_img/flags/{!! e($country) !!}.gif" alt="{!! e($countries[$country] ?? $country) !!}" class="flag-icon">
-            <span>Nationalité enregistrée : <strong>{!! e($countries[$country] ?? strtoupper($country)) !!}</strong></span>
-        </div>
-    @else
-        <form action="/profile/update-country" method="POST" class="country-form">
-            @csrf
-            <p>Sélectionnez votre nationalité (ce choix sera <strong>définitif</strong>) :</p>
-
-            <div class="flex align-center gap-10">
-                <select name="country" required class="select-country">
-                    <option value="" disabled selected>Choisir un pays...</option>
-                    @foreach ($countries as $code => $name)
-                        <option value="{!! e($code) !!}">{!! e($name) !!}</option>
-                    @endforeach
-                </select>
-
-                <button type="submit" class="btn-submit-country">Confirmer</button>
-            </div>
-        </form>
+    @if (empty($country) || $nameChanged === 0)
+        <p class="info-text">
+            <i class="fa-solid fa-circle-info"></i>
+            Votre profil est incomplet
+            @if ($nameChanged === 0 && empty($country))
+                (pseudo d'affichage et nationalité non renseignés)
+            @elseif ($nameChanged === 0)
+                (pseudo d'affichage non renseigné)
+            @else
+                (nationalité non renseignée)
+            @endif
+            — <a href="/profile/edit">complétez-le ici</a>.
+        </p>
     @endif
-
-    <h3>Mes liens</h3>
-
-    <div class="dashboard-box">
-        <p class="info-text">Facultatif — ces liens sont affichés sur votre profil public et modifiables à tout moment.</p>
-
-        <form action="/profile/update-links" method="POST" class="flex flex-column gap-10">
-            @csrf
-
-            @foreach ($profileLinks as $field => $meta)
-                <div class="form-group">
-                    <label for="{!! e($field) !!}" class="flex align-center gap-10">
-                        <i class="{!! e($meta['icon']) !!} profile-link-icon-label"></i>
-                        {!! e($meta['label']) !!} :
-                    </label>
-                    <input
-                        type="text"
-                        id="{!! e($field) !!}"
-                        name="{!! e($field) !!}"
-                        value="{!! e($player[$field] ?? '') !!}"
-                        placeholder="{!! e($meta['placeholder'] ?? '') !!}"
-                        maxlength="{!! e($meta['type'] === 'url' ? 255 : $meta['max_length']) !!}"
-                        class="form-control">
-                </div>
-            @endforeach
-
-            <button type="submit" class="btn-submit" style="background: #525252; border: 1px solid #333; color: white; padding: 8px; border-radius: 4px; width: 190px;">
-                <i class="fa-solid fa-floppy-disk"></i> Enregistrer mes liens
-            </button>
-        </form>
-    </div>
-
-    <h3>Infos personnelles</h3>
-
-    <div class="dashboard-box">
-        <p class="info-text">Facultatif — renseignez uniquement ce que vous souhaitez rendre visible sur votre profil public. Modifiable à tout moment.</p>
-
-        <form action="/profile/update-personal-info" method="POST" class="flex flex-column gap-10">
-            @csrf
-
-            <div class="form-group">
-                <label for="birthdate"><i class="fa-solid fa-cake-candles"></i> Date de naissance :</label>
-                <input
-                    type="date"
-                    id="birthdate"
-                    name="birthdate"
-                    value="{!! e($player['birthdate'] ?? '') !!}"
-                    min="1900-01-01"
-                    max="{!! e(now()->toDateString()) !!}"
-                    class="form-control">
-            </div>
-
-            @foreach ($profileGear as $field => $meta)
-                <div class="form-group">
-                    <label for="{!! e($field) !!}" class="flex align-center gap-10">
-                        <i class="{!! e($meta['icon']) !!} profile-link-icon-label"></i>
-                        {!! e($meta['label']) !!} :
-                    </label>
-                    <input
-                        type="text"
-                        id="{!! e($field) !!}"
-                        name="{!! e($field) !!}"
-                        value="{!! e($player[$field] ?? '') !!}"
-                        placeholder="Ex. : Wooting 60HE, Logitech G Pro X Superlight 2, ZOWIE XL2546K..."
-                        maxlength="100"
-                        class="form-control">
-                </div>
-            @endforeach
-
-            <button type="submit" class="btn-submit" style="background: #525252; border: 1px solid #333; color: white; padding: 8px; border-radius: 4px; width: 190px;">
-                <i class="fa-solid fa-floppy-disk"></i> Enregistrer
-            </button>
-        </form>
-    </div>
 </div>
 
 <br>

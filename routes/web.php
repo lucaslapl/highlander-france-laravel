@@ -84,6 +84,7 @@ Route::get('/logout', [AuthController::class, 'logout']);
 
 // ─── Profils ─────────────────────────────────────────────────────────────────
 Route::get('/profile/dashboard', [ProfileController::class, 'dashboard']);
+Route::get('/profile/edit', [ProfileController::class, 'edit']);
 Route::get('/profile/{steamid}', [ProfileController::class, 'profil']);
 Route::get('/profile/profil', [ProfileController::class, 'profil']);
 Route::post('/profile/update-name', [ProfileController::class, 'updateName']);

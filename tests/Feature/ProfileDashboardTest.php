@@ -31,6 +31,35 @@ class ProfileDashboardTest extends TestCase
             ->get('/profile/dashboard');
 
         $response->assertOk();
+        // Dashboard en lecture seule : bouton d'édition présent, formulaires absents.
+        $response->assertSee('/profile/edit');
+        $response->assertDontSee('action="/profile/update-links"', false);
+    }
+
+    public function test_la_page_d_edition_s_affiche_et_exige_la_connexion(): void
+    {
+        DB::connection()->getPdo()->sqliteCreateFunction(
+            'FROM_UNIXTIME',
+            static fn (?int $value): ?string => $value === null ? null : date('Y-m-d H:i:s', $value)
+        );
+
+        DB::table('players_info')->insert([
+            'steamid' => '[U:1:424242]',
+            'name' => 'TestPlayer',
+            'display_name' => 'TestPlayer',
+            'avatar' => 'https://example.com/avatar.png',
+        ]);
+
+        $this->get('/profile/edit')->assertRedirect('/login');
+
+        $response = $this->withSession(['steamid' => '76561197960689970'])
+            ->get('/profile/edit');
+
+        $response->assertOk();
+        $response->assertSee('Modifier mes informations');
+        $response->assertSee('action="/profile/update-links"', false);
+        $response->assertSee('action="/profile/update-personal-info"', false);
+        $response->assertSee('action="/profile/update-name"', false);
     }
 
     public function test_le_profil_public_affiche_les_liens_et_infos_renseignees(): void
@@ -80,7 +109,7 @@ class ProfileDashboardTest extends TestCase
                 'discord_tag' => str_repeat('a', 65),
             ]);
 
-        $response->assertRedirect('/profile/dashboard');
+        $response->assertRedirect('/profile/edit');
         $response->assertSessionHas('error');
 
         // Rien n'a été enregistré : l'URL hors whitelist et le tag trop long sont refusés.
@@ -110,7 +139,7 @@ class ProfileDashboardTest extends TestCase
                 'gear_monitor' => '<script>x</script>ZOWIE XL2546K',
             ]);
 
-        $response->assertRedirect('/profile/dashboard');
+        $response->assertRedirect('/profile/edit');
         $response->assertSessionHas('success');
 
         $player = (array) DB::table('players_info')->where('steamid', '[U:1:424242]')->first();
@@ -138,7 +167,7 @@ class ProfileDashboardTest extends TestCase
         $response = $this->withSession(['steamid' => '76561197960689970'])
             ->post('/profile/update-personal-info', ['birthdate' => '2100-01-01']);
 
-        $response->assertRedirect('/profile/dashboard');
+        $response->assertRedirect('/profile/edit');
         $response->assertSessionHas('error');
         $this->assertNull(DB::table('players_info')->where('steamid', '[U:1:424242]')->value('birthdate'));
     }

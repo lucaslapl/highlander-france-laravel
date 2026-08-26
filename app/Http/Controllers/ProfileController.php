@@ -67,12 +67,64 @@ final class ProfileController extends Controller
     }
 
     /**
-     * GET /profile/dashboard — tableau de bord du joueur connecté.
+     * GET /profile/dashboard — tableau de bord (lecture seule) du joueur connecté.
      */
     public function dashboard(): View|RedirectResponse
     {
-        if (! Auth::isLoggedIn()) {
+        [$user, $steamid64, $steamid3] = $this->authenticatedPlayer();
+
+        if ($user === null) {
             return redirect('/login');
+        }
+
+        $playerName = $user['display_name'] ?? $user['name'] ?? 'Joueur';
+
+        return view('pages.profile.dashboard', $this->pageData([
+            'title' => 'Highlander France - Mon profil',
+            'player' => $user,
+            'playerName' => $playerName,
+            'steamid64' => $steamid64,
+            'steamid3' => $steamid3,
+            'isOwnDashboard' => true,
+            'isLocked' => (int) ($user['country_locked'] ?? 0),
+            'nameChanged' => (int) ($user['name_changed'] ?? 0),
+        ]));
+    }
+
+    /**
+     * GET /profile/edit — page « Modifier mes informations » du joueur connecté.
+     */
+    public function edit(): View|RedirectResponse
+    {
+        [$user, $steamid64, $steamid3] = $this->authenticatedPlayer();
+
+        if ($user === null) {
+            return redirect('/login');
+        }
+
+        $playerName = $user['display_name'] ?? $user['name'] ?? 'Joueur';
+
+        return view('pages.profile.edit', $this->pageData([
+            'title' => 'Highlander France - Modifier mes informations',
+            'player' => $user,
+            'playerName' => $playerName,
+            'steamid64' => $steamid64,
+            'steamid3' => $steamid3,
+            'isOwnDashboard' => true,
+            'isLocked' => (int) ($user['country_locked'] ?? 0),
+            'nameChanged' => (int) ($user['name_changed'] ?? 0),
+        ]));
+    }
+
+    /**
+     * Charge le joueur connecté (création + resync Steam au besoin).
+     *
+     * @return array{0: array<string, mixed>|null, 1: string, 2: string} [player, steamid64, steamid3]
+     */
+    private function authenticatedPlayer(): array
+    {
+        if (! Auth::isLoggedIn()) {
+            return [null, '', ''];
         }
 
         $steamid64 = (string) Auth::steamId64();
@@ -92,18 +144,7 @@ final class ProfileController extends Controller
             $user = $this->players->findById($steamid3) ?? $user;
         }
 
-        $playerName = $user['display_name'] ?? $user['name'] ?? 'Joueur';
-
-        return view('pages.profile.dashboard', $this->pageData([
-            'title' => 'Highlander France - Mon profil',
-            'player' => $user,
-            'playerName' => $playerName,
-            'steamid64' => $steamid64,
-            'steamid3' => $steamid3,
-            'isOwnDashboard' => true,
-            'isLocked' => (int) ($user['country_locked'] ?? 0),
-            'nameChanged' => (int) ($user['name_changed'] ?? 0),
-        ]));
+        return [$user, $steamid64, $steamid3];
     }
 
     /**
@@ -119,24 +160,24 @@ final class ProfileController extends Controller
         $newName = trim((string) $request->input('display_name', ''));
 
         if ($this->players->hasNameChanged($steamid3)) {
-            return $this->flashError("Vous avez déjà modifié votre nom d'affichage une fois. Action impossible.", '/profile/dashboard');
+            return $this->flashError("Vous avez déjà modifié votre nom d'affichage une fois. Action impossible.", '/profile/edit');
         }
 
         if ($newName === '') {
-            return $this->flashError("Le nom d'affichage ne peut pas être vide.", '/profile/dashboard');
+            return $this->flashError("Le nom d'affichage ne peut pas être vide.", '/profile/edit');
         }
 
         if (mb_strlen($newName) > 32) {
-            return $this->flashError("Le nom d'affichage ne doit pas dépasser 32 caractères.", '/profile/dashboard');
+            return $this->flashError("Le nom d'affichage ne doit pas dépasser 32 caractères.", '/profile/edit');
         }
 
         $newName = strip_tags($newName);
 
         if ($this->players->updateDisplayName($steamid3, $newName)) {
-            return $this->flashSuccess("Votre nom d'affichage a été définitivement enregistré !", '/profile/dashboard');
+            return $this->flashSuccess("Votre nom d'affichage a été définitivement enregistré !", '/profile/edit');
         }
 
-        return $this->flashError("Une erreur est survenue lors de l'enregistrement.", '/profile/dashboard');
+        return $this->flashError("Une erreur est survenue lors de l'enregistrement.", '/profile/edit');
     }
 
     /**
@@ -152,18 +193,18 @@ final class ProfileController extends Controller
         $chosenCountry = strtolower(trim((string) $request->input('country', '')));
 
         if ($chosenCountry === '' || ! in_array($chosenCountry, array_keys(config('hlfr.countries')), true)) {
-            return $this->flashError('Pays invalide.', '/profile/dashboard');
+            return $this->flashError('Pays invalide.', '/profile/edit');
         }
 
         if ($this->players->hasCountryLocked($steamid3)) {
-            return $this->flashError('Votre nationalité est déjà verrouillée et ne peut plus être modifiée.', '/profile/dashboard');
+            return $this->flashError('Votre nationalité est déjà verrouillée et ne peut plus être modifiée.', '/profile/edit');
         }
 
         if ($this->players->updateCountry($steamid3, $chosenCountry)) {
-            return $this->flashSuccess('Votre nationalité a été enregistrée avec succès !', '/profile/dashboard');
+            return $this->flashSuccess('Votre nationalité a été enregistrée avec succès !', '/profile/edit');
         }
 
-        return $this->flashError("Une erreur est survenue lors de l'enregistrement.", '/profile/dashboard');
+        return $this->flashError("Une erreur est survenue lors de l'enregistrement.", '/profile/edit');
     }
 
     /**
@@ -193,7 +234,7 @@ final class ProfileController extends Controller
             if ($meta['type'] === 'url') {
                 $error = $this->validateProfileUrl($raw, $meta['domains']);
                 if ($error !== null) {
-                    return $this->flashError($error, '/profile/dashboard');
+                    return $this->flashError($error, '/profile/edit');
                 }
             } else {
                 if (mb_strlen($raw) > (int) $meta['max_length']) {
@@ -201,7 +242,7 @@ final class ProfileController extends Controller
                         'Le champ « %s » ne doit pas dépasser %d caractères.',
                         $meta['label'],
                         (int) $meta['max_length']
-                    ), '/profile/dashboard');
+                    ), '/profile/edit');
                 }
             }
 
@@ -209,10 +250,10 @@ final class ProfileController extends Controller
         }
 
         if ($this->players->updateProfileLinks($steamid3, $links)) {
-            return $this->flashSuccess('Vos liens ont été enregistrés avec succès !', '/profile/dashboard');
+            return $this->flashSuccess('Vos liens ont été enregistrés avec succès !', '/profile/edit');
         }
 
-        return $this->flashError("Une erreur est survenue lors de l'enregistrement.", '/profile/dashboard');
+        return $this->flashError("Une erreur est survenue lors de l'enregistrement.", '/profile/edit');
     }
 
     /**
@@ -234,7 +275,7 @@ final class ProfileController extends Controller
             $date = \DateTime::createFromFormat('Y-m-d', $birthdateRaw);
 
             if ($date === false || $date->format('Y-m-d') !== $birthdateRaw || $date > new \DateTime || $date->format('Y') < 1900) {
-                return $this->flashError('Date de naissance invalide.', '/profile/dashboard');
+                return $this->flashError('Date de naissance invalide.', '/profile/edit');
             }
 
             $birthdate = $date->format('Y-m-d');
@@ -255,17 +296,17 @@ final class ProfileController extends Controller
                 return $this->flashError(sprintf(
                     'Le champ « %s » ne doit pas dépasser 100 caractères.',
                     $meta['label']
-                ), '/profile/dashboard');
+                ), '/profile/edit');
             }
 
             $gear[$field] = $raw;
         }
 
         if ($this->players->updatePersonalInfo($steamid3, $birthdate, $gear)) {
-            return $this->flashSuccess('Vos informations personnelles ont été enregistrées !', '/profile/dashboard');
+            return $this->flashSuccess('Vos informations personnelles ont été enregistrées !', '/profile/edit');
         }
 
-        return $this->flashError("Une erreur est survenue lors de l'enregistrement.", '/profile/dashboard');
+        return $this->flashError("Une erreur est survenue lors de l'enregistrement.", '/profile/edit');
     }
 
     /**
