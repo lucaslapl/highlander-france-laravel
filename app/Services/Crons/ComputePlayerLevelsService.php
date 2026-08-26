@@ -177,7 +177,23 @@ final class ComputePlayerLevelsService
                 continue;
             }
 
-            return $meta['data'];
+            $code = isset($meta['data']['status']['code']) ? (int) $meta['data']['status']['code'] : null;
+
+            if ($code === null || $code === 200) {
+                return $meta['data'];
+            }
+
+            // Joueur absent de l'API (jamais inscrit ETF2L) : pas une erreur,
+            // simplement aucun résultat.
+            if ($code === 404) {
+                return [];
+            }
+
+            if (!in_array($code, [429, 500, 502, 503, 504], true)) {
+                throw new \RuntimeException("L'API ETF2L a répondu négativement pour {$url} : HTTP {$code}");
+            }
+
+            $lastError = 'HTTP ' . $code . ' (réponse transitoire)';
         }
 
         throw new \RuntimeException("Appel API ETF2L impossible après {$attempts} tentatives ({$url}) : " . $lastError);
@@ -247,12 +263,14 @@ final class ComputePlayerLevelsService
 
         $computed = 0;
         $failed = 0;
+        $errors = [];
 
         foreach ($registered as $steamid3) {
             try {
                 $computed += $this->computePlayer((string) $steamid3);
             } catch (\Throwable $e) {
                 $failed++;
+                $errors[] = $steamid3 . ' : ' . $e->getMessage();
                 error_log('Calcul niveau joueur ' . $steamid3 . ' : ' . $e->getMessage());
             }
         }
@@ -262,8 +280,18 @@ final class ComputePlayerLevelsService
             . ($failed > 0 ? ', ' . $failed . ' en échec' : '') . ')';
         AdminLogger::log(self::SCRIPT_NAME, $logToken, $statusMsg);
 
+        // Les premières erreurs sont remontées telles quelles dans la console
+        // admin : un souci de schéma (table/colonne manquante) doit être
+        // visible immédiatement sans aller fouiller les logs PHP.
+        $errorReport = '';
+        if ($errors !== []) {
+            $shown = array_slice($errors, 0, 5);
+            $errorReport = "\n\nErreurs (" . $failed . ") :\n- " . implode("\n- ", $shown)
+                . ($failed > 5 ? "\n… et " . ($failed - 5) . " autre(s) (voir log PHP)" : '');
+        }
+
         return 'Niveaux calculés pour ' . $computed . ' mode(s) de jeu sur ' . count($registered) . ' joueur(s) inscrit(s)'
-            . ($failed > 0 ? ' — attention : ' . $failed . ' joueur(s) en échec (voir log)' : '') . '.';
+            . ($failed > 0 ? ' — attention : ' . $failed . ' joueur(s) en échec' : '') . '.' . $errorReport;
     }
 
     /**
