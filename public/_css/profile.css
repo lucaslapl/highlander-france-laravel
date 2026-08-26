@@ -497,35 +497,124 @@ body #main #content .personnal-info .badge-staff.badge-mentor {
 body #main #content .personnal-info .badge-staff.badge-mixer {
   background-color: #9b59b6;
 }
-body #main #content .personnal-info .badge-staff.badge-level {
-  background-color: #393d3b;
-  border: 1px solid #555;
-  color: #bbb;
-  cursor: help;
+/* --- Badges de division sur les profils joueurs --- */
+body #main #content .personnal-info .division-badges-container {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
 }
-body #main #content .personnal-info .badge-staff.badge-level.badge-level-0 {
-  border-color: #ffd700;
+body #main #content .personnal-info .division-badges-label {
+  font-size: 0.65em;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1.2px;
+  color: #666;
+  flex-basis: 100%;
+  margin-bottom: -2px;
+}
+body #main #content .personnal-info .division-badges-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+body #main #content .personnal-info .division-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0;
+  padding: 0;
+  font-size: 0.78em;
+  font-weight: 600;
+  border-radius: 6px;
+  overflow: hidden;
+  cursor: help;
+  background: #2a2d30;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  transition: box-shadow 0.2s ease, transform 0.2s ease;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+body #main #content .personnal-info .division-badge:hover {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  transform: translateY(-1px);
+}
+body #main #content .personnal-info .division-badge-mode {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px 8px;
+  font-size: 0.85em;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  background: rgba(255, 255, 255, 0.08);
+  color: #999;
+  min-width: 30px;
+}
+body #main #content .personnal-info .division-badge-sep {
+  width: 1px;
+  align-self: stretch;
+  background: rgba(255, 255, 255, 0.08);
+}
+body #main #content .personnal-info .division-badge-division {
+  padding: 4px 10px;
+  color: #ccc;
+  white-space: nowrap;
+}
+/* --- Tiers --- */
+body #main #content .personnal-info .division-tier-0 {
+  border-left: 3px solid #ffd700;
+}
+body #main #content .personnal-info .division-tier-0 .division-badge-mode {
   color: #ffd700;
 }
-body #main #content .personnal-info .badge-staff.badge-level.badge-level-1 {
-  border-color: #c0c0c0;
-  color: #d8d8d8;
+body #main #content .personnal-info .division-tier-0 .division-badge-division {
+  color: #ffe066;
 }
-body #main #content .personnal-info .badge-staff.badge-level.badge-level-2 {
-  border-color: #8fbcbb;
-  color: #a3c4c3;
+body #main #content .personnal-info .division-tier-1 {
+  border-left: 3px solid #c0c0c0;
 }
-body #main #content .personnal-info .badge-staff.badge-level.badge-level-3 {
-  border-color: #7a6e5a;
-  color: #8c7e6a;
+body #main #content .personnal-info .division-tier-1 .division-badge-mode {
+  color: #c0c0c0;
 }
-body #main #content .personnal-info .badge-staff.badge-level.badge-level-4 {
-  border-color: #5f6368;
-  color: #73777b;
+body #main #content .personnal-info .division-tier-1 .division-badge-division {
+  color: #dcdcdc;
 }
-body #main #content .personnal-info .badge-staff.badge-level.badge-level-5 {
-  border-color: #4e5254;
-  color: #626567;
+body #main #content .personnal-info .division-tier-2 {
+  border-left: 3px solid #8fbcbb;
+}
+body #main #content .personnal-info .division-tier-2 .division-badge-mode {
+  color: #8fbcbb;
+}
+body #main #content .personnal-info .division-tier-2 .division-badge-division {
+  color: #b0d4d3;
+}
+body #main #content .personnal-info .division-tier-3 {
+  border-left: 3px solid #a08060;
+}
+body #main #content .personnal-info .division-tier-3 .division-badge-mode {
+  color: #a08060;
+}
+body #main #content .personnal-info .division-tier-3 .division-badge-division {
+  color: #bfa080;
+}
+body #main #content .personnal-info .division-tier-4 {
+  border-left: 3px solid #6b7075;
+}
+body #main #content .personnal-info .division-tier-4 .division-badge-mode {
+  color: #6b7075;
+}
+body #main #content .personnal-info .division-tier-4 .division-badge-division {
+  color: #8a8e92;
+}
+body #main #content .personnal-info .division-tier-5 {
+  border-left: 3px solid #505458;
+}
+body #main #content .personnal-info .division-tier-5 .division-badge-mode {
+  color: #505458;
+}
+body #main #content .personnal-info .division-tier-5 .division-badge-division {
+  color: #6a6e72;
 }
 
 /* --- Liens externes sur les profils joueurs --- */

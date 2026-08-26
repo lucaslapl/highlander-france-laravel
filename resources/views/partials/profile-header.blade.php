@@ -32,24 +32,32 @@ $rolesConfig = [
                         </span>
                     @endif
                 @endforeach
-
-                @foreach (($etf2lLevels ?? []) as $level)
-                    @if (!empty($level['division_label']))
-                        @php
-                            $modeLabel = $level['game_mode'] === '9v9' ? 'HL' : '6s';
-                            $lastYear = !empty($level['last_match_time']) ? date('Y', (int) $level['last_match_time']) : null;
-                            $tooltip = 'Division moyenne ETF2L en ' . ($level['game_mode'] === '9v9' ? 'Highlander' : '6v6')
-                                . ', calculée sur ses ' . (int) $level['nb_competitions'] . ' dernière(s) saison(s) officielle(s) avec son équipe'
-                                . ' (' . (int) $level['nb_matchs_comptes'] . ' matchs — remplacements et forfaits exclus)'
-                                . ($lastYear !== null ? ', données jusqu\'en ' . $lastYear : '') . '.';
-                            $tier = isset($level['tier_moyen']) ? (int) round((float) $level['tier_moyen']) : null;
-                        @endphp
-                        <span class="badge-staff badge-level badge-level-{{ $tier !== null ? $tier : 'unknown' }}" title="{{ $tooltip }}">
-                            {{ $modeLabel }} · {{ $level['division_label'] }}
-                        </span>
-                    @endif
-                @endforeach
             </div>
+
+            @php $validLevels = collect($etf2lLevels ?? [])->filter(fn($l) => !empty($l['division_label'])); @endphp
+            @if ($validLevels->isNotEmpty())
+                <div class="division-badges-container">
+                    <span class="division-badges-label">Divisions</span>
+                    <div class="division-badges-list">
+                        @foreach ($validLevels as $level)
+                            @php
+                                $modeLabel = $level['game_mode'] === '9v9' ? 'HL' : '6s';
+                                $lastYear = !empty($level['last_match_time']) ? date('Y', (int) $level['last_match_time']) : null;
+                                $tooltip = 'Division moyenne ETF2L en ' . ($level['game_mode'] === '9v9' ? 'Highlander' : '6v6')
+                                    . ', calculée sur ses ' . (int) $level['nb_competitions'] . ' dernière(s) saison(s) officielle(s) avec son équipe'
+                                    . ' (' . (int) $level['nb_matchs_comptes'] . ' matchs — remplacements et forfaits exclus)'
+                                    . ($lastYear !== null ? ', données jusqu\'en ' . $lastYear : '') . '.';
+                                $tier = isset($level['tier_moyen']) ? (int) round((float) $level['tier_moyen']) : null;
+                            @endphp
+                            <span class="division-badge division-tier-{{ $tier !== null ? $tier : 'unknown' }}" title="{{ $tooltip }}">
+                                <span class="division-badge-mode">{{ $modeLabel }}</span>
+                                <span class="division-badge-sep"></span>
+                                <span class="division-badge-division">{{ $level['division_label'] }}</span>
+                            </span>
+                        @endforeach
+                    </div>
+                </div>
+            @endif
         </div>
     </div>
 
