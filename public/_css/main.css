@@ -188,7 +188,7 @@ body #header .head-content h1 {
 body #header .embed {
   position: absolute;
   right: 22%;
-  top: 185px;
+  top: 100px;
   z-index: 2;
   perspective: 800px;
 }
@@ -200,12 +200,11 @@ body #header .embed #twitch-embed {
   aspect-ratio: 16 / 9;
   transform: rotateY(-16deg) rotateX(-14deg);
   transform-style: preserve-3d;
-  transition: transform 0.5s ease, filter 0.5s ease;
+  transition: filter 0.5s ease;
   filter: drop-shadow(6px 8px 6px rgba(0, 0, 0, 0.6901960784)) grayscale(80%);
 }
 body #header .embed:hover #twitch-embed,
 body #header .embed:focus-within #twitch-embed {
-  transform: rotateY(-4deg) rotateX(-2deg);
   filter: drop-shadow(6px 8px 6px rgba(0, 0, 0, 0.6901960784)) grayscale(0);
 }
 body #header .embed #twitch-embed iframe {
@@ -214,7 +213,7 @@ body #header .embed #twitch-embed iframe {
   height: 100%;
   border: 5px solid #977ce1;
   border-radius: 6px;
-  box-shadow: 0 0 50px #000;
+  box-shadow: 6px 11px #710088;
   background: #000;
 }
 body #header .embed #twitch-embed::after {
