@@ -194,7 +194,9 @@ body #header .embed {
 }
 body #header .embed #twitch-embed {
   position: relative;
-  width: min(480px, 34vw);
+  /* Exigence autoplay Twitch : embed >= 400x300 px, soit >= ~535 px de
+     large en 16/9 bordures comprises. */
+  width: clamp(544px, 38vw, 620px);
   aspect-ratio: 16 / 9;
   transform: rotateY(-16deg) rotateX(-14deg);
   transform-style: preserve-3d;

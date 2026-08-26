@@ -38,8 +38,14 @@
 
         // Hors-ligne : dernière VOD si connue, sinon repli sur l'embed canal
         // (Twitch y affiche lui-même son écran hors-ligne).
+        // Le lecteur exige l'ID vidéo avec préfixe "v" ; l'API Helix le
+        // renvoie sans préfixe.
         if (embed && embed.video_id) {
-            return "https://player.twitch.tv/?video=" + encodeURIComponent(embed.video_id)
+            var videoId = String(embed.video_id);
+            if (!/^v\d+$/i.test(videoId)) {
+                videoId = "v" + videoId.replace(/^\D+/, "");
+            }
+            return "https://player.twitch.tv/?video=" + encodeURIComponent(videoId)
                 + "&muted=true&autoplay=true" + parentsParams();
         }
 
