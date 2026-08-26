@@ -87,6 +87,8 @@
                 <button type="submit" class="btn-submit-country">Confirmer</button>
             </div>
         </form>
+    @endif
+
     <h3>Mes liens</h3>
 
     <div class="dashboard-box">
