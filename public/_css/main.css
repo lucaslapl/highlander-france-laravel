@@ -189,15 +189,71 @@ body #header .embed {
   position: absolute;
   right: 22%;
   top: 185px;
+  z-index: 2;
   perspective: 800px;
 }
 body #header .embed #twitch-embed {
+  position: relative;
+  width: min(480px, 34vw);
+  aspect-ratio: 16 / 9;
   transform: rotateY(-16deg) rotateX(-14deg);
+  transform-style: preserve-3d;
+  transition: transform 0.5s ease, filter 0.5s ease;
   filter: drop-shadow(6px 8px 6px rgba(0, 0, 0, 0.6901960784)) grayscale(80%);
 }
+body #header .embed:hover #twitch-embed,
+body #header .embed:focus-within #twitch-embed {
+  transform: rotateY(-4deg) rotateX(-2deg);
+  filter: drop-shadow(6px 8px 6px rgba(0, 0, 0, 0.6901960784)) grayscale(0);
+}
 body #header .embed #twitch-embed iframe {
+  display: block;
+  width: 100%;
+  height: 100%;
   border: 5px solid #977ce1;
+  border-radius: 6px;
   box-shadow: 0 0 50px #000;
+  background: #000;
+}
+body #header .embed #twitch-embed::after {
+  content: "";
+  position: absolute;
+  inset: 5px;
+  pointer-events: none;
+  background: repeating-linear-gradient(
+    to bottom,
+    rgba(255, 255, 255, 0.03) 0,
+    rgba(255, 255, 255, 0.03) 2px,
+    rgba(0, 0, 0, 0.08) 2px,
+    rgba(0, 0, 0, 0.08) 4px
+  );
+  opacity: 0.5;
+}
+body #header .embed .embed-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  box-sizing: border-box;
+  border: 5px solid #977ce1;
+  border-radius: 6px;
+  background: rgba(20, 10, 25, 0.85);
+  font-size: 48px;
+  color: #977ce1;
+  animation: embed-pulse 1.6s ease-in-out infinite;
+}
+@keyframes embed-pulse {
+  0%, 100% { opacity: 0.45; }
+  50% { opacity: 1; }
+}
+@media (prefers-reduced-motion: reduce) {
+  body #header .embed #twitch-embed {
+    transition: none;
+  }
+  body #header .embed .embed-loading {
+    animation: none;
+  }
 }
 body #header .header-logo {
   width: 80px;
@@ -1399,12 +1455,15 @@ footer a {
   }
   body #header .embed {
     position: relative;
-    top: 60px;
+    top: auto;
     right: unset;
-    margin: 0 20px;
+    margin: 20px auto 0;
+    perspective: none;
   }
   body #header .embed #twitch-embed {
     transform: none !important;
+    filter: none;
+    width: min(calc(100vw - 40px), 640px);
   }
   body #header .embed #twitch-embed iframe {
     aspect-ratio: 16/9;

@@ -52,5 +52,6 @@
 @push('scripts')
 @include('partials.index-stats-script')
 @include('partials.twitch-live-script')
+@include('partials.twitch-header-script')
 @endpush
 @endsection

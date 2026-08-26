@@ -14,6 +14,9 @@
             </h1>
         </div>
     </div>
+    @if ($currentPath === '/')
+        @include('partials.twitch-header-player')
+    @endif
 </header>
 
 <nav id="nav" aria-label="Navigation principale">

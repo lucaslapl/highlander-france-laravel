@@ -30,12 +30,21 @@ final class TwitchLive
     private const TIME_WINDOW = 4 * 3600;
 
     private const OAUTH_URL = 'https://id.twitch.tv/oauth2/token';
+
     private const STREAMS_URL = 'https://api.twitch.tv/helix/streams';
 
+    private const VIDEOS_URL = 'https://api.twitch.tv/helix/videos';
+
+    private const USERS_URL = 'https://api.twitch.tv/helix/users';
+
+    /** Chaîne affichée dans le lecteur intégré de l'accueil (login minuscule). */
+    private const EMBED_CHANNEL = 'highlanderfrance';
+
     /**
-     * État servi à l'API : chaînes en direct (+ matchs associés par titre).
+     * État servi à l'API : chaînes en direct (+ matchs associés par titre)
+     * et état du lecteur intégré de l'accueil (live ou dernière VOD).
      *
-     * @return array{channels: array<int, array<string, mixed>>, stale: bool}
+     * @return array{channels: array<int, array<string, mixed>>, stale: bool, embed: array<string, mixed>|null}
      */
     public static function status(): array
     {
@@ -44,11 +53,16 @@ final class TwitchLive
 
         if ($channels !== [] && (! isset($data['fetched_at']) || (int) $data['fetched_at'] < time() - self::STALE_MAX)) {
             // Cache trop ancien : on préfère masquer les badges plutôt que
-            // d'afficher un direct probablement terminé.
-            return ['channels' => [], 'stale' => true];
+            // d'afficher un direct probablement terminé. Le lecteur garde le
+            // dernier état connu (l'embed canal se corrige de lui-même).
+            return ['channels' => [], 'stale' => true, 'embed' => is_array($data['embed'] ?? null) ? $data['embed'] : null];
         }
 
-        return ['channels' => $channels, 'stale' => false];
+        return [
+            'channels' => $channels,
+            'stale' => false,
+            'embed' => is_array($data['embed'] ?? null) ? $data['embed'] : null,
+        ];
     }
 
     /**
@@ -69,7 +83,7 @@ final class TwitchLive
         // Une seule exécution à la fois : deux crons qui se chevauchent
         // consommeraient le quota Helix pour rien.
         $lock = fopen(hlfr_data_path(self::LOCK_FILE), 'c');
-        if ($lock === false || !flock($lock, LOCK_EX | LOCK_NB)) {
+        if ($lock === false || ! flock($lock, LOCK_EX | LOCK_NB)) {
             if (is_resource($lock)) {
                 fclose($lock);
             }
@@ -80,7 +94,7 @@ final class TwitchLive
         try {
             $count = self::doRefresh($logins);
 
-            return 'SUCCESS (' . $count . ' chaîne(s) en direct)';
+            return 'SUCCESS ('.$count.' chaîne(s) en direct)';
         } finally {
             flock($lock, LOCK_UN);
             fclose($lock);
@@ -103,7 +117,7 @@ final class TwitchLive
         }
 
         if ($httpCode !== 200) {
-            throw new \RuntimeException('Appel API Twitch impossible (HTTP ' . $httpCode . ')');
+            throw new \RuntimeException('Appel API Twitch impossible (HTTP '.$httpCode.')');
         }
 
         $live = [];
@@ -111,7 +125,7 @@ final class TwitchLive
             $login = mb_strtolower((string) ($stream['user_login'] ?? ''));
 
             // Garde-fou : ne servir que les logins réellement suivis.
-            if (!in_array($login, $logins, true)) {
+            if (! in_array($login, $logins, true)) {
                 continue;
             }
 
@@ -122,7 +136,7 @@ final class TwitchLive
                 'viewers' => max(0, (int) ($stream['viewer_count'] ?? 0)),
                 'game_name' => (string) ($stream['game_name'] ?? ''),
                 'started_at' => (string) ($stream['started_at'] ?? ''),
-                'url' => 'https://www.twitch.tv/' . $login,
+                'url' => 'https://www.twitch.tv/'.$login,
                 'matched_match_ids' => [],
             ];
         }
@@ -131,6 +145,9 @@ final class TwitchLive
 
         $cache['fetched_at'] = time();
         $cache['channels'] = $live;
+        $cache['embed'] = in_array(self::EMBED_CHANNEL, $logins, true)
+            ? self::resolveEmbed($live, $token, $cache)
+            : null;
 
         self::write($cache);
 
@@ -141,7 +158,7 @@ final class TwitchLive
      * Retourne un token applicatif valide, en le renouvelant dans le cache si
      * nécessaire. Un échec OAuth interrompt le refresh (cache conservé).
      *
-     * @param array<string, mixed> $cache Référence : le token y est mémorisé.
+     * @param  array<string, mixed>  $cache  Référence : le token y est mémorisé.
      * @return string Access token.
      */
     private static function ensureToken(array &$cache): string
@@ -164,10 +181,10 @@ final class TwitchLive
         $payload = $meta['data'];
         $accessToken = is_array($payload) ? (string) ($payload['access_token'] ?? '') : '';
 
-        if ($meta['curl_error'] !== '' || $accessToken === '' || !isset($payload['expires_in'])) {
+        if ($meta['curl_error'] !== '' || $accessToken === '' || ! isset($payload['expires_in'])) {
             throw new \RuntimeException(
                 "Obtention du token Twitch impossible (HTTP {$meta['http_code']}"
-                . ($meta['curl_error'] !== '' ? ', cURL : ' . $meta['curl_error'] : '') . ')'
+                .($meta['curl_error'] !== '' ? ', cURL : '.$meta['curl_error'] : '').')'
             );
         }
 
@@ -187,14 +204,14 @@ final class TwitchLive
      */
     private static function fetchStreams(array $logins, string $token): array
     {
-        $url = self::STREAMS_URL . '?' . implode('&', array_map(
-            static fn (string $login): string => 'user_login=' . rawurlencode($login),
+        $url = self::STREAMS_URL.'?'.implode('&', array_map(
+            static fn (string $login): string => 'user_login='.rawurlencode($login),
             $logins
         ));
 
         $headers = [
-            'Client-Id: ' . (string) config('hlfr.twitch_client_id'),
-            'Authorization: Bearer ' . $token,
+            'Client-Id: '.(string) config('hlfr.twitch_client_id'),
+            'Authorization: Bearer '.$token,
         ];
 
         $meta = JsonClient::getWithMeta($url, 10, 'Highlander France Bot/1.0', $headers);
@@ -208,7 +225,7 @@ final class TwitchLive
      * association forte si les deux équipes figurent dans le titre, sinon
      * association faible acceptée uniquement si elle est non ambiguë.
      *
-     * @param array<int, array<string, mixed>> $live Référence : remplit matched_match_ids.
+     * @param  array<int, array<string, mixed>>  $live  Référence : remplit matched_match_ids.
      */
     private static function matchStreams(array &$live): void
     {
@@ -268,6 +285,98 @@ final class TwitchLive
             // (le JS affichera la bannière générique).
         }
         unset($channel);
+    }
+
+    /**
+     * État du lecteur intégré de l'accueil : direct si la chaîne de référence
+     * est en ligne, sinon la VOD (archive) la plus récente. En cas d'échec de
+     * l'appel vidéos, un état sans video_id est renvoyé : le front se replie
+     * sur l'embed canal simple.
+     *
+     * @param  array<int, array<string, mixed>>  $live  Chaînes actuellement en direct.
+     * @param  array<string, mixed>  $cache  Référence : mémorise l'user_id Twitch.
+     * @return array<string, mixed>
+     */
+    private static function resolveEmbed(array $live, string $token, array &$cache): array
+    {
+        foreach ($live as $channel) {
+            if (($channel['login'] ?? '') === self::EMBED_CHANNEL) {
+                return [
+                    'live' => true,
+                    'channel' => self::EMBED_CHANNEL,
+                    'video_id' => null,
+                    'title' => (string) ($channel['title'] ?? ''),
+                    'viewers' => max(0, (int) ($channel['viewers'] ?? 0)),
+                ];
+            }
+        }
+
+        $userId = is_string($cache['embed_user_id'] ?? null) ? $cache['embed_user_id'] : '';
+        if ($userId === '') {
+            $userId = self::resolveUserId($token);
+            if ($userId === '') {
+                return self::embedFallback();
+            }
+            // Résolution stable dans le temps : on évite un aller-retour
+            // /helix/users à chaque cron tant que la chaîne ne change pas.
+            $cache['embed_user_id'] = $userId;
+        }
+
+        $headers = [
+            'Client-Id: '.(string) config('hlfr.twitch_client_id'),
+            'Authorization: Bearer '.$token,
+        ];
+
+        // /helix/videos n'accepte pas user_login : user_id résolu ci-dessus.
+        $url = self::VIDEOS_URL.'?user_id='.rawurlencode($userId)
+            .'&first=1&type=archive&sort=time';
+
+        $meta = JsonClient::getWithMeta($url, 10, 'Highlander France Bot/1.0', $headers);
+        $videos = is_array($meta['data']['data'] ?? null) ? $meta['data']['data'] : [];
+
+        if ($meta['http_code'] !== 200 || $videos === []) {
+            return self::embedFallback();
+        }
+
+        $vod = $videos[0];
+
+        return [
+            'live' => false,
+            'channel' => self::EMBED_CHANNEL,
+            'video_id' => preg_replace('/\D/', '', (string) ($vod['id'] ?? '')) ?: null,
+            'title' => (string) ($vod['title'] ?? ''),
+            'viewers' => 0,
+        ];
+    }
+
+    /** État dégradé : pas de VOD connue, le front affichera l'embed canal. */
+    private static function embedFallback(): array
+    {
+        return [
+            'live' => false,
+            'channel' => self::EMBED_CHANNEL,
+            'video_id' => null,
+            'title' => '',
+            'viewers' => 0,
+        ];
+    }
+
+    /**
+     * Résout l'identifiant numérique Twitch d'un login via /helix/users.
+     */
+    private static function resolveUserId(string $token): string
+    {
+        $url = self::USERS_URL.'?login='.rawurlencode(self::EMBED_CHANNEL);
+        $headers = [
+            'Client-Id: '.(string) config('hlfr.twitch_client_id'),
+            'Authorization: Bearer '.$token,
+        ];
+
+        $meta = JsonClient::getWithMeta($url, 10, 'Highlander France Bot/1.0', $headers);
+        $users = is_array($meta['data']['data'] ?? null) ? $meta['data']['data'] : [];
+        $id = preg_replace('/\D/', '', (string) ($users[0]['id'] ?? ''));
+
+        return $id !== '' ? $id : '';
     }
 
     /**
