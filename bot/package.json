@@ -6,13 +6,18 @@
     "main": "src/index.js",
     "scripts": {
         "start": "node src/index.js",
-        "check": "node tools/check.js"
+        "check": "node tools/check.js",
+        "pm2:start": "pm2 start src/index.js --name octave",
+        "pm2:save": "pm2 save",
+        "pm2:logs": "pm2 logs octave",
+        "pm2:resurrect": "pm2 resurrect"
     },
     "engines": {
         "node": ">=18"
     },
     "dependencies": {
         "discord.js": "^14.16.3",
-        "dotenv": "^16.4.5"
+        "dotenv": "^16.4.5",
+        "pm2": "^7.0.4"
     }
 }
