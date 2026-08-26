@@ -102,6 +102,7 @@ return [
     'profile_gear' => [
         'gear_keyboard' => ['label' => 'Clavier', 'icon' => 'fa-solid fa-keyboard'],
         'gear_mouse' => ['label' => 'Souris', 'icon' => 'fa-solid fa-computer-mouse'],
+        'gear_headset' => ['label' => 'Casque', 'icon' => 'fa-solid fa-headphones'],
         'gear_monitor' => ['label' => 'Écran', 'icon' => 'fa-solid fa-desktop'],
     ],
 

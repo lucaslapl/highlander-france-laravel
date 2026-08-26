@@ -106,6 +106,7 @@ class ProfileDashboardTest extends TestCase
                 'birthdate' => '2000-06-15',
                 'gear_keyboard' => 'Wooting 60HE',
                 'gear_mouse' => '',
+                'gear_headset' => 'HyperX Cloud II',
                 'gear_monitor' => '<script>x</script>ZOWIE XL2546K',
             ]);
 
@@ -115,6 +116,7 @@ class ProfileDashboardTest extends TestCase
         $player = (array) DB::table('players_info')->where('steamid', '[U:1:424242]')->first();
         $this->assertSame('2000-06-15', (string) $player['birthdate']);
         $this->assertSame('Wooting 60HE', $player['gear_keyboard']);
+        $this->assertSame('HyperX Cloud II', $player['gear_headset']);
         $this->assertNull($player['gear_mouse']);
         $this->assertSame('xZOWIE XL2546K', $player['gear_monitor']);
     }
