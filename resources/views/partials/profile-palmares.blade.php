@@ -14,9 +14,10 @@
         3 => ['icon' => 'fa-solid fa-award',  'class' => 'palmares-bronze', 'label' => '3ème'],
     ];
 
-    // L'API ETF2L renvoie des noms déjà encodés en entités HTML ("&amp;", "&#039;", …).
-    // On décode d'abord pour éviter un double-échappement (affichage littéral de "&amp;").
-    $esc = fn ($s) => e(html_entity_decode((string) $s, ENT_QUOTES | ENT_HTML5, 'UTF-8'));
+    // L'API ETF2L renvoie des noms parfois déjà encodés en entités HTML ("&amp;", "&#039;", …).
+    // {{ }} ré-échappe la sortie : on décode donc une première fois pour éviter un
+    // affichage littéral de "&amp;" (surtout ne PAS wrapper dans e() ici, sinon double-échappement).
+    $esc = fn ($s) => html_entity_decode((string) $s, ENT_QUOTES | ENT_HTML5, 'UTF-8');
 @endphp
 
 <div class="profile-palmares">
