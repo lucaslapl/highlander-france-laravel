@@ -49,8 +49,10 @@ final class ComputePlayerPalmaresService
     ];
 
     /**
-     * Rounds de playoffs significatifs, par ordre de prestige décroissant.
+     * Rounds de playoffs significatifs, par ordre de spécificité décroissant.
      * Première regex qui matche dans la chaîne "round" est retenue.
+     * Les patterns les plus spécifiques doivent précéder les plus génériques
+     * (ex. "quarter.*final" avant "final").
      */
     private const PLAYOFF_PATTERNS = [
         '/grand\s*final/i' => 'Grande Finale',
@@ -59,10 +61,25 @@ final class ComputePlayerPalmaresService
         '/lower\s*bracket\s*final/i' => 'Finale Lower Bracket',
         '/loser.?s?.?bracket.*final/i' => 'Finale Lower Bracket',
         '/bracket\s*final/i' => 'Finale de bracket',
-        '/final/i' => 'Finale',
-        '/semi.?final/i' => 'Demi-finale',
         '/quarter.?final/i' => 'Quart de Finale',
+        '/semi.?final/i' => 'Demi-finale',
+        '/final/i' => 'Finale',
         '/playoff/i' => 'Playoffs',
+    ];
+
+    /**
+     * Ordre de prestige des rounds (du plus prestigieux au moins prestigieux).
+     * Utilisé par betterEntry() pour départager deux entrées de même saison.
+     */
+    private const PLAYOFF_PRESTIGE = [
+        'Grande Finale',
+        'Finale Upper Bracket',
+        'Finale Lower Bracket',
+        'Finale de bracket',
+        'Finale',
+        'Demi-finale',
+        'Quart de Finale',
+        'Playoffs',
     ];
 
     private \PDO $db;
@@ -413,6 +430,16 @@ final class ComputePlayerPalmaresService
             $placement = $this->resolvePlacement($compId, $info['team_id']);
             [$playoffRound, $wonPlayoff] = $this->bestPlayoffRound($comp['matches']);
 
+            // Inférer le placement à partir du round de playoffs si non résolu par les tables.
+            // Grande Finale gagnée → 1er, perdue → 2ème. Finale gagnée → 1er, perdue → 2ème.
+            if ($placement === null && $playoffRound !== null) {
+                if ($wonPlayoff && in_array($playoffRound, ['Grande Finale', 'Finale'], true)) {
+                    $placement = 1;
+                } elseif (! $wonPlayoff && $playoffRound === 'Grande Finale') {
+                    $placement = 2;
+                }
+            }
+
             if ($placement === null && $playoffRound === null) {
                 continue;
             }
@@ -557,11 +584,10 @@ final class ComputePlayerPalmaresService
 
         // Les deux ont un round : comparer le prestige.
         if ($roundA !== null && $roundB !== null) {
-            $prio = array_values(self::PLAYOFF_PATTERNS);
-            $idxA = array_search($roundA, $prio, true);
-            $idxB = array_search($roundB, $prio, true);
-            $idxA = $idxA !== false ? $idxA : count($prio);
-            $idxB = $idxB !== false ? $idxB : count($prio);
+            $idxA = array_search($roundA, self::PLAYOFF_PRESTIGE, true);
+            $idxB = array_search($roundB, self::PLAYOFF_PRESTIGE, true);
+            $idxA = $idxA !== false ? $idxA : count(self::PLAYOFF_PRESTIGE);
+            $idxB = $idxB !== false ? $idxB : count(self::PLAYOFF_PRESTIGE);
 
             if ($idxA !== $idxB) {
                 return $idxA < $idxB ? $a : $b; // Index plus bas = plus prestigieux.

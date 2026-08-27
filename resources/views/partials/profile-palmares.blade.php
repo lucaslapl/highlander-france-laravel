@@ -37,10 +37,11 @@
                     $playoffRound = $entry['playoff_round'] ?? null;
                     $wonPlayoff = !empty($entry['won_playoff']);
 
+                    // Fallback : dériver le placement si non stocké en base.
                     if ($placement === null && $playoffRound !== null) {
-                        if ($wonPlayoff && preg_match('/grand\s*final/i', $playoffRound)) {
+                        if ($wonPlayoff && in_array($playoffRound, ['Grande Finale', 'Finale'], true)) {
                             $placement = 1;
-                        } elseif (! $wonPlayoff && preg_match('/grand\s*final/i', $playoffRound)) {
+                        } elseif (! $wonPlayoff && $playoffRound === 'Grande Finale') {
                             $placement = 2;
                         }
                     }
