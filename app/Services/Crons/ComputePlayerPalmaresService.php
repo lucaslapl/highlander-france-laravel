@@ -312,6 +312,13 @@ final class ComputePlayerPalmaresService
             return null;
         }
 
+        // Les compétitions de qualification ("Qualifiers", "Qualification") ne
+        // sont pas représentatives du classement d'une saison : on les ignore.
+        $compName = (string) ($result['competition']['name'] ?? '');
+        if (stripos($compName, 'qualif') !== false) {
+            return null;
+        }
+
         // Identifier l'équipe du joueur.
         $teamId = 0;
         $teamName = '';
@@ -618,17 +625,16 @@ final class ComputePlayerPalmaresService
     }
 
     /**
-     * Fusionne les entrées d'une même saison logique (saison régulière +
-     * playoffs séparés, ou deux divisions). Une médaille (placement) et un
-     * round de playoffs sont complémentaires : on conserve les deux.
+     * Fusionne les entrées d'une même saison logique (saison régulière + playoffs séparés).
      *
-     * Règle "plusieurs podiums" : si au moins deux entrées portent un placement
-     * (ex. deux divisions distinctes de la même saison), on les garde telles
-     * quelles — chacune garde sa propre médaille et son round.
+     * Quand une saison a des playoffs distincts (nom contenant "Playoffs"), ce sont eux qui
+     * déterminent le classement final : on garde l'entrée playoffs et on écarte la saison
+     * régulière redondante, tout en reportant la meilleure médaille du groupe (la médaille
+     * peut n'exister que sur la saison régulière, ex. "6v6 Season 50" → bronze).
      *
-     * Sinon, on produit une entrée unique = meilleure médaille + round le plus
-     * prestigieux atteint, avec la métadonnée (équipe/division) de l'entrée porteuse
-     * de la médaille (repli : celle du round).
+     * Sans playoffs séparés (saison régulière seule, ou deux divisions) : si plusieurs
+     * entrées portent une médaille, on les garde toutes ; sinon on fusionne = meilleure
+     * médaille + round le plus prestigieux.
      *
      * @param  array<int, array<string, mixed>>  $group
      * @return array<int, array<string, mixed>>
@@ -636,27 +642,64 @@ final class ComputePlayerPalmaresService
     private function mergeSeasonEntries(array $group): array
     {
         $banner = $group[0]['team_name'];
+        $prestigeMap = array_flip(self::PLAYOFF_PRESTIGE);
 
-        $podium = array_values(array_filter($group, static fn ($e): bool => $e['placement'] !== null));
+        $playoffs = [];
+        $regular = [];
+        foreach ($group as $e) {
+            if (stripos((string) $e['competition_name'], 'playoffs') !== false) {
+                $playoffs[] = $e;
+            } else {
+                $regular[] = $e;
+            }
+        }
+
+        // Meilleure médaille et temps max sur tout le groupe (playoffs + saison régulière).
+        $bestPlace = null;
+        $maxTime = 0;
+        foreach ($group as $e) {
+            $maxTime = max($maxTime, (int) $e['season_time']);
+            if ($e['placement'] !== null && ($bestPlace === null || $e['placement'] < $bestPlace)) {
+                $bestPlace = $e['placement'];
+            }
+        }
+
+        // Saison avec playoffs séparés : ne garder que les entrées playoffs.
+        if ($playoffs !== []) {
+            $won = [];
+            foreach ($playoffs as $p) {
+                $out = $p;
+                if ($out['placement'] === null) {
+                    $out['placement'] = $bestPlace;
+                }
+                $out['season_time'] = $maxTime;
+                $won[] = $out;
+            }
+
+            error_log("palmares: saison '".$group[0]['competition_name']."' — playoffs conservés (".count($won)
+                .'), saison régulière ignorée ('.$banner.').');
+
+            return $won;
+        }
+
+        // Pas de playoffs séparés : plusieurs podiums distincts → les garder.
+        $podium = array_values(array_filter($regular, static fn ($e): bool => $e['placement'] !== null));
         if (count($podium) >= 2) {
             error_log("palmares: saison '".$group[0]['competition_name']."' — ".count($podium).' podiums distincts conservés ('.$banner.').');
             return $podium;
         }
+        if (count($regular) === 1) {
+            return $regular;
+        }
 
-        $prestigeMap = array_flip(self::PLAYOFF_PRESTIGE);
-
-        $bestPlace = null;
+        // Fusion simple : meilleure médaille + round le plus prestigieux.
         $bestPlaceEntry = null;
         $bestRound = null;
         $bestRoundEntry = null;
         $bestPrestige = PHP_INT_MAX;
-        $maxTime = 0;
 
-        foreach ($group as $e) {
-            $maxTime = max($maxTime, (int) $e['season_time']);
-
-            if ($e['placement'] !== null && ($bestPlace === null || $e['placement'] < $bestPlace)) {
-                $bestPlace = $e['placement'];
+        foreach ($regular as $e) {
+            if ($e['placement'] !== null && ($bestPlaceEntry === null || $e['placement'] < $bestPlaceEntry['placement'])) {
                 $bestPlaceEntry = $e;
             }
 
@@ -670,7 +713,7 @@ final class ComputePlayerPalmaresService
             }
         }
 
-        $source = $bestPlaceEntry ?? $bestRoundEntry ?? $group[0];
+        $source = $bestPlaceEntry ?? $bestRoundEntry ?? $regular[0];
         $merged = $source;
         $merged['placement'] = $bestPlace;
         $merged['playoff_round'] = $bestRound;
