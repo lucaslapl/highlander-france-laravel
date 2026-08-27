@@ -1,0 +1,497 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\Services\Crons;
+
+use App\Services\AdminLogger;
+use App\Services\JsonClient;
+use App\Services\SteamId;
+use Illuminate\Support\Facades\DB;
+
+/**
+ * Calcul du palmarès ETF2L des joueurs inscrits (app:compute-player-palmares).
+ *
+ * Principe : pour chaque joueur, on récupère la liste de ses saisons via
+ * l'API player/results, puis on croise avec les tables de compétition pour
+ * obtenir le classement final (champ "ach"). On détecte également les rounds
+ * de playoffs significatifs (finales, demi-finales) dans les résultats.
+ *
+ * Seules les saisons avec un résultat positif sont stockées : podium dans le
+ * classement final (ach = 1/2/3) ou participation à un round de playoffs.
+ */
+final class ComputePlayerPalmaresService
+{
+    private const SCRIPT_NAME = 'compute_player_palmares.php';
+
+    private const LOCK_FILE = 'compute_player_palmares.lock';
+
+    private const API_CALL_DELAY_S = 1.1;
+
+    private const HTTP_TIMEOUT_S = 15;
+
+    /** TTL du cache des résultats de joueurs (1 semaine). */
+    private const CACHE_TTL_RESULTS = 7 * 86400;
+
+    /** TTL du cache des tables de compétition (30 jours, immuables une fois la saison finie). */
+    private const CACHE_TTL_TABLES = 30 * 86400;
+
+    private const RESULTS_PER_PAGE = 50;
+
+    private const SEASON_CATEGORIES = [
+        'Highlander Season',
+        '6v6 Season',
+    ];
+
+    private const MODE_MAP = [
+        'Highlander' => '9v9',
+        '6v6' => '6s',
+    ];
+
+    /**
+     * Rounds de playoffs significatifs, par ordre de prestige décroissant.
+     * Première regex qui matche dans la chaîne "round" est retenue.
+     */
+    private const PLAYOFF_PATTERNS = [
+        '/grand\s*final/i' => 'Grand Finals',
+        '/upper\s*bracket\s*final/i' => 'Upper Bracket Finals',
+        '/winner.?s?.?bracket.*final/i' => 'Upper Bracket Finals',
+        '/lower\s*bracket\s*final/i' => 'Lower Bracket Finals',
+        '/loser.?s?.?bracket.*final/i' => 'Lower Bracket Finals',
+        '/bracket\s*final/i' => 'Bracket Finals',
+        '/final/i' => 'Finals',
+        '/semi.?final/i' => 'Semi-Finals',
+        '/quarter.?final/i' => 'Quarter-Finals',
+        '/playoff/i' => 'Playoffs',
+    ];
+
+    private \PDO $db;
+
+    private float $lastHttpAt = 0;
+
+    public function __construct()
+    {
+        $this->db = DB::connection()->getPdo();
+    }
+
+    // ---------------------------------------------------------------
+    // Cache + HTTP
+    // ---------------------------------------------------------------
+
+    private function cachedGet(string $url, int $ttl = self::CACHE_TTL_RESULTS): array
+    {
+        $cacheStmt = $this->db->prepare('SELECT payload FROM etf2l_api_cache WHERE url = ? AND fetched_at > ?');
+        $cacheStmt->execute([$url, time() - $ttl]);
+        $payload = $cacheStmt->fetchColumn();
+
+        if (is_string($payload) && $payload !== '') {
+            $decoded = json_decode($payload, true);
+            if (is_array($decoded)) {
+                return $decoded;
+            }
+        }
+
+        $elapsed = microtime(true) - $this->lastHttpAt;
+        if ($this->lastHttpAt > 0 && $elapsed < self::API_CALL_DELAY_S) {
+            usleep((int) ((self::API_CALL_DELAY_S - $elapsed) * 1e6));
+        }
+        $this->lastHttpAt = microtime(true);
+
+        $data = $this->fetchWithRetry($url);
+
+        $isMysql = $this->db->getAttribute(\PDO::ATTR_DRIVER_NAME) === 'mysql';
+        $sql = $isMysql
+            ? 'INSERT INTO etf2l_api_cache (url, payload, fetched_at) VALUES (?, ?, ?)
+               ON DUPLICATE KEY UPDATE payload = VALUES(payload), fetched_at = VALUES(fetched_at)'
+            : 'INSERT INTO etf2l_api_cache (url, payload, fetched_at) VALUES (?, ?, ?)
+               ON CONFLICT(url) DO UPDATE SET payload = excluded.payload, fetched_at = excluded.fetched_at';
+
+        $this->db->prepare($sql)->execute([$url, json_encode($data, JSON_THROW_ON_ERROR), time()]);
+
+        return $data;
+    }
+
+    private function fetchWithRetry(string $url, int $attempts = 3): array
+    {
+        $backoffs = [0, 5, 20];
+        $lastError = 'raison inconnue';
+
+        for ($i = 1; $i <= $attempts; $i++) {
+            if ($i > 1) {
+                sleep($backoffs[min($i - 1, count($backoffs) - 1)]);
+            }
+
+            $meta = JsonClient::getWithMeta($url, self::HTTP_TIMEOUT_S, 'Highlander France Bot/1.0', ['Accept: application/json']);
+
+            if ($meta['curl_error'] !== '') {
+                $lastError = 'erreur cURL : '.$meta['curl_error'];
+                continue;
+            }
+
+            if (! is_array($meta['data'])) {
+                $lastError = 'HTTP '.$meta['http_code'].' avec réponse non-JSON';
+                continue;
+            }
+
+            $code = isset($meta['data']['status']['code']) ? (int) $meta['data']['status']['code'] : null;
+
+            if ($code === null || $code === 200) {
+                return $meta['data'];
+            }
+
+            if ($code === 404) {
+                return [];
+            }
+
+            if (! in_array($code, [429, 500, 502, 503, 504], true)) {
+                throw new \RuntimeException("L'API ETF2L a répondu négativement pour {$url} : HTTP {$code}");
+            }
+
+            $lastError = 'HTTP '.$code.' (réponse transitoire)';
+        }
+
+        throw new \RuntimeException("Appel API ETF2L impossible après {$attempts} tentatives ({$url}) : ".$lastError);
+    }
+
+    // ---------------------------------------------------------------
+    // Récupération des données
+    // ---------------------------------------------------------------
+
+    /**
+     * Historique complet des résultats d'un joueur (toutes pages).
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    private function fetchResults(string $steamid64): array
+    {
+        $results = [];
+
+        for ($page = 1; ; $page++) {
+            $url = 'https://api-v2.etf2l.org/player/'.$steamid64.'/results?limit='.self::RESULTS_PER_PAGE.'&page='.$page;
+            $responseObj = $this->cachedGet($url);
+
+            $pageResults = $responseObj['data'] ?? [];
+            if ($pageResults !== []) {
+                $results[] = $pageResults;
+            }
+
+            $lastPage = (int) ($responseObj['last_page'] ?? $page);
+            if ($page >= $lastPage) {
+                break;
+            }
+        }
+
+        return $results === [] ? [] : array_merge(...$results);
+    }
+
+    /**
+     * Tables de classement final d'une compétition.
+     *
+     * @return array<string, array<int, array<string, mixed>>>  division_name => entries
+     */
+    private function fetchCompetitionTables(int $compId): array
+    {
+        $url = 'https://api-v2.etf2l.org/competition/'.$compId.'/tables';
+        $response = $this->cachedGet($url, self::CACHE_TTL_TABLES);
+
+        return $response['tables'] ?? [];
+    }
+
+    // ---------------------------------------------------------------
+    // Logique de calcul
+    // ---------------------------------------------------------------
+
+    /**
+     * Détermine le meilleur round de playoffs atteint par le joueur dans une
+     * compétition, et s'il l'a remporté.
+     *
+     * @param  array<int, array<string, mixed>>  $compResults
+     * @return array{0: string|null, 1: bool}  [round, won]
+     */
+    private function bestPlayoffRound(array $compResults): array
+    {
+        foreach (self::PLAYOFF_PATTERNS as $pattern => $label) {
+            foreach ($compResults as $r) {
+                $round = (string) ($r['round'] ?? '');
+                if (preg_match($pattern, $round) !== 1) {
+                    continue;
+                }
+
+                // Déterminer si le joueur a gagné ce round.
+                $won = $this->matchWonByPlayer($r);
+
+                return [$label, $won];
+            }
+        }
+
+        return [null, false];
+    }
+
+    /**
+     * Le joueur a-t-il gagné ce match ? Utilise was_in_team + scores r1/r2.
+     */
+    private function matchWonByPlayer(array $result): bool
+    {
+        $playerSide = null;
+
+        foreach (['clan1', 'clan2'] as $side) {
+            $clan = $result[$side] ?? null;
+            if (is_array($clan) && ($clan['was_in_team'] ?? false) === true) {
+                $playerSide = $side;
+                break;
+            }
+        }
+
+        if ($playerSide === null) {
+            return false;
+        }
+
+        $r1 = (int) ($result['r1'] ?? 0);
+        $r2 = (int) ($result['r2'] ?? 0);
+
+        return $playerSide === 'clan1' ? $r1 > $r2 : $r2 > $r1;
+    }
+
+    /**
+     * Extrait les informations essentielles d'un résultat API pour le palmarès.
+     *
+     * @return array{competition_id: int, competition_name: string, competition_category: string, competition_type: string, team_id: int, team_name: string, division_name: string, tier: int, round: string, game_mode: string}|null
+     */
+    private function extractResultInfo(array $result): ?array
+    {
+        $type = (string) ($result['competition']['type'] ?? '');
+        if (! isset(self::MODE_MAP[$type])) {
+            return null;
+        }
+
+        $category = (string) ($result['competition']['category'] ?? '');
+        if (! in_array($category, self::SEASON_CATEGORIES, true)) {
+            return null;
+        }
+
+        // Identifier l'équipe du joueur.
+        $teamId = 0;
+        $teamName = '';
+        foreach (['clan1', 'clan2'] as $side) {
+            $clan = $result[$side] ?? null;
+            if (is_array($clan) && ($clan['was_in_team'] ?? false) === true) {
+                $teamId = (int) ($clan['id'] ?? 0);
+                $teamName = (string) ($clan['name'] ?? '');
+                break;
+            }
+        }
+
+        if ($teamId <= 0) {
+            return null;
+        }
+
+        $division = $result['division'] ?? null;
+        $divisionName = is_array($division) ? (string) ($division['name'] ?? '') : '';
+        $tier = is_array($division) ? (int) ($division['tier'] ?? 0) : 0;
+
+        return [
+            'competition_id' => (int) ($result['competition']['id'] ?? 0),
+            'competition_name' => (string) ($result['competition']['name'] ?? ''),
+            'competition_category' => $category,
+            'competition_type' => $type,
+            'team_id' => $teamId,
+            'team_name' => $teamName,
+            'division_name' => $divisionName,
+            'tier' => $tier,
+            'round' => (string) ($result['round'] ?? ''),
+            'game_mode' => self::MODE_MAP[$type],
+        ];
+    }
+
+    // ---------------------------------------------------------------
+    // Run principal
+    // ---------------------------------------------------------------
+
+    public function run(): string
+    {
+        $lock = fopen(hlfr_data_path(self::LOCK_FILE), 'c');
+        if ($lock === false || ! flock($lock, LOCK_EX | LOCK_NB)) {
+            if (is_resource($lock)) {
+                fclose($lock);
+            }
+
+            return 'Calcul du palmarès ignoré : une autre exécution est déjà en cours.';
+        }
+
+        try {
+            return $this->doRun();
+        } finally {
+            flock($lock, LOCK_UN);
+            fclose($lock);
+        }
+    }
+
+    private function doRun(): string
+    {
+        $logToken = AdminLogger::log(self::SCRIPT_NAME);
+
+        $this->db->prepare('DELETE FROM etf2l_api_cache WHERE fetched_at < ?')
+            ->execute([time() - max(self::CACHE_TTL_RESULTS, self::CACHE_TTL_TABLES)]);
+
+        $registered = $this->db
+            ->query('SELECT steamid FROM players_info WHERE created_at IS NOT NULL ORDER BY steamid')
+            ->fetchAll(\PDO::FETCH_COLUMN);
+
+        $computed = 0;
+        $failed = 0;
+        $errors = [];
+
+        foreach ($registered as $steamid3) {
+            try {
+                $this->computePlayer((string) $steamid3);
+                $computed++;
+            } catch (\Throwable $e) {
+                $failed++;
+                $errors[] = $steamid3.' : '.$e->getMessage();
+                error_log('Calcul palmarès joueur '.$steamid3.' : '.$e->getMessage());
+            }
+        }
+
+        $statusMsg = 'SUCCESS ('.count($registered).' joueur(s) traité(s)'
+            .($failed > 0 ? ', '.$failed.' en échec' : '').')';
+        AdminLogger::log(self::SCRIPT_NAME, $logToken, $statusMsg);
+
+        $errorReport = '';
+        if ($errors !== []) {
+            $shown = array_slice($errors, 0, 5);
+            $errorReport = "\n\nErreurs (".$failed.") :\n- ".implode("\n- ", $shown)
+                .($failed > 5 ? "\n… et ".($failed - 5).' autre(s) (voir log PHP)' : '');
+        }
+
+        return 'Palmarès calculé pour '.$computed.' joueur(s) inscrit(s)'
+            .($failed > 0 ? ' — attention : '.$failed.' joueur(s) en échec' : '').'.'.$errorReport;
+    }
+
+    /**
+     * Calcule et stocke le palmarès d'un joueur.
+     */
+    private function computePlayer(string $steamid3): void
+    {
+        $steamid64 = SteamId::toSteamId64($steamid3);
+        if ($steamid64 === null) {
+            return;
+        }
+
+        $results = $this->fetchResults($steamid64);
+        if ($results === []) {
+            // Aucun résultat : purger un éventuel ancien palmarès.
+            $this->db->prepare('DELETE FROM player_palmares WHERE steamid = ?')->execute([$steamid3]);
+            return;
+        }
+
+        // 1. Extraire et regrouper par compétition.
+        $byCompetition = [];
+
+        foreach ($results as $r) {
+            $info = $this->extractResultInfo($r);
+            if ($info === null || $info['competition_id'] === 0) {
+                continue;
+            }
+
+            $compId = $info['competition_id'];
+
+            if (! isset($byCompetition[$compId])) {
+                $byCompetition[$compId] = [
+                    'info' => $info,
+                    'matches' => [],
+                ];
+            }
+
+            $byCompetition[$compId]['matches'][] = $r;
+        }
+
+        // 2. Pour chaque compétition, déterminer le placement et le playoff.
+        $entries = [];
+
+        foreach ($byCompetition as $compId => $comp) {
+            $info = $comp['info'];
+
+            // Fetch les tables pour le classement final.
+            $placement = $this->resolvePlacement($compId, $info['team_id']);
+
+            // Détecter le meilleur round de playoffs.
+            [$playoffRound, $wonPlayoff] = $this->bestPlayoffRound($comp['matches']);
+
+            // Ne garder que les saisons avec un résultat positif.
+            if ($placement === null && $playoffRound === null) {
+                continue;
+            }
+
+            $entries[] = [
+                'steamid' => $steamid3,
+                'competition_id' => $compId,
+                'game_mode' => $info['game_mode'],
+                'competition_name' => $info['competition_name'],
+                'team_name' => $info['team_name'],
+                'team_id' => $info['team_id'],
+                'division_name' => $info['division_name'],
+                'tier' => $info['tier'],
+                'placement' => $placement,
+                'playoff_round' => $playoffRound,
+                'won_playoff' => $wonPlayoff ? 1 : 0,
+                'computed_at' => time(),
+            ];
+        }
+
+        // 3. UPSERT dans la table.
+        $deleteStmt = $this->db->prepare('DELETE FROM player_palmares WHERE steamid = ?');
+        $insertStmt = $this->db->prepare(
+            'REPLACE INTO player_palmares
+                (steamid, competition_id, game_mode, competition_name, team_name, team_id,
+                 division_name, tier, placement, playoff_round, won_playoff, computed_at)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
+        );
+
+        $this->db->beginTransaction();
+
+        try {
+            $deleteStmt->execute([$steamid3]);
+
+            foreach ($entries as $e) {
+                $insertStmt->execute([
+                    $e['steamid'],
+                    $e['competition_id'],
+                    $e['game_mode'],
+                    $e['competition_name'],
+                    $e['team_name'],
+                    $e['team_id'],
+                    $e['division_name'],
+                    $e['tier'],
+                    $e['placement'],
+                    $e['playoff_round'],
+                    $e['won_playoff'],
+                    $e['computed_at'],
+                ]);
+            }
+
+            $this->db->commit();
+        } catch (\Throwable $e) {
+            $this->db->rollBack();
+            throw $e;
+        }
+    }
+
+    /**
+     * Récupère le classement final (champ "ach") d'une équipe dans une compétition.
+     */
+    private function resolvePlacement(int $compId, int $teamId): ?int
+    {
+        $tables = $this->fetchCompetitionTables($compId);
+
+        foreach ($tables as $divisionEntries) {
+            foreach ($divisionEntries as $entry) {
+                if ((int) ($entry['id'] ?? 0) === $teamId) {
+                    $ach = $entry['ach'] ?? null;
+                    return is_int($ach) && $ach >= 1 && $ach <= 3 ? $ach : null;
+                }
+            }
+        }
+
+        return null;
+    }
+}

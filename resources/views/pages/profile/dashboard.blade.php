@@ -30,6 +30,8 @@
 
     @include('partials.profile-about')
 
+    @include('partials.profile-palmares')
+
     <div class="dashboard-actions flex align-center gap-15">
         <a href="/profile/edit" class="btn-edit-profile">
             <i class="fa-solid fa-pen-to-square"></i> Modifier mes informations

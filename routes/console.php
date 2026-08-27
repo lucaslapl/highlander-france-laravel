@@ -28,6 +28,9 @@ Schedule::command('app:sync-etf2l')->everyThirtyMinutes();
 // Niveaux réels des joueurs inscrits (division moyenne ETF2L par mode).
 Schedule::command('app:compute-player-levels')->weeklyOn(0, '5:00');
 
+// Palmarès ETF2L des joueurs (classements finaux + playoffs).
+Schedule::command('app:compute-player-palmares')->weeklyOn(0, '5:30');
+
 // Chaînes Twitch en direct (badge "EN DIRECT" sur les matchs streamés).
 Schedule::command('app:sync-twitch')->everyMinute();
 

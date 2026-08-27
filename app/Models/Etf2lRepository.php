@@ -103,6 +103,23 @@ final class Etf2lRepository
     }
 
     /**
+     * Palmarès ETF2L d'un joueur : classements finaux et playoffs significatifs.
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    public function playerPalmares(string $steamid3): array
+    {
+        return DB::table('player_palmares')
+            ->where('steamid', $steamid3)
+            ->orderBy('game_mode')
+            ->orderBy('tier')
+            ->orderBy('computed_at', 'desc')
+            ->get()
+            ->map(static fn ($row): array => (array) $row)
+            ->all();
+    }
+
+    /**
      * Détail d'un match ETF2L avec le roster des deux équipes.
      */
     public function etf2lMatchDetail(int $matchId): ?array

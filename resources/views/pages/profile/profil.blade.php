@@ -37,6 +37,8 @@
 
 <br>
 
+@include('partials.profile-palmares')
+
 @include('partials.profile-initial-data')
 
 @include('partials.profile-stats')

@@ -772,4 +772,93 @@ body #main #content .edit-card .btn-submit:hover {
   }
 }
 
+/* --- Palmarès --- */
+.profile-palmares {
+  margin: 15px 0;
+  padding: 0 5px;
+}
+.profile-palmares h4 {
+  margin-bottom: 10px;
+}
+.palmares-section {
+  margin-bottom: 10px;
+}
+.palmares-mode {
+  display: block;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: #777;
+  margin-bottom: 4px;
+}
+.palmares-entry {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 0;
+  flex-wrap: wrap;
+}
+.palmares-medal-icon {
+  font-size: 1rem;
+  width: 20px;
+  text-align: center;
+  flex-shrink: 0;
+}
+.palmares-medal-icon.palmares-gold {
+  color: #ffd700;
+}
+.palmares-medal-icon.palmares-silver {
+  color: #c0c0c0;
+}
+.palmares-medal-icon.palmares-bronze {
+  color: #cd7f32;
+}
+.palmares-medal-placeholder {
+  width: 20px;
+  flex-shrink: 0;
+}
+.palmares-text {
+  font-size: 0.9rem;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.palmares-text strong {
+  color: #ddd;
+}
+.palmares-division {
+  color: #999;
+  font-size: 0.85rem;
+}
+.palmares-sep {
+  color: #555;
+}
+.palmares-team {
+  color: #888;
+  font-style: italic;
+  font-size: 0.85rem;
+}
+.palmares-playoff {
+  font-size: 0.7rem;
+  padding: 2px 6px;
+  border-radius: 3px;
+  background: #333;
+  color: #aaa;
+  white-space: nowrap;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+}
+.palmares-playoff i {
+  font-size: 0.6rem;
+}
+.palmares-playoff-won {
+  background: #2a4a2a;
+  color: #8c8;
+}
+.palmares-playoff-won i {
+  color: #6c6;
+}
+
 /*# sourceMappingURL=profile.css.map */
