@@ -15,6 +15,7 @@ use Illuminate\Contracts\View\View;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\Response;
 
 /**
  * Profils joueurs : page publique, dashboard connecté, mises à jour et API stats.
@@ -64,6 +65,87 @@ final class ProfileController extends Controller
             'steamid3' => $steamid3,
             'isOwnDashboard' => false,
         ]));
+    }
+
+    /**
+     * GET /img/avatar/{steamid} — proxy de l'avatar Steam mis en cache localement.
+     *
+     * Le CDN de Steam (avatars.steamstatic.com) renvoie parfois des 429 quand le
+     * navigateur charge l'image en direct. On sert donc l'avatar depuis notre
+     * domaine : le serveur télécharge les octets une fois (avec les bons
+     * en-têtes), les met en cache, puis les renvoie sans jamais retransmettre
+     * de 429 au client.
+     */
+    public function avatar(Request $request, string $steamid): Response
+    {
+        $steamid3 = SteamId::toSteamId3($steamid);
+        $player = $this->players->findById($steamid3);
+
+        $source = is_string($player['avatar'] ?? null) ? $player['avatar'] : '';
+        if ($source === '' || preg_match('#^https?://#', $source) !== 1) {
+            abort(404);
+        }
+
+        $ext = strtolower((string) pathinfo((string) parse_url($source, PHP_URL_PATH), PATHINFO_EXTENSION));
+        if (! in_array($ext, ['jpg', 'jpeg', 'png', 'gif'], true)) {
+            $ext = 'jpg';
+        }
+        $mime = ['jpg' => 'image/jpeg', 'jpeg' => 'image/jpeg', 'png' => 'image/png', 'gif' => 'image/gif'][$ext];
+
+        $cacheDir = storage_path('app/avatars');
+        $cacheFile = $cacheDir.'/'.md5($source).'.'.$ext;
+        $ttl = 86400;
+
+        $serve = function () use ($cacheFile, $mime): Response {
+            $body = @file_get_contents($cacheFile);
+            if ($body === false) {
+                abort(404);
+            }
+
+            return new Response($body, 200, [
+                'Content-Type' => $mime,
+                'Cache-Control' => 'public, max-age=86400',
+                'Content-Length' => (string) strlen($body),
+            ]);
+        };
+
+        if (is_file($cacheFile) && time() - (int) filemtime($cacheFile) < $ttl) {
+            return $serve();
+        }
+
+        $ch = curl_init($source);
+        curl_setopt_array($ch, [
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_FOLLOWLOCATION => true,
+            CURLOPT_TIMEOUT        => 8,
+            CURLOPT_CONNECTTIMEOUT => 5,
+            CURLOPT_SSL_VERIFYPEER => config('hlfr.curl_verify_ssl'),
+            CURLOPT_USERAGENT      => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36',
+            CURLOPT_HTTPHEADER     => ['Referer: https://steamcommunity.com/'],
+        ]);
+        $data = curl_exec($ch);
+        $code = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        curl_close($ch);
+
+        if ($data !== false && $code >= 200 && $code < 300 && $data !== '') {
+            if (! is_dir($cacheDir) && @mkdir($cacheDir, 0775, true) === false && ! is_dir($cacheDir)) {
+                // Répertoire inaccessible : on sert quand même les octets fraîchement récupérés.
+            } else {
+                @file_put_contents($cacheFile, $data);
+            }
+
+            return new Response($data, 200, [
+                'Content-Type' => $mime,
+                'Cache-Control' => 'public, max-age=86400',
+                'Content-Length' => (string) strlen($data),
+            ]);
+        }
+
+        if (is_file($cacheFile)) {
+            return $serve();
+        }
+
+        abort(404);
     }
 
     /**

@@ -83,6 +83,8 @@ Route::get('/auth/callback', [AuthController::class, 'callback']);
 Route::post('/logout', [AuthController::class, 'logout']);
 
 // ─── Profils ─────────────────────────────────────────────────────────────────
+// Proxy de l'avatar Steam (CDN qui renvoie des 429 sur les requêtes directes du navigateur).
+Route::get('/img/avatar/{steamid}', [ProfileController::class, 'avatar'])->where('steamid', '[0-9]{17}');
 Route::get('/profile/dashboard', [ProfileController::class, 'dashboard']);
 Route::get('/profile/edit', [ProfileController::class, 'edit']);
 Route::get('/profile/{steamid}', [ProfileController::class, 'profil']);
