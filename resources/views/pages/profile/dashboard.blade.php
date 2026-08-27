@@ -4,9 +4,7 @@
 @section('description', $description)
 
 @push('styles')
-@once
 <link rel="stylesheet" href="{{ hlfr_asset('/_css/profile.css') }}">
-@endonce
 @endpush
 
 @push('scripts')

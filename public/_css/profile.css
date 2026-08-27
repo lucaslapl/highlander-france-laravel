@@ -679,10 +679,12 @@ body #main #content .profile-info-card i {
 }
 
 /* --- Actions du dashboard (lecture seule) --- */
-body #main #content .personnal-info .dashboard-actions {
+body #main #content .personnal-info .dashboard-actions,
+body #main #content .dashboard-actions {
   margin: 10px 0;
 }
-body #main #content .personnal-info .btn-edit-profile {
+body #main #content .personnal-info .btn-edit-profile,
+body #main #content .btn-edit-profile {
   display: inline-block;
   background: #ff5722;
   color: #fff;
@@ -692,11 +694,13 @@ body #main #content .personnal-info .btn-edit-profile {
   font-weight: bold;
   transition: background-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
 }
-body #main #content .personnal-info .btn-edit-profile:hover {
+body #main #content .personnal-info .btn-edit-profile:hover,
+body #main #content .btn-edit-profile:hover {
   background: #e64a19;
   box-shadow: 0 4px 12px rgba(255, 87, 34, 0.3);
 }
-body #main #content .personnal-info .steamid-hint {
+body #main #content .personnal-info .steamid-hint,
+body #main #content .steamid-hint {
   color: #888;
   font-size: 0.85rem;
 }
