@@ -152,8 +152,8 @@ function matchRowsHtml(array $players): string
                 </div>
                 <div class="matchlog-table-wrapper">
                     <table class="matchlog-table">
-                        {{ matchTableHeadHtml() }}
-                        {{ matchRowsHtml($panel['players']) }}
+                        {!! matchTableHeadHtml() !!}
+                        {!! matchRowsHtml($panel['players']) !!}
                     </table>
                 </div>
             </div>
@@ -165,8 +165,8 @@ function matchRowsHtml(array $players): string
             <h3>Sans équipe</h3>
             <div class="matchlog-table-wrapper">
                 <table class="matchlog-table">
-                    {{ matchTableHeadHtml() }}
-                    {{ matchRowsHtml($otherPlayers) }}
+                    {!! matchTableHeadHtml() !!}
+                    {!! matchRowsHtml($otherPlayers) !!}
                 </table>
             </div>
         </div>
@@ -176,8 +176,8 @@ function matchRowsHtml(array $players): string
 
     <div class="matchlog-table-wrapper">
         <table id="matchlogTable" class="matchlog-table">
-            {{ matchTableHeadHtml() }}
-            {{ matchRowsHtml($players) }}
+            {!! matchTableHeadHtml() !!}
+            {!! matchRowsHtml($players) !!}
         </table>
     </div>
 
