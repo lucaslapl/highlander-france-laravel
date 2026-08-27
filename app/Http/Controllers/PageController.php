@@ -178,8 +178,9 @@ final class PageController extends Controller
             $steamid64 = SteamId::toSteamId64((string) $row['steamid']);
             $row['profile_url'] = $steamid64 !== null ? '/profile/'.$steamid64 : null;
             $row['classes'] = $topClasses[$row['steamid']] ?? [];
-            $row['flag_url'] = CountryFlags::flag(isset($row['country']) && $row['country'] !== '' ? (string) $row['country'] : null);
-            $row['country_label'] = config('hlfr.countries')[(string) ($row['country'] ?? '')] ?? ucfirst((string) ($row['country'] ?? 'Inconnu'));
+            $hasCountry = !empty($row['country']) && $row['country'] !== 'unknown' && (int) ($row['country_locked'] ?? 0) === 1;
+            $row['flag_url'] = $hasCountry ? CountryFlags::flag((string) $row['country']) : null;
+            $row['country_label'] = $hasCountry ? (config('hlfr.countries')[(string) $row['country']] ?? ucfirst((string) $row['country'])) : null;
         }
         unset($row);
 

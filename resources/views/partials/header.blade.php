@@ -53,7 +53,7 @@
                         <a href="/profile/dashboard" class="{{ $currentPath === '/profile/dashboard' ? 'active' : '' }}">Mon Profil</a>
                         <form action="/logout" method="POST" style="display:inline">
                             @csrf
-                            <button type="submit" style="background:none;border:none;color:inherit;cursor:pointer;padding:0;font:inherit;">Déconnexion</button>
+                            <button type="submit" class="nav-logout-btn">Déconnexion</button>
                         </form>
                     @else
                         <a href="/login" class="btn-steam-login">

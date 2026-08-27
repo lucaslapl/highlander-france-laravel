@@ -112,7 +112,11 @@
                                 @endif
                             </td>
                             <td class="col-country">
-                                <img loading="lazy" decoding="async" src="{!! e($player['flag_url']) !!}" alt="{!! e($player['country_label']) !!}" class="joueurs-flag" title="{!! e($player['country_label']) !!}">
+                                @if (!empty($player['flag_url']))
+                                    <img loading="lazy" decoding="async" src="{!! e($player['flag_url']) !!}" alt="{!! e($player['country_label']) !!}" class="joueurs-flag" title="{!! e($player['country_label']) !!}">
+                                @else
+                                    <span class="division-none">—</span>
+                                @endif
                             </td>
                         </tr>
                     @endforeach

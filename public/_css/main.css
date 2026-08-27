@@ -342,7 +342,8 @@ body #nav .nav-links {
   text-wrap: nowrap;
 }
 body #nav .nav-links li a,
-body #nav .nav-right #session-profile a {
+body #nav .nav-right #session-profile a,
+body #nav .nav-right #session-profile button {
   display: block;
   text-decoration: none;
   font-weight: 600;
@@ -352,13 +353,21 @@ body #nav .nav-right #session-profile a {
   border-radius: 10px;
   transition: background-color 0.25s, color 0.25s;
 }
+body #nav .nav-right #session-profile button {
+  background: none;
+  border: none;
+  font-family: inherit;
+  cursor: pointer;
+}
 body #nav .nav-links li a:hover,
-body #nav .nav-right #session-profile a:hover {
+body #nav .nav-right #session-profile a:hover,
+body #nav .nav-right #session-profile button:hover {
   background-color: rgba(251, 183, 251, 0.12);
   color: #fff;
 }
 body #nav .nav-links li a.active,
-body #nav .nav-right #session-profile a.active {
+body #nav .nav-right #session-profile a.active,
+body #nav .nav-right #session-profile button.active {
   background-color: rgba(255, 98, 194, 0.18);
   color: #ffc9ec;
 }
@@ -430,6 +439,7 @@ body #nav .nav-discord:hover {
 }
 body #nav .nav-links li a:focus-visible,
 body #nav .nav-right #session-profile a:focus-visible,
+body #nav .nav-right #session-profile button:focus-visible,
 body #nav .nav-discord:focus-visible,
 body #nav .burger-menu:focus-visible {
   outline: 2px solid #fbb7fb;
@@ -439,6 +449,7 @@ body #nav .burger-menu:focus-visible {
   body #nav .burger-menu .bar,
   body #nav .nav-links li a,
   body #nav .nav-right #session-profile a,
+  body #nav .nav-right #session-profile button,
   body #nav .nav-discord,
   body #nav .nav-brand img {
     transition: none;
@@ -1382,7 +1393,8 @@ footer a {
     padding: 0 14px;
   }
   body #nav .nav-links li a,
-  body #nav .nav-right #session-profile a {
+  body #nav .nav-right #session-profile a,
+  body #nav .nav-right #session-profile button {
     padding: 9px 10px;
   }
   body #nav .nav-discord {
@@ -1433,9 +1445,15 @@ footer a {
     padding: 10px 14px;
   }
   body #nav .nav-links li a,
-  body #nav .nav-right #session-profile a {
+  body #nav .nav-right #session-profile a,
+  body #nav .nav-right #session-profile button {
     font-size: 1.05em;
     padding: 13px 16px;
+  }
+  body #nav .nav-right #session-profile button {
+    width: 100%;
+    text-align: left;
+    box-sizing: border-box;
   }
   body #nav .nav-right {
     flex-direction: column;

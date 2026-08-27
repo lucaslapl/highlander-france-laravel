@@ -5,7 +5,7 @@
 
 @push('styles')
 @once
-<link rel="stylesheet" href="/_css/profile.css">
+<link rel="stylesheet" href="{{ hlfr_asset('/_css/profile.css') }}">
 @endonce
 @endpush
 

@@ -150,6 +150,7 @@ final class PlayerRepository
                 'pi.display_name',
                 'pi.avatar',
                 'pi.country',
+                'pi.country_locked',
                 'hl.division_label AS hl_division',
                 'six.division_label AS div6_division',
             );
