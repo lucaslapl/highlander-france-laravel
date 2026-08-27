@@ -28,10 +28,12 @@ return new class extends Migration
             $table->unsignedTinyInteger('placement')->nullable()->default(null);
             $table->string('playoff_round', 50)->nullable()->default(null);
             $table->boolean('won_playoff')->default(false);
+            $table->unsignedInteger('season_time')->default(0);
             $table->unsignedInteger('computed_at');
 
             $table->primary(['steamid', 'competition_id']);
             $table->index('game_mode');
+            $table->index(['steamid', 'season_time']);
         });
     }
 

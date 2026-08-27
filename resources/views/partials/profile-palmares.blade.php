@@ -6,6 +6,7 @@
 
     $grouped = $validPalmares->groupBy('game_mode');
     $modeLabels = ['9v9' => 'Highlander', '6s' => '6v6'];
+    $modeOrder = ['9v9', '6s'];
 
     $placementIcons = [
         1 => ['icon' => 'fa-solid fa-trophy', 'class' => 'palmares-gold',   'label' => '1er'],
@@ -17,12 +18,14 @@
 <div class="profile-palmares">
     <h4><i class="fa-solid fa-trophy"></i> Palmarès</h4>
 
-    @foreach ($grouped as $mode => $entries)
+    @foreach ($modeOrder as $mode)
+        @if (! isset($grouped[$mode]))
+            @continue
+        @endif
+
         @php
-            $sorted = $entries->sortBy([
-                fn ($a, $b) => ($b['computed_at'] ?? 0) <=> ($a['computed_at'] ?? 0),
-                fn ($a, $b) => ($a['tier'] ?? 0) <=> ($b['tier'] ?? 0),
-            ])->values();
+            $entries = $grouped[$mode];
+            $sorted = $entries->sortByDesc('season_time')->values();
         @endphp
 
         <div class="palmares-section">
@@ -34,7 +37,6 @@
                     $playoffRound = $entry['playoff_round'] ?? null;
                     $wonPlayoff = !empty($entry['won_playoff']);
 
-                    // Grand Finals gagnées → 1ère place, perdues → 2ème place.
                     if ($placement === null && $playoffRound !== null) {
                         if ($wonPlayoff && preg_match('/grand\s*final/i', $playoffRound)) {
                             $placement = 1;

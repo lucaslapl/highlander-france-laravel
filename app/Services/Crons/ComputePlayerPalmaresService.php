@@ -379,7 +379,6 @@ final class ComputePlayerPalmaresService
 
         $results = $this->fetchResults($steamid64);
         if ($results === []) {
-            // Aucun résultat : purger un éventuel ancien palmarès.
             $this->db->prepare('DELETE FROM player_palmares WHERE steamid = ?')->execute([$steamid3]);
             return;
         }
@@ -405,21 +404,26 @@ final class ComputePlayerPalmaresService
             $byCompetition[$compId]['matches'][] = $r;
         }
 
-        // 2. Pour chaque compétition, déterminer le placement et le playoff.
+        // 2. Pour chaque compétition, déterminer le placement, le playoff et le temps max.
         $entries = [];
 
         foreach ($byCompetition as $compId => $comp) {
             $info = $comp['info'];
 
-            // Fetch les tables pour le classement final.
             $placement = $this->resolvePlacement($compId, $info['team_id']);
-
-            // Détecter le meilleur round de playoffs.
             [$playoffRound, $wonPlayoff] = $this->bestPlayoffRound($comp['matches']);
 
-            // Ne garder que les saisons avec un résultat positif.
             if ($placement === null && $playoffRound === null) {
                 continue;
+            }
+
+            // Timestamp max des matches de cette compétition (tri chronologique).
+            $seasonTime = 0;
+            foreach ($comp['matches'] as $m) {
+                $t = (int) ($m['time'] ?? 0);
+                if ($t > $seasonTime) {
+                    $seasonTime = $t;
+                }
             }
 
             $entries[] = [
@@ -434,17 +438,22 @@ final class ComputePlayerPalmaresService
                 'placement' => $placement,
                 'playoff_round' => $playoffRound,
                 'won_playoff' => $wonPlayoff ? 1 : 0,
+                'season_time' => $seasonTime,
                 'computed_at' => time(),
             ];
         }
 
-        // 3. UPSERT dans la table.
+        // 3. Dédupliquer : si deux entrées appartiennent à la même saison logique
+        //    (ex. saison régulière + playoffs séparés), ne garder que la meilleure.
+        $entries = $this->deduplicateBySeason($entries);
+
+        // 4. UPSERT dans la table.
         $deleteStmt = $this->db->prepare('DELETE FROM player_palmares WHERE steamid = ?');
         $insertStmt = $this->db->prepare(
             'REPLACE INTO player_palmares
                 (steamid, competition_id, game_mode, competition_name, team_name, team_id,
-                 division_name, tier, placement, playoff_round, won_playoff, computed_at)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
+                 division_name, tier, placement, playoff_round, won_playoff, season_time, computed_at)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
         );
 
         $this->db->beginTransaction();
@@ -465,6 +474,7 @@ final class ComputePlayerPalmaresService
                     $e['placement'],
                     $e['playoff_round'],
                     $e['won_playoff'],
+                    $e['season_time'],
                     $e['computed_at'],
                 ]);
             }
@@ -474,6 +484,128 @@ final class ComputePlayerPalmaresService
             $this->db->rollBack();
             throw $e;
         }
+    }
+
+    /**
+     * Déduplique les entrées qui appartiennent à la même saison logique.
+     *
+     * ETF2L crée parfois deux compétitions distinctes pour une même saison :
+     * la saison régulière (ex. "6v6 Season 50 (Autumn 2025)") et les playoffs
+     * (ex. "6v6 Season 50 (Autumn 2025): Division 3 Playoffs"). On regroupe
+     * par clé de saison normalisée et on ne garde que la meilleure entrée.
+     *
+     * @param  array<int, array<string, mixed>>  $entries
+     * @return array<int, array<string, mixed>>
+     */
+    private function deduplicateBySeason(array $entries): array
+    {
+        if ($entries === []) {
+            return [];
+        }
+
+        $grouped = [];
+        foreach ($entries as $e) {
+            $key = $this->seasonKey($e['game_mode'], $e['competition_name']);
+            $grouped[$key][] = $e;
+        }
+
+        $result = [];
+        foreach ($grouped as $group) {
+            if (count($group) === 1) {
+                $result[] = $group[0];
+                continue;
+            }
+
+            // Priorité : playoff_round (selon PLAYOFF_PATTERNS) > placement.
+            $best = null;
+            foreach ($group as $e) {
+                if ($best === null) {
+                    $best = $e;
+                    continue;
+                }
+                $best = $this->betterEntry($best, $e);
+            }
+
+            if ($best !== null) {
+                $result[] = $best;
+            }
+        }
+
+        return $result;
+    }
+
+    /**
+     * Détermine si $a est meilleur que $b pour le palmarès.
+     * Un round de playoffs bat une simple absence de round.
+     * Entre deux rounds, celui qui est le plus prestigieux l'emporte.
+     * En cas d'égalité round, la victoire compte. Sinon, le placement le plus bas.
+     */
+    private function betterEntry(array $a, array $b): array
+    {
+        $roundA = $a['playoff_round'];
+        $roundB = $b['playoff_round'];
+        $placeA = $a['placement'];
+        $placeB = $b['placement'];
+
+        // Un round de playoffs est toujours meilleur qu'aucun round.
+        if ($roundA !== null && $roundB === null) {
+            return $a;
+        }
+        if ($roundB !== null && $roundA === null) {
+            return $b;
+        }
+
+        // Les deux ont un round : comparer le prestige.
+        if ($roundA !== null && $roundB !== null) {
+            $prio = array_values(self::PLAYOFF_PATTERNS);
+            $idxA = array_search($roundA, $prio, true);
+            $idxB = array_search($roundB, $prio, true);
+            $idxA = $idxA !== false ? $idxA : count($prio);
+            $idxB = $idxB !== false ? $idxB : count($prio);
+
+            if ($idxA !== $idxB) {
+                return $idxA < $idxB ? $a : $b; // Index plus bas = plus prestigieux.
+            }
+
+            // Même round : préférer celui qui l'a gagné.
+            if ($a['won_playoff'] !== $b['won_playoff']) {
+                return $a['won_playoff'] ? $a : $b;
+            }
+        }
+
+        // Pas de round, ou rounds identiques : comparer le placement.
+        if ($placeA !== null && $placeB === null) {
+            return $a;
+        }
+        if ($placeB !== null && $placeA === null) {
+            return $b;
+        }
+        if ($placeA !== null && $placeB !== null) {
+            return $placeA <= $placeB ? $a : $b; // Plus bas = mieux.
+        }
+
+        // Aucun des deux n'a ni round ni placement — garder le plus récent.
+        return ($a['season_time'] ?? 0) >= ($b['season_time'] ?? 0) ? $a : $b;
+    }
+
+    /**
+     * Clé de saison normalisée pour détecter les doublons.
+     *
+     * Extrait le nom de base de la saison en retirant les parenthèses
+     * (ex. "(Autumn 2025)") et les suffixes après ":" (ex. ": Division 3 Playoffs").
+     * Cela permet de regrouper "6v6 Season 50 (Autumn 2025)" et
+     * "6v6 Season 50 (Autumn 2025): Division 3 Playoffs" sous la même clé.
+     */
+    private function seasonKey(string $gameMode, string $competitionName): string
+    {
+        $name = $competitionName;
+        // Retirer les parenthèses et leur contenu : "(Spring 2026)", "(Autumn 2025)", etc.
+        $name = preg_replace('/\s*\([^)]*\)/u', '', $name);
+        // Retirer les suffixes après ":" : ": Premiership", ": Division 3 Playoffs", etc.
+        $name = preg_replace('/\s*:.*$/u', '', $name);
+        $name = trim($name);
+
+        return $gameMode.'|'.$name;
     }
 
     /**
