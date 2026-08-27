@@ -53,15 +53,15 @@ final class ComputePlayerPalmaresService
      * Première regex qui matche dans la chaîne "round" est retenue.
      */
     private const PLAYOFF_PATTERNS = [
-        '/grand\s*final/i' => 'Grand Finals',
-        '/upper\s*bracket\s*final/i' => 'Upper Bracket Finals',
-        '/winner.?s?.?bracket.*final/i' => 'Upper Bracket Finals',
-        '/lower\s*bracket\s*final/i' => 'Lower Bracket Finals',
-        '/loser.?s?.?bracket.*final/i' => 'Lower Bracket Finals',
-        '/bracket\s*final/i' => 'Bracket Finals',
-        '/final/i' => 'Finals',
-        '/semi.?final/i' => 'Semi-Finals',
-        '/quarter.?final/i' => 'Quarter-Finals',
+        '/grand\s*final/i' => 'Grande Finale',
+        '/upper\s*bracket\s*final/i' => 'Finale Upper Bracket',
+        '/winner.?s?.?bracket.*final/i' => 'Finale Upper Bracket',
+        '/lower\s*bracket\s*final/i' => 'Finale Lower Bracket',
+        '/loser.?s?.?bracket.*final/i' => 'Finale Lower Bracket',
+        '/bracket\s*final/i' => 'Finale de bracket',
+        '/final/i' => 'Finale',
+        '/semi.?final/i' => 'Demi-finale',
+        '/quarter.?final/i' => 'Quart de Finale',
         '/playoff/i' => 'Playoffs',
     ];
 
