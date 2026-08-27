@@ -68,19 +68,19 @@ final class ComputePlayerPalmaresService
     ];
 
     /**
-     * Ordre de prestige des rounds (du moins prestigieux au plus prestigieux).
-     * Index 0 = moins prestigieux. Utilisé par betterEntry() et bestPlayoffRound()
-     * pour départager deux rounds : index plus bas = moins prestigieux.
+     * Ordre de prestige des rounds (du plus prestigieux au moins prestigieux).
+     * Index 0 = plus prestigieux. Utilisé par betterEntry() et bestPlayoffRound()
+     * pour départager deux rounds : index plus bas = plus prestigieux.
      */
     private const PLAYOFF_PRESTIGE = [
-        'Playoffs',
-        'Quart de Finale',
-        'Demi-finale',
-        'Finale',
-        'Finale de bracket',
-        'Finale Lower Bracket',
-        'Finale Upper Bracket',
-        'Grande Finale',
+        'Grande Finale',        // 0
+        'Finale Upper Bracket', // 1
+        'Finale Lower Bracket', // 2
+        'Finale de bracket',    // 3
+        'Finale',               // 4
+        'Demi-finale',          // 5
+        'Quart de Finale',      // 6
+        'Playoffs',             // 7
     ];
 
     private \PDO $db;
@@ -449,11 +449,11 @@ final class ComputePlayerPalmaresService
             [$playoffRound, $wonPlayoff] = $this->bestPlayoffRound($comp['matches']);
 
             // Inférer le placement à partir du round de playoffs si non résolu par les tables.
-            // Grande Finale gagnée → 1er, perdue → 2ème. Finale gagnée → 1er, perdue → 2ème.
+            // Grande Finale ou Finale gagnée → 1er, perdue → 2ème.
             if ($placement === null && $playoffRound !== null) {
                 if ($wonPlayoff && in_array($playoffRound, ['Grande Finale', 'Finale'], true)) {
                     $placement = 1;
-                } elseif (! $wonPlayoff && $playoffRound === 'Grande Finale') {
+                } elseif (! $wonPlayoff && in_array($playoffRound, ['Grande Finale', 'Finale'], true)) {
                     $placement = 2;
                 }
             }

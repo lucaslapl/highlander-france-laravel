@@ -41,7 +41,7 @@
                     if ($placement === null && $playoffRound !== null) {
                         if ($wonPlayoff && in_array($playoffRound, ['Grande Finale', 'Finale'], true)) {
                             $placement = 1;
-                        } elseif (! $wonPlayoff && $playoffRound === 'Grande Finale') {
+                        } elseif (! $wonPlayoff && in_array($playoffRound, ['Grande Finale', 'Finale'], true)) {
                             $placement = 2;
                         }
                     }
