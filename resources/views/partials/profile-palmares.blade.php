@@ -31,6 +31,7 @@
         @php
             $entries = $grouped[$mode];
             $sorted = $entries->sortByDesc('season_time')->values();
+            $lastYear = null;
         @endphp
 
         <div class="palmares-section">
@@ -52,9 +53,17 @@
                     }
 
                     $pInfo = $placement !== null ? ($placementIcons[$placement] ?? null) : null;
+
+                    // Année de la saison : affichée une seule fois par année (groupe).
+                    $year = !empty($entry['season_time']) ? date('Y', (int) $entry['season_time']) : null;
+                    $isNewYear = $year !== null && $year !== $lastYear;
+                    if ($isNewYear) {
+                        $lastYear = $year;
+                    }
                 @endphp
 
                 <div class="palmares-entry">
+                    <span class="palmares-year {{ $isNewYear ? '' : 'palmares-year-empty' }}">{{ $year }}</span>
                     @if ($pInfo !== null)
                         <i class="{{ $pInfo['icon'] }} palmares-medal-icon {{ $pInfo['class'] }}" title="{{ $pInfo['label'] }}"></i>
                     @else

@@ -798,6 +798,17 @@ body #main #content .edit-card .btn-submit:hover {
   padding: 4px 0;
   flex-wrap: wrap;
 }
+.palmares-year {
+  width: 34px;
+  flex-shrink: 0;
+  text-align: right;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #999;
+}
+.palmares-year-empty {
+  visibility: hidden;
+}
 .palmares-medal-icon {
   font-size: 1rem;
   width: 20px;
