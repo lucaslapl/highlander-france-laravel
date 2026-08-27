@@ -64,12 +64,19 @@ final class ComputePlayerPalmaresService
         '/quarter.?final/i' => 'Quart de Finale',
         '/semi.?final/i' => 'Demi-finale',
         '/final/i' => 'Finale',
+        '/round\s*of\s*16/i' => 'Round de 16',
+        // Rounds de bracket non finaux (ex. "Lower Bracket Round 1", "Upper Bracker Round 1" — typo API).
+        // On les rapporte au badge générique "Playoffs" afin de ne pas perdre une participation.
+        '/lower\s*bracket/i' => 'Playoffs',
+        '/upper\s*br[ae]cker.*round/i' => 'Playoffs',
+        '/upper\s*bracket/i' => 'Playoffs',
+        '/bracket/i' => 'Playoffs',
         '/playoff/i' => 'Playoffs',
     ];
 
     /**
      * Ordre de prestige des rounds (du plus prestigieux au moins prestigieux).
-     * Index 0 = plus prestigieux. Utilisé par betterEntry() et bestPlayoffRound()
+     * Index 0 = plus prestigieux. Utilisé par bestPlayoffRound() et mergeSeasonEntries()
      * pour départager deux rounds : index plus bas = plus prestigieux.
      */
     private const PLAYOFF_PRESTIGE = [
@@ -80,7 +87,8 @@ final class ComputePlayerPalmaresService
         'Finale',               // 4
         'Demi-finale',          // 5
         'Quart de Finale',      // 6
-        'Playoffs',             // 7
+        'Round de 16',          // 7
+        'Playoffs',             // 8
     ];
 
     private \PDO $db;
@@ -338,6 +346,36 @@ final class ComputePlayerPalmaresService
         ];
     }
 
+    /**
+     * Équipe représentative d'une compétition : retient les infos de l'équipe
+     * rencontrée le plus souvent. Repli sur la première si égalité, ce qui
+     * évite de chercher le ach avec la mauvaise équipe en cas de changement
+     * en cours de saison.
+     *
+     * @param  array<int, array<string, mixed>>  $infos
+     * @return array<string, mixed>
+     */
+    private function majorityInfo(array $infos): array
+    {
+        $counts = [];
+        foreach ($infos as $info) {
+            $teamId = (int) $info['team_id'];
+            $counts[$teamId] = ($counts[$teamId] ?? 0) + 1;
+        }
+        arsort($counts);
+        $bestTeamId = (int) array_key_first($counts);
+
+        if ($bestTeamId > 0) {
+            foreach ($infos as $info) {
+                if ((int) $info['team_id'] === $bestTeamId) {
+                    return $info;
+                }
+            }
+        }
+
+        return $infos[0];
+    }
+
     // ---------------------------------------------------------------
     // Run principal
     // ---------------------------------------------------------------
@@ -431,15 +469,24 @@ final class ComputePlayerPalmaresService
 
             if (! isset($byCompetition[$compId])) {
                 $byCompetition[$compId] = [
-                    'info' => $info,
+                    'infos' => [],
                     'matches' => [],
                 ];
             }
 
+            $byCompetition[$compId]['infos'][] = $info;
             $byCompetition[$compId]['matches'][] = $r;
         }
 
-        // 2. Pour chaque compétition, déterminer le placement, le playoff et le temps max.
+        // 2. Pour chaque compétition, déterminer l'équipe représentative.
+        //    Un joueur peut changer d'équipe en cours de saison : on retient
+        //    l'équipe majoritaire (la plus jouée) pour retrouver le bon ach.
+        foreach ($byCompetition as $compId => &$comp) {
+            $comp['info'] = $this->majorityInfo($comp['infos']);
+        }
+        unset($comp);
+
+        // 3. Pour chaque compétition, déterminer le placement, le playoff et le temps max.
         $entries = [];
 
         foreach ($byCompetition as $compId => $comp) {
@@ -447,6 +494,10 @@ final class ComputePlayerPalmaresService
 
             $placement = $this->resolvePlacement($compId, $info['team_id']);
             [$playoffRound, $wonPlayoff] = $this->bestPlayoffRound($comp['matches']);
+
+            error_log("palmares: comp {$compId} '".$info['competition_name']."' [".$info['team_name'].'] → '
+                .($placement !== null ? "place {$placement}" : 'place aucun')
+                .', '.($playoffRound ?? 'round aucun').($wonPlayoff ? ' (gagné)' : ''));
 
             // Inférer le placement à partir du round de playoffs si non résolu par les tables.
             // Grande Finale ou Finale gagnée → 1er, perdue → 2ème.
@@ -488,11 +539,11 @@ final class ComputePlayerPalmaresService
             ];
         }
 
-        // 3. Dédupliquer : si deux entrées appartiennent à la même saison logique
-        //    (ex. saison régulière + playoffs séparés), ne garder que la meilleure.
+        // 4. Dédupliquer : si deux entrées appartiennent à la même saison logique
+        //    (ex. saison régulière + playoffs séparés), fusionner médaille + round.
         $entries = $this->deduplicateBySeason($entries);
 
-        // 4. UPSERT dans la table.
+        // 5. UPSERT dans la table.
         $deleteStmt = $this->db->prepare('DELETE FROM player_palmares WHERE steamid = ?');
         $insertStmt = $this->db->prepare(
             'REPLACE INTO player_palmares
@@ -560,84 +611,78 @@ final class ComputePlayerPalmaresService
                 $result[] = $group[0];
                 continue;
             }
-
-            // Priorité : playoff_round (selon PLAYOFF_PATTERNS) > placement.
-            $best = null;
-            foreach ($group as $e) {
-                if ($best === null) {
-                    $best = $e;
-                    continue;
-                }
-                $best = $this->betterEntry($best, $e);
-            }
-
-            if ($best !== null) {
-                $result[] = $best;
-            }
+            array_push($result, ...$this->mergeSeasonEntries($group));
         }
 
         return $result;
     }
 
     /**
-     * Détermine si $a est meilleur que $b pour le palmarès.
-     * Un round de playoffs bat une simple absence de round.
-     * Entre deux rounds, celui qui est le plus prestigieux l'emporte.
-     * En cas d'égalité round, la victoire compte. Sinon, le placement le plus bas.
+     * Fusionne les entrées d'une même saison logique (saison régulière +
+     * playoffs séparés, ou deux divisions). Une médaille (placement) et un
+     * round de playoffs sont complémentaires : on conserve les deux.
+     *
+     * Règle "plusieurs podiums" : si au moins deux entrées portent un placement
+     * (ex. deux divisions distinctes de la même saison), on les garde telles
+     * quelles — chacune garde sa propre médaille et son round.
+     *
+     * Sinon, on produit une entrée unique = meilleure médaille + round le plus
+     * prestigieux atteint, avec la métadonnée (équipe/division) de l'entrée porteuse
+     * de la médaille (repli : celle du round).
+     *
+     * @param  array<int, array<string, mixed>>  $group
+     * @return array<int, array<string, mixed>>
      */
-    private function betterEntry(array $a, array $b): array
+    private function mergeSeasonEntries(array $group): array
     {
-        $roundA = $a['playoff_round'];
-        $roundB = $b['playoff_round'];
-        $placeA = $a['placement'];
-        $placeB = $b['placement'];
+        $banner = $group[0]['team_name'];
 
-        // Un round de playoffs est toujours meilleur qu'aucun round.
-        if ($roundA !== null && $roundB === null) {
-            return $a;
-        }
-        if ($roundB !== null && $roundA === null) {
-            return $b;
+        $podium = array_values(array_filter($group, static fn ($e): bool => $e['placement'] !== null));
+        if (count($podium) >= 2) {
+            error_log("palmares: saison '".$group[0]['competition_name']."' — ".count($podium).' podiums distincts conservés ('.$banner.').');
+            return $podium;
         }
 
-        // Les deux ont un round : comparer le prestige.
-        if ($roundA !== null && $roundB !== null) {
-            $idxA = array_search($roundA, self::PLAYOFF_PRESTIGE, true);
-            $idxB = array_search($roundB, self::PLAYOFF_PRESTIGE, true);
-            $idxA = $idxA !== false ? $idxA : count(self::PLAYOFF_PRESTIGE);
-            $idxB = $idxB !== false ? $idxB : count(self::PLAYOFF_PRESTIGE);
+        $prestigeMap = array_flip(self::PLAYOFF_PRESTIGE);
 
-            if ($idxA !== $idxB) {
-                return $idxA < $idxB ? $a : $b; // Index plus bas = plus prestigieux.
+        $bestPlace = null;
+        $bestPlaceEntry = null;
+        $bestRound = null;
+        $bestRoundEntry = null;
+        $bestPrestige = PHP_INT_MAX;
+        $maxTime = 0;
+
+        foreach ($group as $e) {
+            $maxTime = max($maxTime, (int) $e['season_time']);
+
+            if ($e['placement'] !== null && ($bestPlace === null || $e['placement'] < $bestPlace)) {
+                $bestPlace = $e['placement'];
+                $bestPlaceEntry = $e;
             }
 
-            // Même round : préférer celui qui l'a gagné.
-            if ($a['won_playoff'] !== $b['won_playoff']) {
-                return $a['won_playoff'] ? $a : $b;
-            }
-
-            // Même round, même résultat : préférer l'entrée qui a un round de playoffs
-            // (compétition playoffs) sur celle qui n'en a pas (saison régulière + placement).
-            $aHasRound = $a['playoff_round'] !== null;
-            $bHasRound = $b['playoff_round'] !== null;
-            if ($aHasRound !== $bHasRound) {
-                return $aHasRound ? $a : $b;
+            if ($e['playoff_round'] !== null) {
+                $prestige = $prestigeMap[$e['playoff_round']] ?? count(self::PLAYOFF_PRESTIGE);
+                if ($prestige < $bestPrestige) {
+                    $bestPrestige = $prestige;
+                    $bestRound = $e['playoff_round'];
+                    $bestRoundEntry = $e;
+                }
             }
         }
 
-        // Pas de round, ou rounds identiques : comparer le placement.
-        if ($placeA !== null && $placeB === null) {
-            return $a;
-        }
-        if ($placeB !== null && $placeA === null) {
-            return $b;
-        }
-        if ($placeA !== null && $placeB !== null) {
-            return $placeA <= $placeB ? $a : $b; // Plus bas = mieux.
-        }
+        $source = $bestPlaceEntry ?? $bestRoundEntry ?? $group[0];
+        $merged = $source;
+        $merged['placement'] = $bestPlace;
+        $merged['playoff_round'] = $bestRound;
+        $merged['won_playoff'] = $bestRoundEntry !== null
+            ? (int) $bestRoundEntry['won_playoff']
+            : (int) ($source['won_playoff'] ?? 0);
+        $merged['season_time'] = $maxTime;
 
-        // Aucun des deux n'a ni round ni placement — garder le plus récent.
-        return ($a['season_time'] ?? 0) >= ($b['season_time'] ?? 0) ? $a : $b;
+        error_log("palmares: saison '".$source['competition_name']."' fusionnée → place=".($merged['placement'] ?? 'aucun')
+            .', round='.($merged['playoff_round'] ?? 'aucun').' ('.$source['team_name'].').');
+
+        return [$merged];
     }
 
     /**
