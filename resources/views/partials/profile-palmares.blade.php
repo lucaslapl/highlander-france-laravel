@@ -13,6 +13,10 @@
         2 => ['icon' => 'fa-solid fa-medal',  'class' => 'palmares-silver', 'label' => '2ème'],
         3 => ['icon' => 'fa-solid fa-award',  'class' => 'palmares-bronze', 'label' => '3ème'],
     ];
+
+    // L'API ETF2L renvoie des noms déjà encodés en entités HTML ("&amp;", "&#039;", …).
+    // On décode d'abord pour éviter un double-échappement (affichage littéral de "&amp;").
+    $esc = fn ($s) => e(html_entity_decode((string) $s, ENT_QUOTES | ENT_HTML5, 'UTF-8'));
 @endphp
 
 <div class="profile-palmares">
@@ -57,15 +61,15 @@
                     @endif
 
                     <span class="palmares-text">
-                        <strong>{{ e($entry['competition_name']) }}</strong>
-                        <span class="palmares-division">{{ e($entry['division_name']) }}</span>
+                        <strong>{{ $esc($entry['competition_name']) }}</strong>
+                        <span class="palmares-division">{{ $esc($entry['division_name']) }}</span>
                         <span class="palmares-sep">·</span>
-                        <span class="palmares-team">{{ e($entry['team_name']) }}</span>
+                        <span class="palmares-team">{{ $esc($entry['team_name']) }}</span>
                     </span>
 
                     @if ($playoffRound !== null)
                         <span class="palmares-playoff {{ $wonPlayoff ? 'palmares-playoff-won' : '' }}">
-                            {{ e($playoffRound) }}
+                            {{ $esc($playoffRound) }}
                             @if ($wonPlayoff)
                                 <i class="fa-solid fa-check"></i>
                             @endif
