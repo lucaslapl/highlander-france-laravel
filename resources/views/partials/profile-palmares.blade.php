@@ -20,8 +20,8 @@
     @foreach ($grouped as $mode => $entries)
         @php
             $sorted = $entries->sortBy([
-                fn ($a, $b) => ($a['tier'] ?? 0) <=> ($b['tier'] ?? 0),
                 fn ($a, $b) => ($b['computed_at'] ?? 0) <=> ($a['computed_at'] ?? 0),
+                fn ($a, $b) => ($a['tier'] ?? 0) <=> ($b['tier'] ?? 0),
             ])->values();
         @endphp
 
@@ -33,6 +33,16 @@
                     $placement = $entry['placement'] ?? null;
                     $playoffRound = $entry['playoff_round'] ?? null;
                     $wonPlayoff = !empty($entry['won_playoff']);
+
+                    // Grand Finals gagnées → 1ère place, perdues → 2ème place.
+                    if ($placement === null && $playoffRound !== null) {
+                        if ($wonPlayoff && preg_match('/grand\s*final/i', $playoffRound)) {
+                            $placement = 1;
+                        } elseif (! $wonPlayoff && preg_match('/grand\s*final/i', $playoffRound)) {
+                            $placement = 2;
+                        }
+                    }
+
                     $pInfo = $placement !== null ? ($placementIcons[$placement] ?? null) : null;
                 @endphp
 

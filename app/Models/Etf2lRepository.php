@@ -112,8 +112,8 @@ final class Etf2lRepository
         return DB::table('player_palmares')
             ->where('steamid', $steamid3)
             ->orderBy('game_mode')
+            ->orderByDesc('computed_at')
             ->orderBy('tier')
-            ->orderBy('computed_at', 'desc')
             ->get()
             ->map(static fn ($row): array => (array) $row)
             ->all();
