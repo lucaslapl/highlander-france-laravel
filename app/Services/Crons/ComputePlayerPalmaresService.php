@@ -68,18 +68,19 @@ final class ComputePlayerPalmaresService
     ];
 
     /**
-     * Ordre de prestige des rounds (du plus prestigieux au moins prestigieux).
-     * Utilisé par betterEntry() pour départager deux entrées de même saison.
+     * Ordre de prestige des rounds (du moins prestigieux au plus prestigieux).
+     * Index 0 = moins prestigieux. Utilisé par betterEntry() et bestPlayoffRound()
+     * pour départager deux rounds : index plus bas = moins prestigieux.
      */
     private const PLAYOFF_PRESTIGE = [
-        'Grande Finale',
-        'Finale Upper Bracket',
-        'Finale Lower Bracket',
-        'Finale de bracket',
-        'Finale',
-        'Demi-finale',
-        'Quart de Finale',
         'Playoffs',
+        'Quart de Finale',
+        'Demi-finale',
+        'Finale',
+        'Finale de bracket',
+        'Finale Lower Bracket',
+        'Finale Upper Bracket',
+        'Grande Finale',
     ];
 
     private \PDO $db;
@@ -222,26 +223,43 @@ final class ComputePlayerPalmaresService
      * Détermine le meilleur round de playoffs atteint par le joueur dans une
      * compétition, et s'il l'a remporté.
      *
+     * Parcourt TOUS les matches et retourne le round le plus prestigieux
+     * parmi ceux qui matchent une regex de PLAYOFF_PATTERNS.
+     *
      * @param  array<int, array<string, mixed>>  $compResults
      * @return array{0: string|null, 1: bool}  [round, won]
      */
     private function bestPlayoffRound(array $compResults): array
     {
-        foreach (self::PLAYOFF_PATTERNS as $pattern => $label) {
-            foreach ($compResults as $r) {
-                $round = (string) ($r['round'] ?? '');
+        $bestLabel = null;
+        $bestWon = false;
+        $bestPrestige = PHP_INT_MAX;
+
+        $prestigeMap = array_flip(self::PLAYOFF_PRESTIGE);
+
+        foreach ($compResults as $r) {
+            $round = (string) ($r['round'] ?? '');
+
+            foreach (self::PLAYOFF_PATTERNS as $pattern => $label) {
                 if (preg_match($pattern, $round) !== 1) {
                     continue;
                 }
 
-                // Déterminer si le joueur a gagné ce round.
-                $won = $this->matchWonByPlayer($r);
+                $prestige = $prestigeMap[$label] ?? count(self::PLAYOFF_PRESTIGE);
 
-                return [$label, $won];
+                if ($prestige < $bestPrestige) {
+                    $bestPrestige = $prestige;
+                    $bestLabel = $label;
+                    $bestWon = $this->matchWonByPlayer($r);
+                }
+
+                // Passer au match suivant dès qu'un pattern matche
+                // (chaque round ne peut correspondre qu'à un seul label).
+                break;
             }
         }
 
-        return [null, false];
+        return [$bestLabel, $bestWon];
     }
 
     /**
@@ -596,6 +614,14 @@ final class ComputePlayerPalmaresService
             // Même round : préférer celui qui l'a gagné.
             if ($a['won_playoff'] !== $b['won_playoff']) {
                 return $a['won_playoff'] ? $a : $b;
+            }
+
+            // Même round, même résultat : préférer l'entrée qui a un round de playoffs
+            // (compétition playoffs) sur celle qui n'en a pas (saison régulière + placement).
+            $aHasRound = $a['playoff_round'] !== null;
+            $bHasRound = $b['playoff_round'] !== null;
+            if ($aHasRound !== $bHasRound) {
+                return $aHasRound ? $a : $b;
             }
         }
 
