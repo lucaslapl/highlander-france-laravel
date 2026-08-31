@@ -64,10 +64,17 @@
                         </a>
                     @endif
                 </div>
-                <a class="nav-discord discord-link" href="https://discord.gg/BMuj3cqUFt" target="_blank" rel="noopener">
-                    <i class="fa-brands fa-discord" aria-hidden="true"></i>
-                    <span class="discord-label">Discord</span>
-                </a>
+                <div class="nav-socials" aria-label="Réseaux sociaux">
+                    <a class="nav-social nav-social--discord" href="https://discord.gg/BMuj3cqUFt" target="_blank" rel="noopener" aria-label="Discord Highlander France">
+                        <i class="fa-brands fa-discord" aria-hidden="true"></i>
+                    </a>
+                    <a class="nav-social nav-social--twitch" href="https://www.twitch.tv/highlanderfrance" target="_blank" rel="noopener" aria-label="Chaîne Twitch highlanderfrance">
+                        <i class="fa-brands fa-twitch" aria-hidden="true"></i>
+                    </a>
+                    <a class="nav-social nav-social--youtube" href="https://www.youtube.com/@HighlanderFrance" target="_blank" rel="noopener" aria-label="Chaîne YouTube @HighlanderFrance">
+                        <i class="fa-brands fa-youtube" aria-hidden="true"></i>
+                    </a>
+                </div>
             </div>
         </div>
     </div>

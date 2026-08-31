@@ -423,6 +423,47 @@ body #nav .nav-right #session-profile .btn-steam-login:active {
   transform: translateY(1px);
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.4);
 }
+body #nav .nav-socials {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+body #nav .nav-social {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  text-decoration: none;
+  font-size: 1.05em;
+  color: #fff;
+  transition: background-color 0.25s, transform 0.25s;
+}
+body #nav .nav-social--discord {
+  background-color: #5865f2;
+}
+body #nav .nav-social--discord:hover {
+  background-color: #6b75f5;
+  color: #fff;
+  transform: translateY(-1px);
+}
+body #nav .nav-social--twitch {
+  background-color: #9146ff;
+}
+body #nav .nav-social--twitch:hover {
+  background-color: #a66bff;
+  color: #fff;
+  transform: translateY(-1px);
+}
+body #nav .nav-social--youtube {
+  background-color: #ff0000;
+}
+body #nav .nav-social--youtube:hover {
+  background-color: #ff3333;
+  color: #fff;
+  transform: translateY(-1px);
+}
 body #nav .nav-discord {
   display: inline-flex;
   align-items: center;
@@ -445,6 +486,7 @@ body #nav .nav-links li a:focus-visible,
 body #nav .nav-right #session-profile a:focus-visible,
 body #nav .nav-right #session-profile button:focus-visible,
 body #nav .nav-discord:focus-visible,
+body #nav .nav-social:focus-visible,
 body #nav .burger-menu:focus-visible {
   outline: 2px solid #fbb7fb;
   outline-offset: 2px;
@@ -455,6 +497,7 @@ body #nav .burger-menu:focus-visible {
   body #nav .nav-right #session-profile a,
   body #nav .nav-right #session-profile button,
   body #nav .nav-discord,
+  body #nav .nav-social,
   body #nav .nav-brand img {
     transition: none;
   }

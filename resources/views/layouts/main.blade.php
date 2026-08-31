@@ -60,7 +60,9 @@
         "url": {!! json_encode(site_url(), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) !!},
         "logo": {!! json_encode(site_url() . '/_img/hf.webp', JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) !!},
         "sameAs": [
-            "https://discord.gg/BMuj3cqUFt"
+            "https://discord.gg/BMuj3cqUFt",
+            "https://www.twitch.tv/highlanderfrance",
+            "https://www.youtube.com/@HighlanderFrance"
         ]
     }
     </script>

@@ -25,6 +25,8 @@
                 <h4>Communauté</h4>
                 <ul>
                     <li><a href="https://discord.gg/BMuj3cqUFt" target="_blank" rel="noopener">Discord</a></li>
+                    <li><a href="https://www.twitch.tv/highlanderfrance" target="_blank" rel="noopener">Twitch</a></li>
+                    <li><a href="https://www.youtube.com/@HighlanderFrance" target="_blank" rel="noopener">YouTube</a></li>
                     <li><a href="https://reconnexion.tf" target="_blank" rel="noopener">reconnexion.tf</a></li>
                 </ul>
             </div>
