@@ -329,30 +329,60 @@ final class SyncEtf2lService
             }
         }
 
-        if ($candidates === []) {
-            return [];
+        $pending = [];
+        if ($candidates !== []) {
+            $placeholders = implode(',', array_fill(0, count($candidates), '?'));
+            $stmt = $this->db->prepare(
+                "SELECT match_id, map_results FROM etf2l_matches WHERE match_id IN ({$placeholders}) AND (map_results IS NULL OR map_results = '[]')"
+            );
+            $stmt->execute(array_keys($candidates));
+            foreach ($stmt->fetchAll(\PDO::FETCH_ASSOC) as $row) {
+                $mid = (int) $row['match_id'];
+                $isEmpty = ($row['map_results'] ?? null) === '[]';
+                $pending[$mid] = ['time' => $candidates[$mid] ?? 0, 'is_empty' => $isEmpty];
+            }
         }
 
-        $placeholders = implode(',', array_fill(0, count($candidates), '?'));
-        $stmt = $this->db->prepare(
-            "SELECT match_id FROM etf2l_matches WHERE match_id IN ({$placeholders}) AND map_results IS NULL"
-        );
-        $stmt->execute(array_keys($candidates));
+        $remaining = self::ENRICH_MAX_PER_RUN - count($pending);
+        if ($remaining > 0) {
+            $extraStmt = $this->db->prepare(
+                "SELECT match_id, match_date, map_results FROM etf2l_matches WHERE (map_results IS NULL OR map_results = '[]') AND match_date <= ? ORDER BY match_date DESC LIMIT {$remaining}"
+            );
+            $extraStmt->execute([$now]);
+            foreach ($extraStmt->fetchAll(\PDO::FETCH_ASSOC) as $row) {
+                $mid = (int) $row['match_id'];
+                if (!isset($pending[$mid])) {
+                    $isEmpty = ($row['map_results'] ?? null) === '[]';
+                    if ($isEmpty && (int) ($row['match_date'] ?? 0) < $now - 3 * 86400) {
+                        continue;
+                    }
+                    $pending[$mid] = ['time' => (int) ($row['match_date'] ?? 0), 'is_empty' => $isEmpty];
+                }
+            }
+        }
 
-        $pending = array_map('intval', $stmt->fetchAll(\PDO::FETCH_COLUMN));
         if ($pending === []) {
             return [];
         }
 
-        // Les plus récents d'abord (visibles en premier sur le site).
-        usort($pending, static fn (int $a, int $b): int => ($candidates[$b] ?? 0) <=> ($candidates[$a] ?? 0));
+        uksort($pending, static function (int $a, int $b) use ($pending): int {
+            $ta = $pending[$a]['time'] ?? 0;
+            $tb = $pending[$b]['time'] ?? 0;
+            if ($ta !== $tb) {
+                return $tb <=> $ta;
+            }
+            $ea = $pending[$a]['is_empty'] ? 1 : 0;
+            $eb = $pending[$b]['is_empty'] ? 1 : 0;
+            return $ea <=> $eb;
+        });
 
-        return array_slice($pending, 0, self::ENRICH_MAX_PER_RUN);
+        return array_slice(array_keys($pending), 0, self::ENRICH_MAX_PER_RUN);
     }
 
     private function enrichMapResults(array $matchIds): int
     {
         $updateStmt = $this->db->prepare('UPDATE etf2l_matches SET maps = COALESCE(?, maps), r1 = COALESCE(?, r1), r2 = COALESCE(?, r2), map_results = COALESCE(?, map_results) WHERE match_id = ?');
+        $overwriteEmptyStmt = $this->db->prepare("UPDATE etf2l_matches SET map_results = ? WHERE match_id = ? AND map_results = '[]'");
         $enriched = 0;
 
         foreach ($matchIds as $matchId) {
@@ -391,6 +421,21 @@ final class SyncEtf2lService
                 $mapResultsJson = $mapResults !== null
                     ? json_encode($mapResults, JSON_THROW_ON_ERROR)
                     : (($r1 !== null || $r2 !== null) ? '[]' : null);
+
+                if ($mapResultsJson !== null && $mapResultsJson !== '[]') {
+                    $overwriteEmptyStmt->execute([$mapResultsJson, (int) $matchId]);
+                    if ($overwriteEmptyStmt->rowCount() > 0) {
+                        $updateStmt->execute([
+                            $maps !== null ? json_encode(array_values((array) $maps), JSON_THROW_ON_ERROR) : null,
+                            $r1 !== null ? (int) $r1 : null,
+                            $r2 !== null ? (int) $r2 : null,
+                            null,
+                            (int) $matchId,
+                        ]);
+                        $enriched++;
+                        continue;
+                    }
+                }
 
                 $updateStmt->execute([
                     $maps !== null ? json_encode(array_values((array) $maps), JSON_THROW_ON_ERROR) : null,

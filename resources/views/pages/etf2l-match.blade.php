@@ -72,10 +72,12 @@
                         <span class="score-value">{{ (int)$map['team1'] }}</span>
                         <span class="score-sep">-</span>
                         <span class="score-value">{{ (int)$map['team2'] }}</span>
-                        @if ($map['golden_cap'])
+                        @if (!empty($map['golden_cap']))
                             <span class="badge-gc">Golden Cap</span>
                         @endif
                     </span>
+                @elseif (!empty($map['forfeit']) || !empty($mapsData['is_forfeit']))
+                    <span class="etf2l-map-score etf2l-map-pending" title="Forfait / score global uniquement">Forfait</span>
                 @else
                     <span class="etf2l-map-score etf2l-map-pending">À jouer</span>
                 @endif

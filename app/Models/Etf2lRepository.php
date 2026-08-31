@@ -198,16 +198,39 @@ final class Etf2lRepository
     {
         $maps = json_decode((string) ($match['maps'] ?? 'null'), true) ?? [];
         $results = json_decode((string) ($match['map_results'] ?? 'null'), true) ?? [];
-        $resultsByOrder = [];
-
-        foreach ($results as $r) {
-            $resultsByOrder[(int) ($r['match_order'] ?? 0)] = $r;
+        if (!is_array($maps)) {
+            $maps = [];
         }
+        if (!is_array($results)) {
+            $results = [];
+        }
+        $resultsByOrder = [];
+        foreach ($results as $r) {
+            if (!is_array($r)) {
+                continue;
+            }
+            if (isset($r['match_order'])) {
+                $resultsByOrder[(int) $r['match_order']] = $r;
+            }
+        }
+        $hasExplicitOrder = $resultsByOrder !== [];
+        $isZeroIndexed = isset($resultsByOrder[0]);
+        $r1 = isset($match['r1']) && $match['r1'] !== null ? (int) $match['r1'] : null;
+        $r2 = isset($match['r2']) && $match['r2'] !== null ? (int) $match['r2'] : null;
+        $isForfeit = $results === [] && ($r1 !== null || $r2 !== null) && $maps !== [];
 
         $list = [];
         foreach ($maps as $i => $map) {
             $order = $i + 1;
-            $result = $resultsByOrder[$order] ?? null;
+            $result = null;
+            if ($hasExplicitOrder) {
+                $result = $isZeroIndexed ? ($resultsByOrder[$i] ?? null) : ($resultsByOrder[$order] ?? null);
+                if ($result === null && isset($results[$i]) && is_array($results[$i]) && !isset($results[$i]['match_order'])) {
+                    $result = $results[$i];
+                }
+            } elseif (isset($results[$i]) && is_array($results[$i])) {
+                $result = $results[$i];
+            }
 
             $entry = [
                 'order' => $order,
@@ -216,9 +239,17 @@ final class Etf2lRepository
             ];
 
             if ($result !== null) {
-                $entry['team1'] = (int) ($result['clan1'] ?? 0);
-                $entry['team2'] = (int) ($result['clan2'] ?? 0);
-                $entry['golden_cap'] = (bool) ($result['golden_cap'] ?? false);
+                $c1 = $result['clan1'] ?? $result['score1'] ?? $result['team1'] ?? null;
+                $c2 = $result['clan2'] ?? $result['score2'] ?? $result['team2'] ?? null;
+                if ($c1 !== null || $c2 !== null) {
+                    $entry['team1'] = (int) ($c1 ?? 0);
+                    $entry['team2'] = (int) ($c2 ?? 0);
+                    $entry['golden_cap'] = (bool) ($result['golden_cap'] ?? $result['goldenCap'] ?? false);
+                } elseif ($isForfeit) {
+                    $entry['forfeit'] = true;
+                }
+            } elseif ($isForfeit) {
+                $entry['forfeit'] = true;
             }
 
             $list[] = $entry;
@@ -226,8 +257,9 @@ final class Etf2lRepository
 
         return [
             'maps' => $list,
-            'r1' => isset($match['r1']) && $match['r1'] !== null ? (int) $match['r1'] : null,
-            'r2' => isset($match['r2']) && $match['r2'] !== null ? (int) $match['r2'] : null,
+            'r1' => $r1,
+            'r2' => $r2,
+            'is_forfeit' => $isForfeit,
         ];
     }
 
