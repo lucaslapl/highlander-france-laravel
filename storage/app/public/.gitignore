@@ -1,2 +1,8 @@
 *
 !.gitignore
+!etf2l-maps/
+!etf2l-maps/.gitkeep
+!etf2l-maps/6v6/
+!etf2l-maps/6v6/.gitkeep
+!etf2l-maps/9v9/
+!etf2l-maps/9v9/.gitkeep

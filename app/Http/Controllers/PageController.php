@@ -118,6 +118,58 @@ final class PageController extends Controller
         ]);
     }
 
+    public function etf2lMaps(): View
+    {
+        $maps6v6 = [
+            ['name' => 'cp_sunshine', 'label' => 'cp_sunshine', 'file' => 'cp_sunshine.bsp'],
+            ['name' => 'cp_process_f12', 'label' => 'cp_process_f12', 'file' => 'cp_process_f12.bsp'],
+            ['name' => 'cp_gullywash_f9', 'label' => 'cp_gullywash_f9', 'file' => 'cp_gullywash_f9.bsp'],
+            ['name' => 'cp_metalworks_f7', 'label' => 'cp_metalworks_f7', 'file' => 'cp_metalworks_f7.bsp'],
+            ['name' => 'koth_govan_rc2', 'label' => 'koth_govan_rc2', 'file' => 'koth_govan_rc2.bsp'],
+            ['name' => 'cp_subbase_b3a', 'label' => 'cp_subbase_b3a', 'file' => 'cp_subbase_b3a.bsp'],
+            ['name' => 'koth_bagel_rc12', 'label' => 'koth_bagel_rc12', 'file' => 'koth_bagel_rc12.bsp'],
+            ['name' => 'cp_granary_pro_rc17a3', 'label' => 'cp_granary_pro_rc17a3', 'file' => 'cp_granary_pro_rc17a3.bsp'],
+            ['name' => 'koth_product_final', 'label' => 'koth_product_final', 'file' => 'koth_product_final.bsp'],
+        ];
+
+        $maps9v9 = [
+            ['name' => 'pl_swiftwater_final1', 'label' => 'pl_swiftwater_final1', 'file' => 'pl_swiftwater_final1.bsp'],
+            ['name' => 'pl_vigil_rc10', 'label' => 'pl_vigil_rc10', 'file' => 'pl_vigil_rc10.bsp'],
+            ['name' => 'cp_steel_f12', 'label' => 'cp_steel_f12', 'file' => 'cp_steel_f12.bsp'],
+            ['name' => 'pl_upward_f12', 'label' => 'pl_upward_f12', 'file' => 'pl_upward_f12.bsp'],
+            ['name' => 'koth_product_final', 'label' => 'koth_product_final', 'file' => 'koth_product_final.bsp'],
+            ['name' => 'koth_proot_b5b', 'label' => 'koth_proot_b5b', 'file' => 'koth_proot_b5b.bsp'],
+        ];
+
+        $buildList = static function (array $maps, string $sub): array {
+            return array_map(static function (array $m) use ($sub): array {
+                $path = "storage/etf2l-maps/{$sub}/{$m['file']}";
+                $abs = public_path($path);
+                $exists = is_file($abs);
+                $size = $exists ? filesize($abs) : null;
+
+                return $m + [
+                    'url' => asset($path),
+                    'exists' => $exists,
+                    'size' => $size,
+                    'size_human' => $size !== false && $size !== null ? number_format($size / 1048576, 1).' Mo' : null,
+                ];
+            }, $maps);
+        };
+
+        return view('pages.etf2l-maps', [
+            'title' => 'Highlander France - Maps ETF2L 6v6 & 9v9',
+            'description' => 'Toutes les maps officielles ETF2L de la saison en cours en 6v6 et Highlander 9v9, hébergées sur Highlander France. Téléchargement direct en .bsp.',
+            'breadcrumbs' => [
+                ['name' => 'Accueil', 'url' => site_url().'/'],
+                ['name' => 'ETF2L', 'url' => site_url().'/matchs'],
+                ['name' => 'Maps', 'url' => site_url().'/etf2l/maps'],
+            ],
+            'maps6v6' => $buildList($maps6v6, '6v6'),
+            'maps9v9' => $buildList($maps9v9, '9v9'),
+        ]);
+    }
+
     /**
      * Historique des matchs passés des équipes FR (GET /matchs).
      */
@@ -333,6 +385,7 @@ final class PageController extends Controller
                 '/hall-of-fame' => [0.8, 'daily'],
                 '/match-logs' => [0.8, 'daily'],
                 '/matchs' => [0.8, 'daily'],
+                '/etf2l/maps' => [0.7, 'weekly'],
                 '/confidentialite' => [0.3, 'yearly'],
             ];
 

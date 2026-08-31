@@ -47,6 +47,16 @@
                 <li><a href="/joueurs" class="{{ $currentPath === '/joueurs' ? 'active' : '' }}">Joueurs</a></li>
                 <li><a href="/hall-of-fame" class="{{ $currentPath === '/hall-of-fame' ? 'active' : '' }}">Hall of Fame</a></li>
                 <li><a href="/match-logs" class="{{ $currentPath === '/match-logs' ? 'active' : '' }}">Match Logs</a></li>
+                @php $isEtf2lActive = str_starts_with($currentPath, '/match') || str_starts_with($currentPath, '/etf2l'); @endphp
+                <li class="nav-dropdown{{ $isEtf2lActive ? ' is-active' : '' }}">
+                    <button type="button" class="nav-dropdown-toggle{{ $isEtf2lActive ? ' active' : '' }}" aria-expanded="false" aria-haspopup="true" aria-controls="etf2l-submenu">
+                        ETF2L <i class="fa-solid fa-chevron-down nav-dropdown-chevron" aria-hidden="true"></i>
+                    </button>
+                    <ul id="etf2l-submenu" class="nav-dropdown-menu" role="menu">
+                        <li role="none"><a role="menuitem" href="/matchs" class="{{ $currentPath === '/matchs' || str_starts_with($currentPath, '/match/') ? 'active' : '' }}">Matchs</a></li>
+                        <li role="none"><a role="menuitem" href="/etf2l/maps" class="{{ $currentPath === '/etf2l/maps' ? 'active' : '' }}">Maps</a></li>
+                    </ul>
+                </li>
             </ul>
 
             <div class="nav-right">

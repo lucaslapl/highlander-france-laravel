@@ -18,6 +18,12 @@
 /public/fonts-manifest.dev.json
 /public/hot
 /public/storage
+!/public/storage/etf2l-maps
+!/public/storage/etf2l-maps/.gitkeep
+!/public/storage/etf2l-maps/6v6
+!/public/storage/etf2l-maps/6v6/.gitkeep
+!/public/storage/etf2l-maps/9v9
+!/public/storage/etf2l-maps/9v9/.gitkeep
 /storage/*.key
 /storage/pail
 /storage/app/hlfr

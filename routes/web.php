@@ -24,6 +24,7 @@ Route::get('/log/{id}', [PageController::class, 'matchLog'])->whereNumber('id');
 Route::permanentRedirect('/log/match-log', '/match-logs');
 Route::get('/match/{id}', [PageController::class, 'etf2lMatch'])->whereNumber('id');
 Route::get('/matchs', [PageController::class, 'etf2lMatches']);
+Route::get('/etf2l/maps', [PageController::class, 'etf2lMaps']);
 Route::get('/confidentialite', [PageController::class, 'privacy']);
 Route::get('/sitemap.xml', [PageController::class, 'sitemap']);
 

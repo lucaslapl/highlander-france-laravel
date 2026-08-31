@@ -371,9 +371,145 @@ body #nav .nav-right #session-profile button:hover {
 }
 body #nav .nav-links li a.active,
 body #nav .nav-right #session-profile a.active,
-body #nav .nav-right #session-profile button.active {
+body #nav .nav-right #session-profile button.active,
+body #nav .nav-dropdown-toggle.active {
   background-color: rgba(255, 98, 194, 0.18);
   color: #ffc9ec;
+}
+body #nav .nav-dropdown {
+  position: relative;
+}
+body #nav .nav-dropdown-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 600;
+  font-size: 0.95em;
+  color: rgba(255, 255, 255, 0.85);
+  padding: 9px 14px;
+  border-radius: 10px;
+  border: none;
+  background: transparent;
+  font-family: inherit;
+  cursor: pointer;
+  transition: background-color 0.25s, color 0.25s;
+}
+body #nav .nav-dropdown-toggle:hover {
+  background-color: rgba(251, 183, 251, 0.12);
+  color: #fff;
+}
+body #nav .nav-dropdown-chevron {
+  font-size: 0.7em;
+  transition: transform 0.25s;
+}
+body #nav .nav-dropdown.open .nav-dropdown-chevron {
+  transform: rotate(180deg);
+}
+body #nav .nav-dropdown-menu {
+  display: none;
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 0;
+  min-width: 160px;
+  list-style: none;
+  margin: 0;
+  padding: 6px;
+  background: linear-gradient(205deg, rgb(58, 24, 58) 0%, rgb(24, 12, 28) 55%, rgb(64, 12, 60) 100%);
+  border: 1px solid rgba(251, 183, 251, 0.15);
+  border-radius: 12px;
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.45);
+  z-index: 910;
+}
+body #nav .nav-dropdown.open .nav-dropdown-menu {
+  display: block;
+}
+body #nav .nav-dropdown-menu li a {
+  display: block;
+  padding: 10px 14px;
+  border-radius: 8px;
+  font-size: 0.92em;
+}
+body #nav .nav-dropdown-menu li a:hover {
+  background-color: rgba(251, 183, 251, 0.12);
+  color: #fff;
+}
+body #nav .nav-dropdown-menu li a.active {
+  background-color: rgba(255, 98, 194, 0.18);
+  color: #ffc9ec;
+}
+.etf2l-maps-intro {
+  color: rgba(255, 255, 255, 0.78);
+  margin: 8px 0 22px;
+  line-height: 1.6;
+}
+.etf2l-maps-section {
+  margin: 28px 0;
+}
+.etf2l-maps-section h2 {
+  font-size: 1.35em;
+  margin-bottom: 14px;
+}
+.etf2l-maps-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 12px;
+}
+.etf2l-map-card {
+  background: rgba(0, 0, 0, 0.38);
+  border: 1px solid #38193d;
+  border-radius: 10px;
+  padding: 14px;
+  transition: border-color 0.25s;
+}
+.etf2l-map-card:hover {
+  border-color: #5f235f;
+}
+.etf2l-map-card.is-missing {
+  opacity: 0.72;
+}
+.etf2l-map-card-name {
+  font-weight: 700;
+  color: #fbb7fb;
+  font-size: 0.98em;
+  word-break: break-all;
+}
+.etf2l-map-card-file {
+  font-size: 0.82em;
+  color: rgba(255, 255, 255, 0.55);
+  margin: 4px 0 10px;
+}
+.etf2l-map-size {
+  color: rgba(255, 255, 255, 0.45);
+}
+.etf2l-map-dl {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  background: linear-gradient(135deg, #6b1a6b 0%, #8a2a8a 100%);
+  color: #fff;
+  text-decoration: none;
+  padding: 8px 14px;
+  border-radius: 8px;
+  font-weight: 600;
+  font-size: 0.88em;
+  transition: filter 0.2s;
+}
+.etf2l-map-dl:hover {
+  filter: brightness(1.12);
+  color: #fff;
+}
+.etf2l-map-missing {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.85em;
+  color: rgba(255, 255, 255, 0.5);
+  font-style: italic;
+}
+.etf2l-maps-help {
+  margin-top: 24px;
+  font-size: 0.88em;
+  color: rgba(255, 255, 255, 0.6);
 }
 body #nav .nav-live-badge {
   order: 2;
@@ -1483,6 +1619,25 @@ footer a {
     overflow-y: auto;
     visibility: visible;
     transition: max-height 0.35s ease;
+  }
+  body #nav .nav-dropdown-menu {
+    position: static;
+    display: none;
+    border: none;
+    box-shadow: none;
+    background: rgba(0, 0, 0, 0.22);
+    border-radius: 10px;
+    margin: 2px 0 2px 12px;
+    padding: 4px;
+  }
+  body #nav .nav-dropdown.open .nav-dropdown-menu {
+    display: block;
+  }
+  body #nav .nav-dropdown-toggle {
+    width: 100%;
+    justify-content: space-between;
+    font-size: 1.05em;
+    padding: 13px 16px;
   }
   body #nav .nav-links {
     order: 0;
