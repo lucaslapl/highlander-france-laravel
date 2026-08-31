@@ -144,8 +144,19 @@ final class PageController extends Controller
         $buildList = static function (array $maps, string $sub): array {
             return array_map(static function (array $m) use ($sub): array {
                 $path = "storage/etf2l-maps/{$sub}/{$m['file']}";
-                $abs = public_path($path);
-                $exists = is_file($abs);
+                $storageAbs = storage_path("app/public/etf2l-maps/{$sub}/{$m['file']}");
+                $publicAbs = public_path($path);
+                $abs = null;
+                if (is_file($storageAbs)) {
+                    $abs = $storageAbs;
+                    if (!is_file($publicAbs)) {
+                        @mkdir(dirname($publicAbs), 0755, true);
+                        @copy($storageAbs, $publicAbs);
+                    }
+                } elseif (is_file($publicAbs)) {
+                    $abs = $publicAbs;
+                }
+                $exists = $abs !== null;
                 $size = $exists ? filesize($abs) : null;
 
                 return $m + [
