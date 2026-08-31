@@ -33,8 +33,8 @@
     {
         "@@context": "https://schema.org",
         "@type": "WebSite",
-        "name": {{ json_encode(config('app.name'), JSON_UNESCAPED_UNICODE) }},
-        "url": {{ json_encode(site_url(), JSON_UNESCAPED_UNICODE) }},
+        "name": {!! json_encode(config('app.name'), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) !!},
+        "url": {!! json_encode(site_url(), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) !!},
         "inLanguage": "fr"
     }
     </script>
