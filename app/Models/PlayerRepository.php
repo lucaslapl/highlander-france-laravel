@@ -98,6 +98,24 @@ final class PlayerRepository
     }
 
     /**
+     * Derniers joueurs inscrits (created_at renseigné = au moins un login),
+     * les plus récents en premier.
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    public function latestRegistered(int $limit = 5): array
+    {
+        return DB::table('players_info')
+            ->select('steamid', 'name', 'display_name', 'avatar', 'country')
+            ->whereNotNull('created_at')
+            ->orderBy('created_at', 'desc')
+            ->limit(max(1, min($limit, 50)))
+            ->get()
+            ->map(static fn ($row): array => (array) $row)
+            ->all();
+    }
+
+    /**
      * Top 3 des classes les plus jouées pour un lot de joueurs (tous modes).
      *
      * @param  array<int, string>  $steamid3s

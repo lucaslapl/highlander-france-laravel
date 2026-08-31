@@ -8,16 +8,19 @@ use App\Models\Etf2lRepository;
 use App\Models\MatchLogRepository;
 use App\Models\PlayerRepository;
 use App\Services\Auth;
+use App\Services\CommunityNews;
 use App\Services\CountryFlags;
 use App\Services\FranceBadgeService;
 use App\Services\LiveMatches;
+use App\Services\LogsTfApi;
 use App\Services\MatchFormat;
 use App\Services\SteamId;
 use Illuminate\Contracts\View\View;
-use Illuminate\Support\Facades\Cache;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 
 final class PageController extends Controller
 {
@@ -27,6 +30,35 @@ final class PageController extends Controller
         $prochainsMatchs = $repo->upcomingMatches(5);
         $matchsRecents = $repo->recentlyFinishedMatches(48, 5);
 
+        // Sidebar : actualités communautaires + derniers inscrits.
+        // Chaque source est isolée : une panne ne casse jamais la page.
+        try {
+            $communityNews = (new CommunityNews)->news(5);
+        } catch (\Throwable) {
+            $communityNews = [];
+        }
+
+        $latestPlayers = [];
+        try {
+            foreach ((new PlayerRepository)->latestRegistered(5) as $row) {
+                $steamid64 = SteamId::toSteamId64((string) $row['steamid']);
+                if ($steamid64 === null) {
+                    continue;
+                }
+                $hasCountry = ! empty($row['country']) && $row['country'] !== 'unknown';
+                $latestPlayers[] = [
+                    'name' => ($row['display_name'] ?? '') !== '' ? $row['display_name'] : ($row['name'] ?? 'Joueur'),
+                    'avatar' => (string) $row['avatar'],
+                    'steamid64' => $steamid64,
+                    'profile_url' => '/profile/'.$steamid64,
+                    'country' => $hasCountry ? (string) $row['country'] : null,
+                    'flag_url' => $hasCountry ? CountryFlags::flag((string) $row['country']) : null,
+                ];
+            }
+        } catch (\Throwable) {
+            $latestPlayers = [];
+        }
+
         return view('pages.home', [
             'title' => 'Highlander France - Communauté Compétitive de TF2',
             'description' => site_description(),
@@ -34,7 +66,7 @@ final class PageController extends Controller
             'breadcrumbs' => [
                 ['name' => 'Accueil', 'url' => site_url().'/'],
             ],
-        ] + compact('prochainsMatchs', 'matchsRecents'));
+        ] + compact('prochainsMatchs', 'matchsRecents', 'communityNews', 'latestPlayers'));
     }
 
     /**
@@ -149,7 +181,7 @@ final class PageController extends Controller
                 $abs = null;
                 if (is_file($storageAbs)) {
                     $abs = $storageAbs;
-                    if (!is_file($publicAbs)) {
+                    if (! is_file($publicAbs)) {
                         @mkdir(dirname($publicAbs), 0755, true);
                         @copy($storageAbs, $publicAbs);
                     }
@@ -255,7 +287,7 @@ final class PageController extends Controller
             $steamid64 = SteamId::toSteamId64((string) $row['steamid']);
             $row['profile_url'] = $steamid64 !== null ? '/profile/'.$steamid64 : null;
             $row['classes'] = $topClasses[$row['steamid']] ?? [];
-            $hasCountry = !empty($row['country']) && $row['country'] !== 'unknown';
+            $hasCountry = ! empty($row['country']) && $row['country'] !== 'unknown';
             $row['flag_url'] = $hasCountry ? CountryFlags::flag((string) $row['country']) : null;
             $row['country_label'] = $hasCountry ? (config('hlfr.countries')[(string) $row['country']] ?? ucfirst((string) $row['country'])) : null;
             $row['franceBadges'] = $franceMap[$row['steamid']] ?? ['6v6' => false, 'highlander' => false];
@@ -341,7 +373,7 @@ final class PageController extends Controller
     {
         $initialLogs = [];
         try {
-            $logs = (new \App\Services\LogsTfApi)->filteredLogs();
+            $logs = (new LogsTfApi)->filteredLogs();
             if (count($logs) > 4) {
                 $logs = array_slice($logs, 0, count($logs) - 4);
             }
@@ -381,7 +413,7 @@ final class PageController extends Controller
     {
         $xml = Cache::remember('sitemap', now()->addHour(), function (): string {
             $logs = (new MatchLogRepository)->sitemapLogs();
-            $players = \Illuminate\Support\Facades\DB::table('player_matches')->distinct()->pluck('steamid')->all();
+            $players = DB::table('player_matches')->distinct()->pluck('steamid')->all();
             if ($players === []) {
                 $players = (new PlayerRepository)->allSteamIds();
             }

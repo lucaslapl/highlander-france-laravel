@@ -5,6 +5,8 @@
 
 @section('content')
 
+<div class="home-layout">
+<section class="home-main">
 
 @include('partials.upcoming-matches')
 
@@ -47,6 +49,15 @@
 <div id="join">
     <p>Alors qu'attends-tu pour nous rejoindre ? <b>Cela ne t'engage en rien</b>, tu es libre de participer ou simplement observer et lorsque tu te sens prêt, tu te lances et nous t'aiderons !</p>
     <a href="https://discord.gg/BMuj3cqUFt" class="join-btn">Rejoindre la communauté !</a>
+</div>
+
+</section>
+
+<aside class="home-sidebar">
+    @include('partials.community-news')
+    @include('partials.latest-players')
+</aside>
+
 </div>
 
 @push('scripts')
