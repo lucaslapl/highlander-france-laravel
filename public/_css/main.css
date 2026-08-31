@@ -2629,6 +2629,8 @@ body #nav .nav-content .nav-live-badge[hidden] {
   display: flex;
   flex-direction: column;
   gap: 25px;
+  position: sticky;
+  top: 80px;
 }
 
 .sidebar-card {
