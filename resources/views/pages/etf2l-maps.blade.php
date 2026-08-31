@@ -5,7 +5,7 @@
 
 @section('content')
 <h1>Maps ETF2L — Saison en cours</h1>
-<p class="etf2l-maps-intro">Toutes les maps officielles ETF2L de la saison en cours, hébergées sur Highlander France. Téléchargement direct en <code>.bsp</code> — déposez via SFTP dans <code>storage/app/public/etf2l-maps/6v6/</code> et <code>9v9/</code>.</p>
+<p class="etf2l-maps-intro">Toutes les maps officielles ETF2L de la saison en cours, hébergées sur Highlander France. Téléchargement direct en <code>.bsp</code></p>
 
 @php
     $renderGrid = function(array $maps): string {
@@ -41,5 +41,5 @@
     </div>
 </section>
 
-<p class="etf2l-maps-help"><i class="fa-solid fa-circle-info"></i> Placez les fichiers dans <code>TF/tf/maps/</code>. Les maps manquantes apparaîtront automatiquement après dépôt SFTP.</p>
+<p class="etf2l-maps-help"><i class="fa-solid fa-circle-info"></i> Placez les fichiers dans <code>/tf/maps/</code></p>
 @endsection
