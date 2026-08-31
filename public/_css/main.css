@@ -182,7 +182,11 @@ body #header .head-content {
   margin: 0 auto;
   padding: 32px 0;
 }
-body #header .head-content h1 {
+body #header .head-content h1,
+body #header .head-content .site-title {
+  font-size: 2em;
+  font-weight: 700;
+  margin: 0.67em 0;
   text-shadow: 4px 3px 3px rgba(0, 0, 0, 0.7294117647);
 }
 body #header .embed {
