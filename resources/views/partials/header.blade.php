@@ -46,7 +46,7 @@
                 <li><a href="/staff" class="{{ $currentPath === '/staff' ? 'active' : '' }}">L'équipe</a></li>
                 <li><a href="/joueurs" class="{{ $currentPath === '/joueurs' ? 'active' : '' }}">Joueurs</a></li>
                 <li><a href="/hall-of-fame" class="{{ $currentPath === '/hall-of-fame' ? 'active' : '' }}">Hall of Fame</a></li>
-                <li><a href="/match-logs" class="{{ $currentPath === '/match-logs' ? 'active' : '' }}">Match Stats</a></li>
+                <li><a href="/match-logs" class="{{ $currentPath === '/match-logs' ? 'active' : '' }}">Match Logs</a></li>
             </ul>
 
             <div class="nav-right">

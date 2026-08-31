@@ -15,7 +15,7 @@
             <div class="footer-col">
                 <h4>Compétitif</h4>
                 <ul>
-                    <li><a href="/match-logs">Match Stats</a></li>
+                    <li><a href="/match-logs">Match Logs</a></li>
                     <li><a href="/matchs">Matchs ETF2L FR</a></li>
                     <li><a href="https://logs.tf" target="_blank" rel="noopener">logs.tf</a></li>
                     <li><a href="https://etf2l.org" target="_blank" rel="noopener">ETF2L</a></li>
