@@ -301,6 +301,11 @@ final class ComputePlayerLevelsService
             .($failed > 0 ? ' — attention : '.$failed.' joueur(s) en échec' : '').'.'.$errorReport;
     }
 
+    public function computeForPlayer(string $steamid3): int
+    {
+        return $this->computePlayer($steamid3);
+    }
+
     /**
      * Calcule et stocke les niveaux d'un joueur (un par mode de jeu).
      *

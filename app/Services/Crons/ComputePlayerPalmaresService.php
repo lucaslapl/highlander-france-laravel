@@ -151,11 +151,13 @@ final class ComputePlayerPalmaresService
 
             if ($meta['curl_error'] !== '') {
                 $lastError = 'erreur cURL : '.$meta['curl_error'];
+
                 continue;
             }
 
             if (! is_array($meta['data'])) {
                 $lastError = 'HTTP '.$meta['http_code'].' avec réponse non-JSON';
+
                 continue;
             }
 
@@ -213,7 +215,7 @@ final class ComputePlayerPalmaresService
     /**
      * Tables de classement final d'une compétition.
      *
-     * @return array<string, array<int, array<string, mixed>>>  division_name => entries
+     * @return array<string, array<int, array<string, mixed>>> division_name => entries
      */
     private function fetchCompetitionTables(int $compId): array
     {
@@ -235,7 +237,7 @@ final class ComputePlayerPalmaresService
      * parmi ceux qui matchent une regex de PLAYOFF_PATTERNS.
      *
      * @param  array<int, array<string, mixed>>  $compResults
-     * @return array{0: string|null, 1: bool}  [round, won]
+     * @return array{0: string|null, 1: bool} [round, won]
      */
     private function bestPlayoffRound(array $compResults): array
     {
@@ -447,6 +449,11 @@ final class ComputePlayerPalmaresService
             .($failed > 0 ? ' — attention : '.$failed.' joueur(s) en échec' : '').'.'.$errorReport;
     }
 
+    public function computeForPlayer(string $steamid3): void
+    {
+        $this->computePlayer($steamid3);
+    }
+
     /**
      * Calcule et stocke le palmarès d'un joueur.
      */
@@ -460,6 +467,7 @@ final class ComputePlayerPalmaresService
         $results = $this->fetchResults($steamid64);
         if ($results === []) {
             $this->db->prepare('DELETE FROM player_palmares WHERE steamid = ?')->execute([$steamid3]);
+
             return;
         }
 
@@ -616,6 +624,7 @@ final class ComputePlayerPalmaresService
         foreach ($grouped as $group) {
             if (count($group) === 1) {
                 $result[] = $group[0];
+
                 continue;
             }
             array_push($result, ...$this->mergeSeasonEntries($group));
@@ -686,6 +695,7 @@ final class ComputePlayerPalmaresService
         $podium = array_values(array_filter($regular, static fn ($e): bool => $e['placement'] !== null));
         if (count($podium) >= 2) {
             error_log("palmares: saison '".$group[0]['competition_name']."' — ".count($podium).' podiums distincts conservés ('.$banner.').');
+
             return $podium;
         }
         if (count($regular) === 1) {
@@ -759,6 +769,7 @@ final class ComputePlayerPalmaresService
             foreach ($divisionEntries as $entry) {
                 if ((int) ($entry['id'] ?? 0) === $teamId) {
                     $ach = $entry['ach'] ?? null;
+
                     return is_int($ach) && $ach >= 1 && $ach <= 3 ? $ach : null;
                 }
             }

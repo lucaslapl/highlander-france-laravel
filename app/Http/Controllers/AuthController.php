@@ -4,11 +4,13 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers;
 
+use App\Jobs\ComputePlayerEtf2lDataJob;
 use App\Models\PlayerRepository;
 use App\Services\SteamApi;
 use App\Services\SteamId;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\Session;
 use xPaw\Steam\SteamOpenID;
 
@@ -28,13 +30,13 @@ final class AuthController extends Controller
     public function login(): RedirectResponse|View
     {
         try {
-            $openid = new SteamOpenID(site_url() . '/auth/callback');
+            $openid = new SteamOpenID(site_url().'/auth/callback');
 
             return redirect()->away($openid->GetAuthUrl());
         } catch (\Throwable $e) {
             return view('pages.auth-error', [
-                'title' => 'Erreur de connexion - ' . config('app.name'),
-                'message' => 'Erreur : ' . $e->getMessage(),
+                'title' => 'Erreur de connexion - '.config('app.name'),
+                'message' => 'Erreur : '.$e->getMessage(),
             ]);
         }
     }
@@ -45,19 +47,19 @@ final class AuthController extends Controller
     public function callback(): View|RedirectResponse
     {
         try {
-            $openid = new SteamOpenID(site_url() . '/auth/callback');
+            $openid = new SteamOpenID(site_url().'/auth/callback');
 
             // Connexion annulée par l'utilisateur sur Steam.
             if (request()->query('openid_mode') === 'cancel') {
                 return view('pages.auth-error', [
-                    'title' => 'Connexion annulée - ' . config('app.name'),
+                    'title' => 'Connexion annulée - '.config('app.name'),
                     'message' => "Connexion annulée par l'utilisateur.",
                 ]);
             }
 
             if (! $openid->ShouldValidate()) {
                 return view('pages.auth-error', [
-                    'title' => 'Erreur de connexion - ' . config('app.name'),
+                    'title' => 'Erreur de connexion - '.config('app.name'),
                     'message' => 'La validation a échoué (mode OpenID inattendu).',
                 ]);
             }
@@ -65,8 +67,8 @@ final class AuthController extends Controller
             $steamid64 = $openid->Validate();
         } catch (\Throwable $e) {
             return view('pages.auth-error', [
-                'title' => 'Erreur de connexion - ' . config('app.name'),
-                'message' => 'La validation a échoué : ' . $e->getMessage(),
+                'title' => 'Erreur de connexion - '.config('app.name'),
+                'message' => 'La validation a échoué : '.$e->getMessage(),
             ]);
         }
 
@@ -75,14 +77,16 @@ final class AuthController extends Controller
         Session::regenerate();
         Session::put('steamid', $steamid64);
 
-        $repo = new PlayerRepository();
-        $steamApi = new SteamApi();
+        $repo = new PlayerRepository;
+        $steamApi = new SteamApi;
         $user = $repo->findById($steamid3);
 
         if ($user === null) {
             // Nouvel inscrit : création puis synchronisation Steam
             $repo->createIfMissing($steamid3);
             $steamApi->syncOrCreatePlayer($steamid64);
+
+            Bus::dispatchAfterResponse(new ComputePlayerEtf2lDataJob($steamid3));
 
             // Un nouvel inscrit n'est jamais admin par défaut
             Session::put('is_admin', false);
