@@ -106,6 +106,11 @@ return [
         'gear_monitor' => ['label' => 'Écran', 'icon' => 'fa-solid fa-desktop'],
     ],
 
+    'france_teams' => [
+        '6v6' => [(int) env('FRANCE_TEAM_6V6', 332)],
+        'highlander' => [(int) env('FRANCE_TEAM_HIGHLANDER', 15176)],
+    ],
+
     // Nationalités proposées sur le profil (codes -> libellés).
     'countries' => [
         'fr' => 'France',

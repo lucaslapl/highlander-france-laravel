@@ -32,6 +32,12 @@ $rolesConfig = [
                         </span>
                     @endif
                 @endforeach
+                @if (!empty($franceBadges['highlander']))
+                    <span class="badge-staff badge-france badge-france-highlander" title="Membre actuel de l'équipe de France Highlander (ETF2L #15176)"><i class="fa-solid fa-flag"></i> Équipe de France Highlander</span>
+                @endif
+                @if (!empty($franceBadges['6v6']))
+                    <span class="badge-staff badge-france badge-france-6v6" title="Membre actuel de l'équipe de France 6v6 (ETF2L #332)"><i class="fa-solid fa-flag"></i> Équipe de France 6v6</span>
+                @endif
             </div>
 
             @php $validLevels = collect($etf2lLevels ?? [])->filter(fn($l) => !empty($l['division_label'])); @endphp

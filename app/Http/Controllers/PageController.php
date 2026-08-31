@@ -9,6 +9,7 @@ use App\Models\MatchLogRepository;
 use App\Models\PlayerRepository;
 use App\Services\Auth;
 use App\Services\CountryFlags;
+use App\Services\FranceBadgeService;
 use App\Services\LiveMatches;
 use App\Services\MatchFormat;
 use App\Services\SteamId;
@@ -182,6 +183,8 @@ final class PageController extends Controller
         // Classes les plus jouées pour les joueurs de la page courante.
         $topClasses = $repo->topClasses(array_column($result['rows'], 'steamid'));
 
+        $franceMap = FranceBadgeService::bulkForSteamId3(array_column($result['rows'], 'steamid'));
+
         foreach ($result['rows'] as &$row) {
             $row['final_name'] = ($row['display_name'] ?? '') !== ''
                 ? $row['display_name']
@@ -192,6 +195,7 @@ final class PageController extends Controller
             $hasCountry = !empty($row['country']) && $row['country'] !== 'unknown' && (int) ($row['country_locked'] ?? 0) === 1;
             $row['flag_url'] = $hasCountry ? CountryFlags::flag((string) $row['country']) : null;
             $row['country_label'] = $hasCountry ? (config('hlfr.countries')[(string) $row['country']] ?? ucfirst((string) $row['country'])) : null;
+            $row['franceBadges'] = $franceMap[$row['steamid']] ?? ['6v6' => false, 'highlander' => false];
         }
         unset($row);
 

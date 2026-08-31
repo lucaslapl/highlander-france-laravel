@@ -81,6 +81,12 @@
                                         @else
                                             {!! e($player['final_name']) !!}
                                         @endif
+                                        @if (!empty($player['franceBadges']['highlander']))
+                                            <span class="badge-france badge-france-highlander badge-france--small" title="Équipe de France Highlander"><i class="fa-solid fa-flag"></i> FR HL</span>
+                                        @endif
+                                        @if (!empty($player['franceBadges']['6v6']))
+                                            <span class="badge-france badge-france-6v6 badge-france--small" title="Équipe de France 6v6"><i class="fa-solid fa-flag"></i> FR 6v6</span>
+                                        @endif
                                     </span>
                                 </div>
                             </td>

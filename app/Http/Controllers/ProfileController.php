@@ -8,6 +8,7 @@ use App\Models\Etf2lRepository;
 use App\Models\PlayerRepository;
 use App\Models\PlayerStatsRepository;
 use App\Services\Auth;
+use App\Services\FranceBadgeService;
 use App\Services\SteamApi;
 use App\Services\SteamId;
 use Carbon\Carbon;
@@ -530,6 +531,7 @@ final class ProfileController extends Controller
             'country' => $data['player']['country'] ?? null,
             'etf2lLevels' => $this->etf2l->playerLevels($steamid3),
             'palmares' => $this->etf2l->playerPalmares($steamid3),
+            'franceBadges' => FranceBadgeService::forSteamId3($steamid3),
             'profileLinks' => config('hlfr.profile_links'),
             'profileGear' => config('hlfr.profile_gear'),
             'age' => $age,

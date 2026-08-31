@@ -149,6 +149,7 @@ final class AdminCronController extends Controller
             'migrate_player_match_stats' => \App\Services\Crons\MigratePlayerMatchStatsService::class,
             'backfill_player_match_stats' => \App\Services\Crons\BackfillPlayerMatchStatsService::class,
             'backfill_match_teams' => \App\Services\Crons\BackfillMatchTeamsService::class,
+            'sync_france' => \App\Services\Crons\SyncFranceService::class,
         ];
 
         $output = '';

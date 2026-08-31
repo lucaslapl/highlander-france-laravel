@@ -39,3 +39,6 @@ Schedule::command('app:sync-steam')->hourly();
 
 // Réparation des profils Steam cassés (avatars/pseudos vides).
 Schedule::command('app:sync-steam-avatars')->everySixHours();
+
+// Rosters Équipe de France 6v6 et Highlander (badges).
+Schedule::command('app:sync-france')->everySixHours();
