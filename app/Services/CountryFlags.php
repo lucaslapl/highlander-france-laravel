@@ -126,18 +126,19 @@ final class CountryFlags
 
         $code = self::resolveCode($raw);
 
-        // Asset local existant (drapeaux du site ou ISO déjà dispo en local).
+        if ($code !== null && in_array($code, self::CUSTOM_CODES, true)) {
+            return '/_img/flags/' . $code . '.gif';
+        }
+
         if ($code !== null && is_file(public_path('/_img/flags/' . $code . '.gif'))) {
             return '/_img/flags/' . $code . '.gif';
         }
 
-        // Asset local préféré (ex. gb -> uk.gif, déjà présent sur le site).
         $preferred = isset(self::LOCAL_PREFER[$code ?? '']) ? self::LOCAL_PREFER[$code] : null;
         if ($preferred !== null && is_file(public_path() . '/_img/flags/' . $preferred . '.gif')) {
             return '/_img/flags/' . $preferred . '.gif';
         }
 
-        // Drapeau ISO via CDN.
         if ($code !== null && preg_match('/^[a-z]{2}$/', $code)) {
             return sprintf(self::FLAG_CDN, $code);
         }
