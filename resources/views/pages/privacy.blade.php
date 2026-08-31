@@ -4,7 +4,7 @@
 @section('description', $description)
 
 @section('content')
-<h2>Politique de Confidentialité</h2>
+<h1>Politique de Confidentialité</h1>
 <p><em>Dernière mise à jour : 4 août 2026</em></p>
 <h3>1. Introduction</h3>
 <p>Chez Highlander France, nous nous engageons à protéger votre vie privée. Cette politique de confidentialité explique comment nous collectons, utilisons et protégeons vos informations personnelles lorsque vous utilisez notre site web.</p>

@@ -9,9 +9,11 @@
             <a href="https://highlanderfrance.tf">
                 <img class="header-logo" src="/_img/hf.webp" alt="Logo Highlander France" aria-label="Redirection vers la page d'accueil" fetchpriority="high" width="64" height="64">
             </a>
-            <h1>
-                Highlander France
-            </h1>
+            @if (($isHome ?? ($currentPath === '/')) === true)
+                <h1>Highlander France</h1>
+            @else
+                <div class="site-title">Highlander France</div>
+            @endif
         </div>
     </div>
     @if ($currentPath === '/')

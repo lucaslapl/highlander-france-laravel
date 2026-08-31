@@ -29,9 +29,11 @@ final class PageController extends Controller
         return view('pages.home', [
             'title' => 'Highlander France - Communauté Compétitive de TF2',
             'description' => site_description(),
-            'prochainsMatchs' => $prochainsMatchs,
-            'matchsRecents' => $matchsRecents,
-        ]);
+            'isHome' => true,
+            'breadcrumbs' => [
+                ['name' => 'Accueil', 'url' => site_url().'/'],
+            ],
+        ] + compact('prochainsMatchs', 'matchsRecents'));
     }
 
     /**
@@ -94,6 +96,11 @@ final class PageController extends Controller
             'title' => 'Highlander France - '.$matchTitle.' | ETF2L',
             'description' => $description,
             'structuredData' => $structuredData,
+            'breadcrumbs' => [
+                ['name' => 'Accueil', 'url' => site_url().'/'],
+                ['name' => 'Matchs ETF2L', 'url' => site_url().'/matchs'],
+                ['name' => $matchTitle, 'url' => site_url().'/match/'.(int) $match['match_id']],
+            ],
             'match' => $match,
             'teams' => $detail['teams'],
             'mapsData' => $detail['maps'],
@@ -132,6 +139,10 @@ final class PageController extends Controller
             'currentPage' => $page,
             'totalPages' => $totalPages,
             'totalMatches' => $total,
+            'breadcrumbs' => [
+                ['name' => 'Accueil', 'url' => site_url().'/'],
+                ['name' => 'Matchs ETF2L', 'url' => site_url().'/matchs'],
+            ],
         ]);
     }
 
@@ -189,6 +200,7 @@ final class PageController extends Controller
         return view('pages.joueurs', [
             'title' => 'Highlander France - Joueurs inscrits',
             'description' => $description,
+            'noIndex' => true,
             'players' => $result['rows'],
             'totalPlayers' => $result['total'],
             'search' => $search,
@@ -226,26 +238,60 @@ final class PageController extends Controller
 
         return view('pages.staff', [
             'title' => "Highlander France - L'équipe",
-            'description' => site_description(),
+            'description' => "Découvrez l'équipe Highlander France : fondateurs, modérateurs, mentors et lanceurs de mix qui animent la communauté TF2 9v9 francophone.",
             'groups' => $groups,
+            'breadcrumbs' => [
+                ['name' => 'Accueil', 'url' => site_url().'/'],
+                ['name' => "L'équipe", 'url' => site_url().'/staff'],
+            ],
         ]);
     }
 
     public function hallOfFame(): View
     {
+        $initialLeaderboard = [];
+        $cacheFile = hlfr_data_path('leaderboard_cache_9v9.json');
+        if (is_file($cacheFile)) {
+            $decoded = json_decode((string) file_get_contents($cacheFile), true);
+            if (is_array($decoded)) {
+                $initialLeaderboard = array_slice($decoded, 0, 18);
+            }
+        }
+
         return view('pages.hall-of-fame', [
             'title' => 'Highlander France - Hall of Fame',
-            'description' => site_description(),
+            'description' => 'Classement Hall of Fame Highlander France : top joueurs TF2 en 9v9 et 6v6 par matchs, kills, heal et DPM. Stats issues des logs officiels.',
             'scripts' => ['/_js/leaderboard.js', '/_js/search_players.js'],
+            'initialLeaderboard' => $initialLeaderboard,
+            'breadcrumbs' => [
+                ['name' => 'Accueil', 'url' => site_url().'/'],
+                ['name' => 'Hall of Fame', 'url' => site_url().'/hall-of-fame'],
+            ],
         ]);
     }
 
     public function matchLogs(): View
     {
+        $initialLogs = [];
+        try {
+            $logs = (new \App\Services\LogsTfApi)->filteredLogs();
+            if (count($logs) > 4) {
+                $logs = array_slice($logs, 0, count($logs) - 4);
+            }
+            $initialLogs = array_slice($logs, 0, 10);
+        } catch (\Throwable) {
+            $initialLogs = [];
+        }
+
         return view('pages.match-logs', [
             'title' => 'Highlander France - Logs des Matchs',
-            'description' => site_description(),
+            'description' => 'Logs des matchs Highlander France : historique complet des mixes 9v9 et 6v6, filtres par date et carte, scores et stats détaillées.',
             'isAdmin' => Auth::isAdmin(),
+            'initialLogs' => $initialLogs,
+            'breadcrumbs' => [
+                ['name' => 'Accueil', 'url' => site_url().'/'],
+                ['name' => 'Match Stats', 'url' => site_url().'/match-logs'],
+            ],
         ]);
     }
 
@@ -253,7 +299,11 @@ final class PageController extends Controller
     {
         return view('pages.privacy', [
             'title' => 'Highlander France - Politique de Confidentialité',
-            'description' => site_description(),
+            'description' => 'Politique de confidentialité Highlander France : données Steam, logs.tf, cookies, services tiers et droits RGPD. Hébergé chez Pulseheberg.',
+            'breadcrumbs' => [
+                ['name' => 'Accueil', 'url' => site_url().'/'],
+                ['name' => 'Confidentialité', 'url' => site_url().'/confidentialite'],
+            ],
         ]);
     }
 
@@ -264,7 +314,10 @@ final class PageController extends Controller
     {
         $xml = Cache::remember('sitemap', now()->addHour(), function (): string {
             $logs = (new MatchLogRepository)->sitemapLogs();
-            $players = (new PlayerRepository)->allSteamIds();
+            $players = \Illuminate\Support\Facades\DB::table('player_matches')->distinct()->pluck('steamid')->all();
+            if ($players === []) {
+                $players = (new PlayerRepository)->allSteamIds();
+            }
             $etf2lMatches = (new Etf2lRepository)->sitemapMatches();
 
             $base = site_url();
@@ -372,7 +425,7 @@ final class PageController extends Controller
 
         return view('pages.live-match', [
             'title' => 'Highlander France - '.$mapDisplay.' | En direct',
-            'description' => site_description(),
+            'description' => 'Match TF2 en direct sur '.$mapDisplay.' : scores RED/BLU et joueurs en temps réel sur Highlander France.',
             'noIndex' => true,
             'server' => $server,
             'entry' => $entry,
@@ -444,18 +497,26 @@ final class PageController extends Controller
         unset($panel);
 
         $matchDate = $log['date'] !== null ? date('d/m/Y à H:i', (int) $log['date']) : null;
+        $mapDisplay = MatchFormat::mapDisplay((string) $log['map_name']);
+        $playerCount = count($players);
+        $logDescription = 'Log TF2 '.$mapDisplay.' '.$gameModeLabel.' du '.($matchDate ?? 'match Highlander France').' : '.$playerCount.' joueurs, scores '.($redScore ?? '?').'-'.($blueScore ?? '?').', stats kills, DPM et heal. Voir sur logs.tf #'.$logId.'.';
 
         return view('pages.match-log', [
-            'title' => 'Highlander France - '.MatchFormat::mapDisplay((string) $log['map_name']).' | '.$gameModeLabel,
-            'description' => site_description(),
+            'title' => 'Highlander France - '.$mapDisplay.' | '.$gameModeLabel,
+            'description' => $logDescription,
             'ogType' => 'article',
+            'breadcrumbs' => [
+                ['name' => 'Accueil', 'url' => site_url().'/'],
+                ['name' => 'Match Stats', 'url' => site_url().'/match-logs'],
+                ['name' => $mapDisplay.' #'.$logId, 'url' => site_url().'/log/'.$logId],
+            ],
             'logId' => $logId,
-            'mapDisplay' => MatchFormat::mapDisplay((string) $log['map_name']),
+            'mapDisplay' => $mapDisplay,
             'gameMode' => $gameMode,
             'gameModeLabel' => $gameModeLabel,
             'matchDate' => $matchDate,
             'durationDisplay' => MatchFormat::duration((int) $log['length']),
-            'playerCount' => count($players),
+            'playerCount' => $playerCount,
             'hasTeamData' => $hasTeamData,
             'redScore' => $redScore,
             'blueScore' => $blueScore,

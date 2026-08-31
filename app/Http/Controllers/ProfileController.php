@@ -163,6 +163,8 @@ final class ProfileController extends Controller
 
         return view('pages.profile.dashboard', $this->pageData([
             'title' => 'Highlander France - Mon profil',
+            'description' => 'Tableau de bord privé de '.$playerName.' sur Highlander France : stats, activité et paramètres.',
+            'noIndex' => true,
             'player' => $user,
             'playerName' => $playerName,
             'steamid64' => $steamid64,
@@ -188,6 +190,8 @@ final class ProfileController extends Controller
 
         return view('pages.profile.edit', $this->pageData([
             'title' => 'Highlander France - Modifier mes informations',
+            'description' => 'Modifier les informations de '.$playerName.' : pseudo, nationalité, liens et matériel.',
+            'noIndex' => true,
             'player' => $user,
             'playerName' => $playerName,
             'steamid64' => $steamid64,
@@ -481,18 +485,39 @@ final class ProfileController extends Controller
             }
         }
 
+        $avatar = $data['player']['avatar'] ?? null;
+        $sameAs = [];
+        foreach (config('hlfr.profile_links') as $field => $meta) {
+            if (!empty($data['player'][$field]) && filter_var($data['player'][$field], FILTER_VALIDATE_URL)) {
+                $sameAs[] = $data['player'][$field];
+            }
+        }
+        if (!empty($data['player']['steamid'])) {
+            $etf2lUrl = 'https://etf2l.org/forum/user/'.(int) $data['player']['steamid'];
+        }
         $structuredData = [
             '@context' => 'https://schema.org',
             '@type' => 'ProfilePage',
-            'mainEntity' => [
+            'mainEntity' => array_filter([
                 '@type' => 'Person',
                 'name' => $data['playerName'],
                 'url' => site_url().'/profile/'.$data['steamid64'],
-            ],
+                'image' => $avatar ?: null,
+                'nationality' => $data['player']['country'] ?? null,
+                'sameAs' => $sameAs !== [] ? $sameAs : null,
+            ]),
         ];
 
+        $isPrivate = !empty($data['noIndex']);
+        $playerDescription = $data['description'] ?? 'Profil TF2 de '.$data['playerName'].' sur Highlander France : stats 9v9, divisions ETF2L et palmarès.';
+        $breadcrumbs = $data['breadcrumbs'] ?? (!$isPrivate ? [
+            ['name' => 'Accueil', 'url' => site_url().'/'],
+            ['name' => $data['playerName'], 'url' => site_url().'/profile/'.$data['steamid64']],
+        ] : null);
+
         return array_merge($data, [
-            'description' => site_description(),
+            'description' => $playerDescription,
+            'breadcrumbs' => $breadcrumbs,
             'styles' => ['/_css/profile.css'],
             'scripts' => [
                 'https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js',

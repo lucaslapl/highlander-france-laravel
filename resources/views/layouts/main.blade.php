@@ -35,9 +35,40 @@
         "@type": "WebSite",
         "name": {!! json_encode(config('app.name'), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) !!},
         "url": {!! json_encode(site_url(), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) !!},
-        "inLanguage": "fr"
+        "inLanguage": "fr",
+        "publisher": {
+            "@type": "Organization",
+            "name": {!! json_encode(config('app.name'), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) !!},
+            "url": {!! json_encode(site_url(), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) !!},
+            "logo": {
+                "@type": "ImageObject",
+                "url": {!! json_encode(site_url() . '/_img/hf.webp', JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) !!}
+            }
+        },
+        "potentialAction": {
+            "@type": "SearchAction",
+            "target": {!! json_encode(site_url() . '/joueurs?q={search_term_string}', JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) !!},
+            "query-input": "required name=search_term_string"
+        }
     }
     </script>
+    <script type="application/ld+json">
+    {
+        "@@context": "https://schema.org",
+        "@type": "Organization",
+        "name": {!! json_encode(config('app.name'), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) !!},
+        "url": {!! json_encode(site_url(), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) !!},
+        "logo": {!! json_encode(site_url() . '/_img/hf.webp', JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) !!},
+        "sameAs": [
+            "https://discord.gg/BMuj3cqUFt"
+        ]
+    }
+    </script>
+    @if (!empty($breadcrumbs))
+    <script type="application/ld+json">
+        {!! json_encode(['@context' => 'https://schema.org', '@type' => 'BreadcrumbList', 'itemListElement' => collect($breadcrumbs)->map(fn($c, $i) => ['@type' => 'ListItem', 'position' => $i + 1, 'name' => $c['name'], 'item' => $c['url']])->all()], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) !!}
+    </script>
+    @endif
     @if (!empty($structuredData))
     <script type="application/ld+json">
         {!! json_encode($structuredData, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) !!}

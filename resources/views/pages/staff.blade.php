@@ -5,7 +5,7 @@
 
 @section('content')
 
-<h2>L'équipe Highlander France</h2>
+<h1>L'équipe Highlander France</h1>
 <div id="staff">
 
     @if (!empty($groups['founders']))

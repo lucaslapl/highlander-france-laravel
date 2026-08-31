@@ -15,7 +15,7 @@
 
 <div class="etf2l-agenda-container">
     <div class="agenda-header flex space-between align-center">
-        <h3><i class="fa-solid fa-calendar-days"></i> Matchs Équipes FR (ETF2L)</h3>
+        <h1 style="font-size:1.4em;"><i class="fa-solid fa-calendar-days"></i> Matchs Équipes FR (ETF2L)</h1>
         <span class="badge-live-info">{{ (int)$totalMatches }} match(s)</span>
     </div>
 

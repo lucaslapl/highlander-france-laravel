@@ -13,12 +13,12 @@ $rolesConfig = [
 
         <div class="flex flex-column justify-center gap-5" style="align-items: flex-start;">
             <div class="flex align-center gap-10">
-                <h2 style="margin: 0; display: flex; align-items: center; gap: 10px;">
+                <h1 style="margin: 0; display: flex; align-items: center; gap: 10px; font-size:1.4em;">
                     {!! e($playerName) !!}
                     @if (!empty($country) && $country !== 'unknown' && !empty($player['country_locked']))
                         <img src="/_img/flags/{!! e($country) !!}.gif" alt="{!! e($countries[$country] ?? $country) !!}" class="flag-icon">
                     @endif
-                </h2>
+                </h1>
                 @if ($dateFormatee)
                     <span style="font-size: 0.85rem; color: #888;">inscrit le {!! e($dateFormatee) !!}</span>
                 @endif

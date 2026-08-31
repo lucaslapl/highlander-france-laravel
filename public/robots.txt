@@ -5,5 +5,8 @@ Disallow: /api
 Disallow: /login
 Disallow: /auth
 Disallow: /logout
+Disallow: /profile/dashboard
+Disallow: /profile/edit
+Disallow: /live/
 
 Sitemap: https://highlanderfrance.tf/sitemap.xml

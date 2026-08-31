@@ -9,6 +9,7 @@
 @endpush
 
 @section('content')
+<h1 style="position:absolute;left:-9999px;top:auto;width:1px;height:1px;overflow:hidden;">Hall of Fame - Classement Highlander France</h1>
 <div class="leaderboard-filter flex space-around align-center">
     <div class="leaderboard-tabs" id="leaderboard-mode-tabs">
         <button class="tab-btn active" onclick="switchLeaderboard(this, '9v9')">Highlander (9v9)</button>
@@ -44,9 +45,19 @@
             </tr>
         </thead>
         <tbody id="leaderboard-body">
+            @forelse ($initialLeaderboard as $i => $player)
+                <tr>
+                    <td>{{ $i + 1 }}</td>
+                    <td><a href="/profile/{{ e($player['steamid']) }}">{{ e($player['name']) }}</a></td>
+                    <td>{{ (int)($player['count'] ?? $player['value'] ?? 0) }}</td>
+                </tr>
+            @empty
+                <tr><td colspan="3">Chargement du classement...</td></tr>
+            @endforelse
         </tbody>
     </table>
 </div>
+<noscript><p>Activez JavaScript pour voir le classement complet.</p></noscript>
 
 @push('scripts')
 @include('partials.scroll-animation')

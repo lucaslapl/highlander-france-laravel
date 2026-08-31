@@ -45,14 +45,16 @@ if (! function_exists('current_url')) {
 }
 
 if (! function_exists('canonical_url')) {
-    /**
-     * URL canonique de la page courante (sans query string ni fragment).
-     */
     function canonical_url(): string
     {
         $path = Request::getPathInfo();
+        $base = site_url().($path !== '' ? $path : '/');
+        $page = (int) Request::query('page', 0);
+        if ($page > 1 && in_array($path, ['/matchs', '/joueurs'], true)) {
+            return $base.'?page='.$page;
+        }
 
-        return site_url().($path !== '' ? $path : '/');
+        return $base;
     }
 }
 

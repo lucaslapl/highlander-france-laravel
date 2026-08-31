@@ -85,7 +85,7 @@ function matchRowsHtml(array $players): string
     </a>
 
     <div class="matchlog-title flex align-center gap-10">
-        <h2>{!! e($mapDisplay) !!}</h2>
+        <h1 style="font-size:1.5em;margin:0;">{!! e($mapDisplay) !!}</h1>
         <span class="matchlog-mode {{ $gameMode === '6S' ? 'mode-6s' : 'mode-9v9' }}">{{ $gameMode === '6S' ? '6v6' : '9v9' }}</span>
     </div>
 
