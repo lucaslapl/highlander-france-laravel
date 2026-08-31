@@ -315,14 +315,16 @@ final class ComputePlayerPalmaresService
             if (isset(self::NATIONS_MODE_MAP[$type])) {
                 return self::NATIONS_MODE_MAP[$type];
             }
-            if (isset(self::MODE_MAP[$type])) {
-                return self::MODE_MAP[$type];
-            }
+            // L'API ETF2L renvoie parfois un type erroné (ex. "6v6") sur des
+            // playoffs Highlander Nations Cup : le nom prime sur le type générique.
             if (stripos($compName, 'Highlander') !== false) {
                 return '9v9';
             }
             if (stripos($compName, '6v6') !== false) {
                 return '6s';
+            }
+            if (isset(self::MODE_MAP[$type])) {
+                return self::MODE_MAP[$type];
             }
 
             return null;
@@ -568,7 +570,16 @@ final class ComputePlayerPalmaresService
             $isNationsCup = in_array($info['competition_category'], self::NATIONS_CUP_CATEGORIES, true)
                 || stripos($info['competition_name'], 'Nations Cup') !== false;
             if ($isNationsCup && $placement === null) {
-                continue;
+                // Nations Cup : pas de tables de classement final (ach absent), donc un
+                // podium est soit inféré d'une finale, soit absent. On affiche néanmoins
+                // toute participation au minimum en Quart de Finale ; en dessous → rien.
+                $prestigeMap = array_flip(self::PLAYOFF_PRESTIGE);
+                $roundPrestige = $prestigeMap[$playoffRound] ?? count(self::PLAYOFF_PRESTIGE);
+                $minPrestige = $prestigeMap['Quart de Finale'] ?? count(self::PLAYOFF_PRESTIGE);
+
+                if ($roundPrestige > $minPrestige) {
+                    continue;
+                }
             }
 
             // Timestamp max des matches de cette compétition (tri chronologique).
