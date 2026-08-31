@@ -19,6 +19,9 @@ use Illuminate\Support\Facades\DB;
  *
  * Seules les saisons avec un résultat positif sont stockées : podium dans le
  * classement final (ach = 1/2/3) ou participation à un round de playoffs.
+ * Les Nations Cup (Highlander et 6v6) sont également prises en compte mais
+ * uniquement en cas de podium (1er/2e/3e) — déduit des tables ou de la
+ * finale remportée/perdue.
  */
 final class ComputePlayerPalmaresService
 {
@@ -43,9 +46,18 @@ final class ComputePlayerPalmaresService
         '6v6 Season',
     ];
 
+    private const NATIONS_CUP_CATEGORIES = [
+        "Nations' Cup",
+    ];
+
     private const MODE_MAP = [
         'Highlander' => '9v9',
         '6v6' => '6s',
+    ];
+
+    private const NATIONS_MODE_MAP = [
+        'National Highlander Team' => '9v9',
+        'National 6v6 Team' => '6s',
     ];
 
     /**
@@ -297,6 +309,28 @@ final class ComputePlayerPalmaresService
         return $playerSide === 'clan1' ? $r1 > $r2 : $r2 > $r1;
     }
 
+    private function resolveGameMode(string $type, string $category, string $compName): ?string
+    {
+        if (in_array($category, self::NATIONS_CUP_CATEGORIES, true)) {
+            if (isset(self::NATIONS_MODE_MAP[$type])) {
+                return self::NATIONS_MODE_MAP[$type];
+            }
+            if (isset(self::MODE_MAP[$type])) {
+                return self::MODE_MAP[$type];
+            }
+            if (stripos($compName, 'Highlander') !== false) {
+                return '9v9';
+            }
+            if (stripos($compName, '6v6') !== false) {
+                return '6s';
+            }
+
+            return null;
+        }
+
+        return self::MODE_MAP[$type] ?? null;
+    }
+
     /**
      * Extrait les informations essentielles d'un résultat API pour le palmarès.
      *
@@ -304,19 +338,22 @@ final class ComputePlayerPalmaresService
      */
     private function extractResultInfo(array $result): ?array
     {
-        $type = (string) ($result['competition']['type'] ?? '');
-        if (! isset(self::MODE_MAP[$type])) {
+        $category = (string) ($result['competition']['category'] ?? '');
+        $isSeason = in_array($category, self::SEASON_CATEGORIES, true);
+        $isNations = in_array($category, self::NATIONS_CUP_CATEGORIES, true);
+        if (! $isSeason && ! $isNations) {
             return null;
         }
 
-        $category = (string) ($result['competition']['category'] ?? '');
-        if (! in_array($category, self::SEASON_CATEGORIES, true)) {
+        $type = (string) ($result['competition']['type'] ?? '');
+        $compName = (string) ($result['competition']['name'] ?? '');
+        $gameMode = $this->resolveGameMode($type, $category, $compName);
+        if ($gameMode === null) {
             return null;
         }
 
         // Les compétitions de qualification ("Qualifiers", "Qualification") ne
         // sont pas représentatives du classement d'une saison : on les ignore.
-        $compName = (string) ($result['competition']['name'] ?? '');
         if (stripos($compName, 'qualif') !== false) {
             return null;
         }
@@ -351,7 +388,7 @@ final class ComputePlayerPalmaresService
             'division_name' => $divisionName,
             'tier' => $tier,
             'round' => (string) ($result['round'] ?? ''),
-            'game_mode' => self::MODE_MAP[$type],
+            'game_mode' => $gameMode,
         ];
     }
 
@@ -525,6 +562,12 @@ final class ComputePlayerPalmaresService
             }
 
             if ($placement === null && $playoffRound === null) {
+                continue;
+            }
+
+            $isNationsCup = in_array($info['competition_category'], self::NATIONS_CUP_CATEGORIES, true)
+                || stripos($info['competition_name'], 'Nations Cup') !== false;
+            if ($isNationsCup && $placement === null) {
                 continue;
             }
 

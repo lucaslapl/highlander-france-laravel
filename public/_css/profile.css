@@ -954,5 +954,30 @@ body #main #content .edit-card .btn-submit:hover {
 .palmares-playoff-won i {
   color: #6c6;
 }
+.palmares-nations {
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 1px solid rgba(255, 255, 255, 0.07);
+}
+.palmares-nations-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  color: #8ab4f8;
+  margin-bottom: 6px;
+}
+.palmares-nations-label i {
+  color: #8ab4f8;
+}
+.palmares-entry-nations {
+  background: rgba(138, 180, 248, 0.06);
+  border-radius: 4px;
+  padding: 4px 6px;
+  margin: 2px 0;
+}
 
 /*# sourceMappingURL=profile.css.map */

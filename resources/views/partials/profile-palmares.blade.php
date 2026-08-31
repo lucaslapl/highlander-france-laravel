@@ -30,20 +30,19 @@
 
         @php
             $entries = $grouped[$mode];
-            $sorted = $entries->sortByDesc('season_time')->values();
+            $seasonEntries = $entries->filter(fn ($e) => stripos($e['competition_name'] ?? '', 'Nations Cup') === false)->sortByDesc('season_time')->values();
+            $nationsEntries = $entries->filter(fn ($e) => stripos($e['competition_name'] ?? '', 'Nations Cup') !== false)->sortByDesc('season_time')->values();
             $lastYear = null;
         @endphp
 
         <div class="palmares-section">
             <span class="palmares-mode">{{ $modeLabels[$mode] ?? $mode }}</span>
 
-            @foreach ($sorted as $entry)
+            @foreach ($seasonEntries as $entry)
                 @php
                     $placement = $entry['placement'] ?? null;
                     $playoffRound = $entry['playoff_round'] ?? null;
                     $wonPlayoff = !empty($entry['won_playoff']);
-
-                    // Fallback : dériver le placement si non stocké en base.
                     if ($placement === null && $playoffRound !== null) {
                         if ($wonPlayoff && in_array($playoffRound, ['Grande Finale', 'Finale'], true)) {
                             $placement = 1;
@@ -51,17 +50,13 @@
                             $placement = 2;
                         }
                     }
-
                     $pInfo = $placement !== null ? ($placementIcons[$placement] ?? null) : null;
-
-                    // Année de la saison : affichée une seule fois par année (groupe).
                     $year = !empty($entry['season_time']) ? date('Y', (int) $entry['season_time']) : null;
                     $isNewYear = $year !== null && $year !== $lastYear;
                     if ($isNewYear) {
                         $lastYear = $year;
                     }
                 @endphp
-
                 <div class="palmares-entry">
                     <span class="palmares-year {{ $isNewYear ? '' : 'palmares-year-empty' }}">{{ $year }}</span>
                     @if ($pInfo !== null)
@@ -69,14 +64,12 @@
                     @else
                         <span class="palmares-medal-placeholder"></span>
                     @endif
-
                     <span class="palmares-text">
                         <strong>{{ $esc($entry['competition_name']) }}</strong>
                         <span class="palmares-division">{{ $esc($entry['division_name']) }}</span>
                         <span class="palmares-sep">·</span>
                         <span class="palmares-team">{{ $esc($entry['team_name']) }}</span>
                     </span>
-
                     @if ($playoffRound !== null)
                         <span class="palmares-playoff {{ $wonPlayoff ? 'palmares-playoff-won' : '' }}">
                             {{ $esc($playoffRound) }}
@@ -87,6 +80,55 @@
                     @endif
                 </div>
             @endforeach
+
+            @if ($nationsEntries->isNotEmpty())
+                @php $lastYearNations = null; @endphp
+                <div class="palmares-nations">
+                    <span class="palmares-nations-label"><i class="fa-solid fa-flag"></i> Coupe des Nations</span>
+                    @foreach ($nationsEntries as $entry)
+                        @php
+                            $placement = $entry['placement'] ?? null;
+                            $playoffRound = $entry['playoff_round'] ?? null;
+                            $wonPlayoff = !empty($entry['won_playoff']);
+                            if ($placement === null && $playoffRound !== null) {
+                                if ($wonPlayoff && in_array($playoffRound, ['Grande Finale', 'Finale'], true)) {
+                                    $placement = 1;
+                                } elseif (! $wonPlayoff && in_array($playoffRound, ['Grande Finale', 'Finale'], true)) {
+                                    $placement = 2;
+                                }
+                            }
+                            $pInfo = $placement !== null ? ($placementIcons[$placement] ?? null) : null;
+                            $year = !empty($entry['season_time']) ? date('Y', (int) $entry['season_time']) : null;
+                            $isNewYear = $year !== null && $year !== $lastYearNations;
+                            if ($isNewYear) {
+                                $lastYearNations = $year;
+                            }
+                        @endphp
+                        <div class="palmares-entry palmares-entry-nations">
+                            <span class="palmares-year {{ $isNewYear ? '' : 'palmares-year-empty' }}">{{ $year }}</span>
+                            @if ($pInfo !== null)
+                                <i class="{{ $pInfo['icon'] }} palmares-medal-icon {{ $pInfo['class'] }}" title="{{ $pInfo['label'] }}"></i>
+                            @else
+                                <span class="palmares-medal-placeholder"></span>
+                            @endif
+                            <span class="palmares-text">
+                                <strong>{{ $esc($entry['competition_name']) }}</strong>
+                                <span class="palmares-division">{{ $esc($entry['division_name']) }}</span>
+                                <span class="palmares-sep">·</span>
+                                <span class="palmares-team">{{ $esc($entry['team_name']) }}</span>
+                            </span>
+                            @if ($playoffRound !== null)
+                                <span class="palmares-playoff {{ $wonPlayoff ? 'palmares-playoff-won' : '' }}">
+                                    {{ $esc($playoffRound) }}
+                                    @if ($wonPlayoff)
+                                        <i class="fa-solid fa-check"></i>
+                                    @endif
+                                </span>
+                            @endif
+                        </div>
+                    @endforeach
+                </div>
+            @endif
         </div>
     @endforeach
 </div>
