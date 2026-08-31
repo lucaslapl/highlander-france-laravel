@@ -44,16 +44,24 @@
             <ul class="nav-links">
                 <li><a href="/" class="{{ $currentPath === '/' ? 'active' : '' }}">Accueil</a></li>
                 <li><a href="/staff" class="{{ $currentPath === '/staff' ? 'active' : '' }}">L'équipe</a></li>
-                <li><a href="/joueurs" class="{{ $currentPath === '/joueurs' ? 'active' : '' }}">Joueurs</a></li>
-                <li><a href="/hall-of-fame" class="{{ $currentPath === '/hall-of-fame' ? 'active' : '' }}">Hall of Fame</a></li>
-                <li><a href="/match-logs" class="{{ $currentPath === '/match-logs' ? 'active' : '' }}">Match Logs</a></li>
+                @php $isCommunauteActive = in_array($currentPath, ['/joueurs', '/hall-of-fame', '/match-logs']) || str_starts_with($currentPath, '/log/'); @endphp
+                <li class="nav-dropdown{{ $isCommunauteActive ? ' is-active' : '' }}">
+                    <button type="button" class="nav-dropdown-toggle{{ $isCommunauteActive ? ' active' : '' }}" aria-expanded="false" aria-haspopup="true" aria-controls="communaute-submenu">
+                        Communauté <i class="fa-solid fa-chevron-down nav-dropdown-chevron" aria-hidden="true"></i>
+                    </button>
+                    <ul id="communaute-submenu" class="nav-dropdown-menu" role="menu">
+                        <li role="none"><a role="menuitem" href="/joueurs" class="{{ $currentPath === '/joueurs' ? 'active' : '' }}">Joueurs inscrits</a></li>
+                        <li role="none"><a role="menuitem" href="/hall-of-fame" class="{{ $currentPath === '/hall-of-fame' ? 'active' : '' }}">Hall of Fame</a></li>
+                        <li role="none"><a role="menuitem" href="/match-logs" class="{{ $currentPath === '/match-logs' || str_starts_with($currentPath, '/log/') ? 'active' : '' }}">Match Logs</a></li>
+                    </ul>
+                </li>
                 @php $isEtf2lActive = str_starts_with($currentPath, '/match') || str_starts_with($currentPath, '/etf2l'); @endphp
                 <li class="nav-dropdown{{ $isEtf2lActive ? ' is-active' : '' }}">
                     <button type="button" class="nav-dropdown-toggle{{ $isEtf2lActive ? ' active' : '' }}" aria-expanded="false" aria-haspopup="true" aria-controls="etf2l-submenu">
                         ETF2L <i class="fa-solid fa-chevron-down nav-dropdown-chevron" aria-hidden="true"></i>
                     </button>
                     <ul id="etf2l-submenu" class="nav-dropdown-menu" role="menu">
-                        <li role="none"><a role="menuitem" href="/matchs" class="{{ $currentPath === '/matchs' || str_starts_with($currentPath, '/match/') ? 'active' : '' }}">Matchs</a></li>
+                        <li role="none"><a role="menuitem" href="/matchs" class="{{ $currentPath === '/matchs' || str_starts_with($currentPath, '/match/') ? 'active' : '' }}">Matchs FR</a></li>
                         <li role="none"><a role="menuitem" href="/etf2l/maps" class="{{ $currentPath === '/etf2l/maps' ? 'active' : '' }}">Maps</a></li>
                     </ul>
                 </li>

@@ -3,38 +3,38 @@
     <div class="footer-inner">
         <div class="footer-grid">
             <div class="footer-col">
-                <h4>Navigation</h4>
+                <h4>Communauté</h4>
                 <ul>
                     <li><a href="/">Accueil</a></li>
                     <li><a href="/staff">L'équipe</a></li>
                     <li><a href="/joueurs">Joueurs inscrits</a></li>
                     <li><a href="/hall-of-fame">Hall of Fame</a></li>
+                    <li><a href="/match-logs">Match Logs</a></li>
                     <li><a href="/confidentialite">Politique de Confidentialité</a></li>
                 </ul>
             </div>
             <div class="footer-col">
-                <h4>Compétitif</h4>
+                <h4>Ligue ETF2L</h4>
                 <ul>
-                    <li><a href="/match-logs">Match Logs</a></li>
-                    <li><a href="/matchs">Matchs ETF2L FR</a></li>
-                    <li><a href="https://logs.tf" target="_blank" rel="noopener">logs.tf</a></li>
                     <li><a href="https://etf2l.org" target="_blank" rel="noopener">ETF2L</a></li>
+                    <li><a href="/matchs">Matchs FR</a></li>
+                    <li><a href="/etf2l/maps">Maps</a></li>
                 </ul>
             </div>
             <div class="footer-col">
-                <h4>Communauté</h4>
+                <h4>Liens utiles</h4>
                 <ul>
                     <li><a href="https://discord.gg/BMuj3cqUFt" target="_blank" rel="noopener">Discord</a></li>
                     <li><a href="https://www.twitch.tv/highlanderfrance" target="_blank" rel="noopener">Twitch</a></li>
                     <li><a href="https://www.youtube.com/@HighlanderFrance" target="_blank" rel="noopener">YouTube</a></li>
                     <li><a href="https://reconnexion.tf" target="_blank" rel="noopener">reconnexion.tf</a></li>
+                    <li><a href="https://logs.tf" target="_blank" rel="noopener">logs.tf</a></li>
                 </ul>
             </div>
             <div class="footer-col">
                 <h4>Guides <span style="font-weight:400;font-size:.75em;opacity:.6;">(à venir)</span></h4>
                 <ul>
                     <li><span style="opacity:.5;">C'est quoi le Highlander ?</span></li>
-                    <li><span style="opacity:.5;">Règles &amp; whitelist</span></li>
                     <li><span style="opacity:.5;">FAQ</span></li>
                 </ul>
             </div>
