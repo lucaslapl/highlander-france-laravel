@@ -7,15 +7,16 @@
                 <ul>
                     <li><a href="/">Accueil</a></li>
                     <li><a href="/staff">L'équipe</a></li>
-                    <li><a href="/joueurs">Joueurs</a></li>
+                    <li><a href="/joueurs">Joueurs inscrits</a></li>
                     <li><a href="/hall-of-fame">Hall of Fame</a></li>
+                    <li><a href="/confidentialite">Politique de Confidentialité</a></li>
                 </ul>
             </div>
             <div class="footer-col">
                 <h4>Compétitif</h4>
                 <ul>
                     <li><a href="/match-logs">Match Stats</a></li>
-                    <li><a href="/matchs">Matchs ETF2L</a></li>
+                    <li><a href="/matchs">Matchs ETF2L FR</a></li>
                     <li><a href="https://logs.tf" target="_blank" rel="noopener">logs.tf</a></li>
                     <li><a href="https://etf2l.org" target="_blank" rel="noopener">ETF2L</a></li>
                 </ul>
@@ -25,7 +26,6 @@
                 <ul>
                     <li><a href="https://discord.gg/BMuj3cqUFt" target="_blank" rel="noopener">Discord</a></li>
                     <li><a href="https://reconnexion.tf" target="_blank" rel="noopener">reconnexion.tf</a></li>
-                    <li><a href="/confidentialite">Politique de Confidentialité</a></li>
                 </ul>
             </div>
             <div class="footer-col">
@@ -44,7 +44,7 @@
 </footer>
 <style>
 footer{padding:0}
-.footer-inner{max-width:1200px;margin:0 auto;padding:28px 15px 15px}
+.footer-inner{max-width:1200px;margin:0 auto;padding:55px 15px 15px}
 .footer-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:24px;text-align:left;margin:0 auto 20px;max-width:900px}
 .footer-col h4{margin:0 0 10px;font-size:.95rem;color:#fbb7fb;letter-spacing:.02em}
 .footer-col ul{list-style:none;padding:0;margin:0}
