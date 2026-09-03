@@ -10,6 +10,9 @@ use Illuminate\Support\Facades\DB;
 
 final class Etf2lRepository
 {
+    /** Nombre d'heures avant de considérer un match comme terminé. */
+    private const FINISHED_DELAY_HOURS = 3;
+
     /**
      * Prochains matchs des équipes françaises, du plus proche au plus lointain.
      *
@@ -35,9 +38,11 @@ final class Etf2lRepository
      */
     public function recentlyFinishedMatches(int $hours = 48, int $limit = 5): array
     {
+        $finishedAfter = time() - self::FINISHED_DELAY_HOURS * 3600;
+
         return DB::table('etf2l_matches')
-            ->where('match_date', '<', time())
-            ->where('match_date', '>=', time() - $hours * 3600)
+            ->where('match_date', '<', $finishedAfter)
+            ->where('match_date', '>=', $finishedAfter - $hours * 3600)
             ->orderByDesc('match_date')
             ->orderByDesc('match_id')
             ->limit($limit)
@@ -69,7 +74,7 @@ final class Etf2lRepository
     public function pastMatches(int $limit = 20, int $offset = 0): array
     {
         return DB::table('etf2l_matches')
-            ->where('match_date', '<', time())
+            ->where('match_date', '<', time() - self::FINISHED_DELAY_HOURS * 3600)
             ->orderByDesc('match_date')
             ->orderByDesc('match_id')
             ->skip($offset)
@@ -84,7 +89,7 @@ final class Etf2lRepository
      */
     public function countPastMatches(): int
     {
-        return (int) DB::table('etf2l_matches')->where('match_date', '<', time())->count();
+        return (int) DB::table('etf2l_matches')->where('match_date', '<', time() - self::FINISHED_DELAY_HOURS * 3600)->count();
     }
 
     /**
