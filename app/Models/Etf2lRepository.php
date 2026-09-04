@@ -21,7 +21,7 @@ final class Etf2lRepository
     public function upcomingMatches(int $limit = 5): array
     {
         return DB::table('etf2l_matches')
-            ->where('match_date', '>=', time())
+            ->where('match_date', '>=', time() - self::FINISHED_DELAY_HOURS * 3600)
             ->orderBy('match_date')
             ->limit($limit)
             ->get()
@@ -74,7 +74,7 @@ final class Etf2lRepository
     public function pastMatches(int $limit = 20, int $offset = 0): array
     {
         return DB::table('etf2l_matches')
-            ->where('match_date', '<', time() - self::FINISHED_DELAY_HOURS * 3600)
+            ->where('match_date', '<', time())
             ->orderByDesc('match_date')
             ->orderByDesc('match_id')
             ->skip($offset)
@@ -89,7 +89,7 @@ final class Etf2lRepository
      */
     public function countPastMatches(): int
     {
-        return (int) DB::table('etf2l_matches')->where('match_date', '<', time() - self::FINISHED_DELAY_HOURS * 3600)->count();
+        return (int) DB::table('etf2l_matches')->where('match_date', '<', time())->count();
     }
 
     /**
