@@ -10,7 +10,7 @@
 @section('content')
 <div class="guides-hero">
     <h1>Guides TF2 compétitif</h1>
-    <p>Débuter en compétitif, comprendre le Highlander 9v9, maîtriser les 9 classes, découvrir le 6v6 et optimiser sa config. Rédigés par Highlander France à partir de nos guides Steam et de la formation « L’highlander comme si vous y étiez ».</p>
+    <p>Débuter en compétitif, comprendre le Highlander 9v9, maîtriser les 9 classes, découvrir le 6v6 et optimiser sa config. Rédigés par l'équipe Highlander France à partir des <a href="https://steamcommunity.com/id/kaylus_/myworkshopfiles/?section=guides&appid=440">guides Steam de Kaylus</a> et de la formation « L’highlander comme si vous y étiez » produite par SchmitShot.</p>
     <p><a href="/faq">Voir la FAQ compétitif TF2 →</a></p>
 </div>
 
