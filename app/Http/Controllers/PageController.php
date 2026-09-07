@@ -175,13 +175,28 @@ final class PageController extends Controller
                 $exists = $abs !== null;
                 $size = $exists ? filesize($abs) : null;
 
+                // Miniaure : copie du storage vers public si absente du dossier web.
+                $thumbUrl = null;
+                if (!empty($m['thumbnail'])) {
+                    $thumbRel = ltrim((string) $m['thumbnail'], '/');
+                    $thumbStorageAbs = storage_path('app/public/' . $thumbRel);
+                    $thumbPublicAbs = public_path('storage/' . $thumbRel);
+                    if (is_file($thumbStorageAbs)) {
+                        if (! is_file($thumbPublicAbs)) {
+                            @mkdir(dirname($thumbPublicAbs), 0755, true);
+                            @copy($thumbStorageAbs, $thumbPublicAbs);
+                        }
+                        $thumbUrl = asset('storage/' . $thumbRel);
+                    }
+                }
+
                 return $m + [
                     'file' => $file,
                     'url' => asset($path),
                     'exists' => $exists,
                     'size' => $size,
                     'size_human' => $size !== false && $size !== null ? number_format($size / 1048576, 1).' Mo' : null,
-                    'thumb_url' => !empty($m['thumbnail']) ? asset('storage/' . ltrim((string) $m['thumbnail'], '/')) : null,
+                    'thumb_url' => $thumbUrl,
                 ];
             }, $maps);
         };
