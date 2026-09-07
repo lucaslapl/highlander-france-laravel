@@ -1,7 +1,7 @@
 document.addEventListener('DOMContentLoaded', () => {
     const burgerToggle = document.getElementById('burgerToggle');
     const navMenu = document.getElementById('nav-menu');
-    const MOBILE_BREAKPOINT = 870;
+    const MOBILE_BREAKPOINT = 1000;
 
     if (!burgerToggle || !navMenu) {
         return;
