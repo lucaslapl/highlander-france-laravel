@@ -1184,50 +1184,60 @@ body #main #content #join a:hover {
   color: #cbcbcb;
   margin: 0 0 12px;
 }
-#staff #sous-staff {
+#staff .staff-categories {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
   align-items: flex-start;
+  gap: 20px;
 }
-#staff #sous-staff #mentors, #staff #sous-staff #mixers {
-  margin: 0 15px;
+#staff .staff-category {
+  width: 300px;
+  max-width: 100%;
+  box-sizing: border-box;
 }
-#staff #sous-staff #mentors .staff-role, #staff #sous-staff #mixers .staff-role {
-  width: 350px;
-}
-#staff #sous-staff #mentors .staff-role .staff-member .staff-pic, #staff #sous-staff #mixers .staff-role .staff-member .staff-pic {
-  width: 50px;
-  height: 50px;
-}
-#staff #sous-staff #mentors a, #staff #sous-staff #mixers a {
-  text-decoration: none;
-  color: inherit;
-  transition: 0.3s;
-}
-#staff #sous-staff #mentors a h4, #staff #sous-staff #mixers a h4 {
-  margin: 5px 10px;
-}
-#staff #sous-staff #mentors a:hover, #staff #sous-staff #mixers a:hover {
-  color: #fbb7fb;
-}
-#staff h3 {
+#staff .staff-category h3 {
   text-align: center;
   margin: 24px 0 10px;
-  font-size: 1.6em;
+  font-size: 1.4em;
 }
 #staff .staff-role {
-  text-align: center;
+  text-align: left;
   margin: 0 auto;
   background-color: rgba(0, 0, 0, 0.7098039216);
-  padding: 10px;
+  padding: 12px 14px;
   width: 100%;
+  box-sizing: border-box;
   border: 1px solid;
   border-radius: 7px;
-  box-sizing: border-box;
   -o-border-image: linear-gradient(to right, rgba(0, 0, 0, 0), #791677, rgba(0, 0, 0, 0));
      border-image: linear-gradient(to right, rgba(0, 0, 0, 0), #791677, rgba(0, 0, 0, 0));
   border-image-slice: 1;
 }
 #staff .staff-role .staff-member {
-  margin: 15px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 9px 0;
+}
+#staff .staff-role .staff-member:first-child {
+  margin-top: 0;
+}
+#staff .staff-role .staff-member:last-child {
+  margin-bottom: 0;
+}
+#staff .staff-role .staff-member img {
+  width: 35px;
+  height: 35px;
+  border-radius: 50%;
+  border: 1px solid rgba(250, 87, 255, 0.5882352941);
+  flex-shrink: 0;
+}
+#staff .staff-role .staff-member .staff-name-group {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  min-width: 0;
 }
 #staff .staff-role .staff-member a {
   text-decoration: none;
@@ -1235,56 +1245,32 @@ body #main #content #join a:hover {
   transition: 0.3s;
 }
 #staff .staff-role .staff-member a h4 {
-  margin: 5px 10px;
+  margin: 0;
+  font-size: 0.95em;
+  font-weight: 600;
+  overflow-wrap: anywhere;
 }
 #staff .staff-role .staff-member a:hover {
   color: #fbb7fb;
 }
-#staff .staff-role .staff-member img {
-  width: 65px;
-  height: 65px;
-  border-radius: 50%;
-  border: 1px solid rgba(250, 87, 255, 0.5882352941);
+#staff .staff-role .no-data {
+  margin: 4px 0 0;
 }
-#staff .staff-role.twitch-staff {
+#staff .twitch-badges {
   display: flex;
   flex-wrap: wrap;
-  justify-content: center;
-  align-items: flex-start;
-  gap: 10px;
-}
-#staff .staff-role.twitch-staff .staff-member {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  margin: 5px;
-  padding: 8px;
-  width: 125px;
-  background: rgba(255, 255, 255, 0.02);
-  border-radius: 7px;
-}
-#staff .staff-role.twitch-staff .staff-member img {
-  width: 50px;
-  height: 50px;
-}
-#staff .staff-role.twitch-staff .staff-member a h4 {
-  margin: 5px 0;
-  font-size: 0.95em;
-}
-#staff .staff-role.twitch-staff .twitch-badges {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
   gap: 4px;
+  margin-top: 3px;
 }
 #staff .twitch-badge {
-  font-size: 0.62em;
+  font-size: 0.6em;
   font-weight: bold;
   text-transform: uppercase;
-  letter-spacing: 0.5px;
-  padding: 2px 8px;
-  border-radius: 10px;
+  letter-spacing: 0.4px;
+  padding: 2px 7px;
+  border-radius: 9px;
   color: #fff;
+  white-space: nowrap;
 }
 #staff .twitch-badge-caster {
   background-color: #9146ff;
@@ -1748,9 +1734,6 @@ footer a {
     height: 100%;
     box-sizing: border-box;
   }
-  body #main #content #staff #sous-staff {
-    flex-direction: column;
-  }
   body #main #content {
     padding: 0 20px;
   }
@@ -1812,18 +1795,14 @@ footer a {
   }
 }
 @media all and (max-width: 450px) {
-  body #main #content #staff #sous-staff #mentors,
-  body #main #content #staff #sous-staff #mixers {
-    width: 100%;
-    margin: 0 auto;
+  body #main #content #staff .staff-categories {
+    gap: 14px;
   }
-  body #main #content #staff #sous-staff #mentors .staff-role,
-  body #main #content #staff #sous-staff #mixers .staff-role {
+  body #main #content #staff .staff-category {
     width: 100%;
   }
-  body #main #content #staff #sous-staff #mentors h4,
-  body #main #content #staff #sous-staff #mixers h4 {
-    font-size: 1em;
+  body #main #content #staff .staff-category h3 {
+    font-size: 1.25em;
   }
 }
 @media all and (max-width: 420px) {
