@@ -712,6 +712,18 @@ body #main .badge-mixer {
 body #main {
   /* Violet */
 }
+body #main .badge-caster {
+  background-color: #9146ff;
+}
+body #main {
+  /* Violet Twitch */
+}
+body #main .badge-producer {
+  background-color: #6441a5;
+}
+body #main {
+  /* Violet Twitch foncé */
+}
 body #main .badge-disabled {
   background-color: #2b2b2b;
   color: #555;

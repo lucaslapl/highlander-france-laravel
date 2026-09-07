@@ -225,6 +225,8 @@ final class AdminRepository
         int $isModerator,
         int $isMentor,
         int $isMixer,
+        int $isCaster,
+        int $isProducer,
         bool $resetNameChange,
         bool $resetCountryChange,
     ): bool {
@@ -235,6 +237,8 @@ final class AdminRepository
             'is_moderator' => $isModerator,
             'is_mentor' => $isMentor,
             'is_mixer' => $isMixer,
+            'is_caster' => $isCaster,
+            'is_producer' => $isProducer,
         ];
 
         if ($resetNameChange) {

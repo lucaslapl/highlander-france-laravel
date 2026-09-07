@@ -497,6 +497,12 @@ body #main #content .personnal-info .badge-staff.badge-mentor {
 body #main #content .personnal-info .badge-staff.badge-mixer {
   background-color: #9b59b6;
 }
+body #main #content .personnal-info .badge-staff.badge-caster {
+  background-color: #9146ff;
+}
+body #main #content .personnal-info .badge-staff.badge-producer {
+  background-color: #6441a5;
+}
 body #main #content .personnal-info .division-badge.badge-france {
   position: relative;
   background: #2a2d30;

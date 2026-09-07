@@ -1182,6 +1182,7 @@ body #main #content #join a:hover {
   text-align: center;
   font-style: italic;
   color: #cbcbcb;
+  margin: 0 0 12px;
 }
 #staff #sous-staff {
   align-items: flex-start;
@@ -1209,8 +1210,8 @@ body #main #content #join a:hover {
 }
 #staff h3 {
   text-align: center;
-  margin: 32px 0 16px;
-  font-size: 2em;
+  margin: 24px 0 10px;
+  font-size: 1.6em;
 }
 #staff .staff-role {
   text-align: center;
@@ -1244,6 +1245,52 @@ body #main #content #join a:hover {
   height: 65px;
   border-radius: 50%;
   border: 1px solid rgba(250, 87, 255, 0.5882352941);
+}
+#staff .staff-role.twitch-staff {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: flex-start;
+  gap: 10px;
+}
+#staff .staff-role.twitch-staff .staff-member {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin: 5px;
+  padding: 8px;
+  width: 125px;
+  background: rgba(255, 255, 255, 0.02);
+  border-radius: 7px;
+}
+#staff .staff-role.twitch-staff .staff-member img {
+  width: 50px;
+  height: 50px;
+}
+#staff .staff-role.twitch-staff .staff-member a h4 {
+  margin: 5px 0;
+  font-size: 0.95em;
+}
+#staff .staff-role.twitch-staff .twitch-badges {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 4px;
+}
+#staff .twitch-badge {
+  font-size: 0.62em;
+  font-weight: bold;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  padding: 2px 8px;
+  border-radius: 10px;
+  color: #fff;
+}
+#staff .twitch-badge-caster {
+  background-color: #9146ff;
+}
+#staff .twitch-badge-producer {
+  background-color: #6441a5;
 }
 
 /** HALL OF FAME **/

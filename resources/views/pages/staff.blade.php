@@ -40,6 +40,34 @@
     </div>
     @endif
 
+    <h3>Twitch Highlander France</h3>
+    <hr>
+    <p>Les casters et l'équipe de production qui font vivre nos streams !</p>
+    <div class="staff-role twitch-staff">
+        @if (empty($groups['twitch']))
+            <p class="no-data">Aucun membre stream enregistré pour le moment.</p>
+        @else
+            @foreach ($groups['twitch'] as $tw)
+            <div class="staff-member">
+                <img loading="lazy" decoding="async" class="staff-pic" src="{!! e($tw['avatar']) !!}" alt="Avatar de {!! e($tw['final_name']) !!}">
+                <a href="{!! e($tw['profile_url']) !!}">
+                    <h4>{!! e($tw['final_name']) !!}</h4>
+                </a>
+                @if ((int) $tw['is_caster'] === 1 || (int) $tw['is_producer'] === 1)
+                <div class="twitch-badges">
+                    @if ((int) $tw['is_caster'] === 1)
+                    <span class="twitch-badge twitch-badge-caster">Caster</span>
+                    @endif
+                    @if ((int) $tw['is_producer'] === 1)
+                    <span class="twitch-badge twitch-badge-producer">Production</span>
+                    @endif
+                </div>
+                @endif
+            </div>
+            @endforeach
+        @endif
+    </div>
+
     <div id="sous-staff" class="flex space-around">
 
         <div id="mentors">

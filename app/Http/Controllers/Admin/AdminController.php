@@ -66,12 +66,14 @@ final class AdminController extends Controller
 
         try {
             $staff = \Illuminate\Support\Facades\DB::table('players_info')
-                ->select('steamid', 'name', 'display_name', 'avatar', 'is_founder', 'is_moderator', 'is_mentor', 'is_mixer', 'is_admin')
+                ->select('steamid', 'name', 'display_name', 'avatar', 'is_founder', 'is_moderator', 'is_mentor', 'is_mixer', 'is_caster', 'is_producer', 'is_admin')
                 ->where(function ($q): void {
                     $q->where('is_founder', 1)
                         ->orWhere('is_moderator', 1)
                         ->orWhere('is_mentor', 1)
                         ->orWhere('is_mixer', 1)
+                        ->orWhere('is_caster', 1)
+                        ->orWhere('is_producer', 1)
                         ->orWhere('is_admin', 1);
                 })
                 ->orderByDesc('is_admin')

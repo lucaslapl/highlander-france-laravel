@@ -30,6 +30,8 @@
             {!! (int)$target['player']['is_moderator'] === 1 ? '<span class="badge badge-moderator">Modérateur</span>' : '' !!}
             {!! (int)$target['player']['is_mentor'] === 1 ? '<span class="badge badge-mentor">Mentor</span>' : '' !!}
             {!! (int)$target['player']['is_mixer'] === 1 ? '<span class="badge badge-mixer">Lanceur de Mix</span>' : '' !!}
+            {!! (int)$target['player']['is_caster'] === 1 ? '<span class="badge badge-caster">Caster</span>' : '' !!}
+            {!! (int)$target['player']['is_producer'] === 1 ? '<span class="badge badge-producer">Producteur</span>' : '' !!}
         </span>
     </div>
 </div>
@@ -90,6 +92,18 @@
                 <label class="admin-label">
                     <input type="checkbox" name="is_mixer" value="1" {{ (int)$target['player']['is_mixer'] === 1 ? 'checked' : '' }}>
                     <span>Lanceur de Mix</span>
+                </label>
+
+                <hr style="border: 0; border-top: 1px solid rgba(255,255,255,0.08); margin: 6px 0;">
+
+                <label class="admin-label">
+                    <input type="checkbox" name="is_caster" value="1" {{ (int)$target['player']['is_caster'] === 1 ? 'checked' : '' }}>
+                    <span>Caster (Twitch)</span>
+                </label>
+
+                <label class="admin-label">
+                    <input type="checkbox" name="is_producer" value="1" {{ (int)$target['player']['is_producer'] === 1 ? 'checked' : '' }}>
+                    <span>Production (Twitch)</span>
                 </label>
             </div>
         </div>

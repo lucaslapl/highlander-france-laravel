@@ -48,6 +48,8 @@
                         {!! (int)$member['is_moderator'] === 1 ? '<span class="badge badge-moderator">MODO</span>' : '<span class="badge badge-disabled">MODO</span>' !!} 
                         {!! (int)$member['is_mentor'] === 1 ? '<span class="badge badge-mentor">MENTOR</span>' : '<span class="badge badge-disabled">MENTOR</span>' !!} 
                         {!! (int)$member['is_mixer'] === 1 ? '<span class="badge badge-mixer">MIXER</span>' : '<span class="badge badge-disabled">MIXER</span>' !!} 
+                        {!! (int)$member['is_caster'] === 1 ? '<span class="badge badge-caster">CASTER</span>' : '<span class="badge badge-disabled">CASTER</span>' !!} 
+                        {!! (int)$member['is_producer'] === 1 ? '<span class="badge badge-producer">PROD</span>' : '<span class="badge badge-disabled">PROD</span>' !!} 
                     </td>
 
                     <td class="text-center">

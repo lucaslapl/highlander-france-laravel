@@ -315,7 +315,7 @@ final class PageController extends Controller
     {
         $members = (new PlayerRepository)->staffMembers();
 
-        $groups = ['founders' => [], 'mentors' => [], 'mixers' => [], 'moderators' => []];
+        $groups = ['founders' => [], 'mentors' => [], 'mixers' => [], 'moderators' => [], 'twitch' => []];
         $roleMap = [
             'founders' => 'is_founder',
             'mentors' => 'is_mentor',
@@ -327,17 +327,23 @@ final class PageController extends Controller
             $member = (array) $member;
             $member['final_name'] = ! empty($member['display_name']) ? $member['display_name'] : $member['name'];
             $member['profile_url'] = '/profile/'.SteamId::toSteamId64($member['steamid']);
+            $member['is_caster'] = (int) ($member['is_caster'] ?? 0);
+            $member['is_producer'] = (int) ($member['is_producer'] ?? 0);
 
             foreach ($roleMap as $group => $column) {
                 if ((int) $member[$column] === 1) {
                     $groups[$group][] = $member;
                 }
             }
+
+            if ($member['is_caster'] === 1 || $member['is_producer'] === 1) {
+                $groups['twitch'][] = $member;
+            }
         }
 
         return view('pages.staff', [
             'title' => "Highlander France - L'équipe",
-            'description' => "Découvrez l'équipe Highlander France : fondateurs, modérateurs, mentors et lanceurs de mix qui animent la communauté TF2 9v9 francophone.",
+            'description' => "Découvrez l'équipe Highlander France : fondateurs, modérateurs, mentors, lanceurs de mix et la team Twitch (casters & production) qui animent la communauté TF2 9v9 francophone.",
             'groups' => $groups,
             'breadcrumbs' => [
                 ['name' => 'Accueil', 'url' => site_url().'/'],

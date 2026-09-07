@@ -5,6 +5,8 @@ $rolesConfig = [
     'is_moderator' => ['label' => 'Modérateur',  'class' => 'badge-moderator'],
     'is_mentor'    => ['label' => 'Mentor',      'class' => 'badge-mentor'],
     'is_mixer'     => ['label' => 'Mixer',       'class' => 'badge-mixer'],
+    'is_caster'    => ['label' => 'Caster',      'class' => 'badge-caster'],
+    'is_producer'  => ['label' => 'Producteur',  'class' => 'badge-producer'],
 ];
 @endphp
 <div class="personnal-info__top">

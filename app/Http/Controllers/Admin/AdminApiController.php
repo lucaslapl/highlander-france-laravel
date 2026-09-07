@@ -127,6 +127,8 @@ final class AdminApiController extends Controller
                 isModerator: $request->has('is_moderator') ? 1 : 0,
                 isMentor: $request->has('is_mentor') ? 1 : 0,
                 isMixer: $request->has('is_mixer') ? 1 : 0,
+                isCaster: $request->has('is_caster') ? 1 : 0,
+                isProducer: $request->has('is_producer') ? 1 : 0,
                 resetNameChange: $request->has('reset_name_change'),
                 resetCountryChange: $request->has('reset_country_change'),
             );
