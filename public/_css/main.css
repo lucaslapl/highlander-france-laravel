@@ -467,6 +467,19 @@ body #nav .nav-dropdown-menu li a.active {
 .etf2l-map-card.is-missing {
   opacity: 0.72;
 }
+.etf2l-map-card-thumb {
+  aspect-ratio: 16 / 9;
+  overflow: hidden;
+  border-radius: 8px;
+  margin: -14px -14px 12px;
+  background: #150a18;
+}
+.etf2l-map-card-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
 .etf2l-map-card-name {
   font-weight: 700;
   color: #fbb7fb;

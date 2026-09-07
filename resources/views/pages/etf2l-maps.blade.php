@@ -13,7 +13,13 @@
         foreach ($maps as $m) {
             $exists = $m['exists'] ?? false;
             $size = $m['size_human'] ?? null;
+            $thumb = $m['thumb_url'] ?? null;
             echo '<div class="etf2l-map-card'.($exists ? '' : ' is-missing').'">';
+            if ($thumb) {
+                echo '<div class="etf2l-map-card-thumb">';
+                echo '<img src="'.e($thumb).'" alt="'.e($m['label']).'" loading="lazy">';
+                echo '</div>';
+            }
             echo '<div class="etf2l-map-card-name">'.e($m['label']).'</div>';
             echo '<div class="etf2l-map-card-file">'.e($m['file']).($size ? ' <span class="etf2l-map-size">· '.$size.'</span>' : '').'</div>';
             if ($exists) {

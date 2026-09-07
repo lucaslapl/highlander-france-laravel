@@ -140,6 +140,12 @@ window.__dashboardData = {!! json_encode($dashboardData, JSON_UNESCAPED_UNICODE 
                 <a href="/admin/manage-blacklist" class="admin-link-btn">Gérer la blacklist</a>
             </div>
 
+            <div class="admin-action-card" style="--accent: #8a5cf5;">
+                <h4 class="admin-action-card__title"><i class="fa-solid fa-map-location-dot"></i> Maps ETF2L</h4>
+                <p class="admin-action-card__desc">Upload des cartes en .bsp avec miniatures pour la page Maps (6v6 / 9v9).</p>
+                <a href="/admin/maps" class="admin-link-btn">Gérer les maps</a>
+            </div>
+
             <div class="admin-action-card" style="--accent: #9b59b6;">
                 <h4 class="admin-action-card__title"><i class="fa-solid fa-flask"></i> Simulateur d'API</h4>
                 <p class="admin-action-card__desc">Simuler un match en direct, des streams Twitch ou créer des matchs ETF2L factices pour tester les affichages sans serveur réel.</p>

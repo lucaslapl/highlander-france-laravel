@@ -914,3 +914,172 @@ body #main {
     padding: 0 10px;
   }
 }/*# sourceMappingURL=admin.css.map */
+body #main {
+  /********************************/
+  /** GESTION DES MAPS ETF2L **/
+  /********************************/
+}
+body #main .adm-maps-form-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 14px;
+  margin-bottom: 16px;
+}
+body #main .adm-maps-dropzone {
+  border: 2px dashed #6a6a7a;
+  border-radius: 10px;
+  padding: 26px 18px;
+  text-align: center;
+  cursor: pointer;
+  transition: border-color 0.2s, background 0.2s;
+  margin-bottom: 10px;
+  background: #16161b;
+}
+body #main .adm-maps-dropzone:hover,
+body #main .adm-maps-dropzone.is-dragging {
+  border-color: #8a5cf5;
+  background: #1d1d24;
+}
+body #main .adm-maps-dropzone.is-dragging {
+  box-shadow: 0 0 0 4px rgba(138, 92, 245, 0.2);
+}
+body #main .adm-maps-dropzone i {
+  font-size: 32px;
+  color: #8a5cf5;
+  margin-bottom: 8px;
+}
+body #main .adm-maps-dropzone-title {
+  margin: 0;
+  color: #fff;
+  font-size: 15px;
+}
+body #main .adm-maps-dropzone-title code {
+  color: #c9a5ff;
+}
+body #main .adm-maps-dropzone-sub {
+  margin: 4px 0 0;
+  color: #888;
+  font-size: 13px;
+}
+body #main .adm-maps-progress {
+  margin: 14px auto 0;
+  max-width: 420px;
+}
+body #main .adm-maps-progress-bar {
+  height: 8px;
+  background: #2b2b33;
+  border-radius: 999px;
+  overflow: hidden;
+}
+body #main .adm-maps-progress-bar span {
+  display: block;
+  height: 100%;
+  background: linear-gradient(90deg, #6a3fd4, #8a5cf5);
+  border-radius: 999px;
+  transition: width 0.2s;
+}
+body #main .adm-maps-progress-text {
+  margin: 6px 0 0;
+  color: #bbb;
+  font-size: 12px;
+}
+body #main .adm-maps-file-status {
+  min-height: 18px;
+  font-size: 13px;
+  margin: 0 0 14px;
+}
+body #main .adm-maps-file-status--success {
+  color: #2ecc71;
+}
+body #main .adm-maps-file-status--danger {
+  color: #e74c3c;
+}
+body #main .adm-maps-form-error {
+  margin-left: 12px;
+  color: #e74c3c;
+  font-size: 13px;
+}
+body #main .adm-maps-thumb {
+  width: 64px;
+  height: 36px;
+  object-fit: cover;
+  border-radius: 6px;
+  border: 1px solid #333;
+  background: #111;
+}
+body #main .adm-maps-thumb--empty {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #555;
+  font-size: 14px;
+}
+body #main .adm-maps-row-inactive {
+  opacity: 0.55;
+}
+body #main .adm-maps-actions {
+  display: flex;
+  gap: 6px;
+  justify-content: center;
+  align-items: center;
+}
+body #main .adm-maps-actions .admin-btn.btn-icon {
+  padding: 6px 8px;
+}
+body #main .adm-maps-edit-info {
+  color: #888;
+  font-size: 13px;
+  margin: 0 0 14px;
+}
+body #main .adm-maps-edit-info code {
+  color: #c9a5ff;
+}
+body #main .adm-maps-modal {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.72);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 20px;
+}
+body #main .adm-maps-modal[hidden] {
+  display: none;
+}
+body #main .adm-maps-modal-box {
+  background: #1b1b21;
+  border: 1px solid #3a3a45;
+  border-radius: 10px;
+  width: 100%;
+  max-width: 560px;
+  padding: 22px;
+  box-sizing: border-box;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6);
+  max-height: 90vh;
+  overflow-y: auto;
+}
+body #main .adm-maps-modal-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 18px;
+  border-bottom: 1px solid #333;
+  padding-bottom: 12px;
+}
+body #main .adm-maps-modal-head h3 {
+  margin: 0;
+  color: #ffd166;
+  font-size: 17px;
+}
+body #main .adm-maps-modal-close {
+  background: none;
+  border: none;
+  color: #aaa;
+  font-size: 20px;
+  cursor: pointer;
+  padding: 4px 8px;
+}
+body #main .adm-maps-modal-close:hover {
+  color: #fff;
+}

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers;
 
+use App\Models\Etf2lMapRepository;
 use App\Models\Etf2lRepository;
 use App\Models\MatchLogRepository;
 use App\Models\PlayerRepository;
@@ -152,31 +153,14 @@ final class PageController extends Controller
 
     public function etf2lMaps(): View
     {
-        $maps6v6 = [
-            ['name' => 'cp_sunshine', 'label' => 'cp_sunshine', 'file' => 'cp_sunshine.bsp'],
-            ['name' => 'cp_process_f12', 'label' => 'cp_process_f12', 'file' => 'cp_process_f12.bsp'],
-            ['name' => 'cp_gullywash_f9', 'label' => 'cp_gullywash_f9', 'file' => 'cp_gullywash_f9.bsp'],
-            ['name' => 'cp_metalworks_f7', 'label' => 'cp_metalworks_f7', 'file' => 'cp_metalworks_f7.bsp'],
-            ['name' => 'koth_govan_rc2', 'label' => 'koth_govan_rc2', 'file' => 'koth_govan_rc2.bsp'],
-            ['name' => 'cp_subbase_b3a', 'label' => 'cp_subbase_b3a', 'file' => 'cp_subbase_b3a.bsp'],
-            ['name' => 'koth_bagel_rc12', 'label' => 'koth_bagel_rc12', 'file' => 'koth_bagel_rc12.bsp'],
-            ['name' => 'cp_granary_pro_rc17a3', 'label' => 'cp_granary_pro_rc17a3', 'file' => 'cp_granary_pro_rc17a3.bsp'],
-            ['name' => 'koth_product_final', 'label' => 'koth_product_final', 'file' => 'koth_product_final.bsp'],
-        ];
-
-        $maps9v9 = [
-            ['name' => 'pl_swiftwater_final1', 'label' => 'pl_swiftwater_final1', 'file' => 'pl_swiftwater_final1.bsp'],
-            ['name' => 'pl_vigil_rc10', 'label' => 'pl_vigil_rc10', 'file' => 'pl_vigil_rc10.bsp'],
-            ['name' => 'cp_steel_f12', 'label' => 'cp_steel_f12', 'file' => 'cp_steel_f12.bsp'],
-            ['name' => 'pl_upward_f12', 'label' => 'pl_upward_f12', 'file' => 'pl_upward_f12.bsp'],
-            ['name' => 'koth_product_final', 'label' => 'koth_product_final', 'file' => 'koth_product_final.bsp'],
-            ['name' => 'koth_proot_b5b', 'label' => 'koth_proot_b5b', 'file' => 'koth_proot_b5b.bsp'],
-        ];
+        $repo = new Etf2lMapRepository();
+        $mapsByCategory = $repo->activeByCategory();
 
         $buildList = static function (array $maps, string $sub): array {
             return array_map(static function (array $m) use ($sub): array {
-                $path = "storage/etf2l-maps/{$sub}/{$m['file']}";
-                $storageAbs = storage_path("app/public/etf2l-maps/{$sub}/{$m['file']}");
+                $file = !empty($m['bsp_file']) ? $m['bsp_file'] : ($m['name'] . '.bsp');
+                $path = "storage/etf2l-maps/{$sub}/{$file}";
+                $storageAbs = storage_path("app/public/etf2l-maps/{$sub}/{$file}");
                 $publicAbs = public_path($path);
                 $abs = null;
                 if (is_file($storageAbs)) {
@@ -192,10 +176,12 @@ final class PageController extends Controller
                 $size = $exists ? filesize($abs) : null;
 
                 return $m + [
+                    'file' => $file,
                     'url' => asset($path),
                     'exists' => $exists,
                     'size' => $size,
                     'size_human' => $size !== false && $size !== null ? number_format($size / 1048576, 1).' Mo' : null,
+                    'thumb_url' => !empty($m['thumbnail']) ? asset('storage/' . ltrim((string) $m['thumbnail'], '/')) : null,
                 ];
             }, $maps);
         };
@@ -208,8 +194,8 @@ final class PageController extends Controller
                 ['name' => 'ETF2L', 'url' => site_url().'/matchs'],
                 ['name' => 'Maps', 'url' => site_url().'/etf2l/maps'],
             ],
-            'maps6v6' => $buildList($maps6v6, '6v6'),
-            'maps9v9' => $buildList($maps9v9, '9v9'),
+            'maps6v6' => $buildList($mapsByCategory['6v6'], '6v6'),
+            'maps9v9' => $buildList($mapsByCategory['9v9'], '9v9'),
         ]);
     }
 
