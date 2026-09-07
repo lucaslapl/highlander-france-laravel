@@ -176,6 +176,106 @@ body #main .admin-form-stack {
   gap: 12px;
   max-width: 480px;
 }
+body #main .admin-form-stack--wide {
+  max-width: 1100px;
+}
+body #main .form-hint {
+  display: block;
+  color: #888;
+  font-size: 12px;
+  line-height: 1.5;
+  margin-top: 4px;
+}
+body #main .form-hint code {
+  background: #1a1a1a;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: #fbb7fb;
+  padding: 1px 5px;
+  border-radius: 3px;
+  font-size: 12px;
+}
+body #main .form-hint .hint-label {
+  color: #f0b5f0;
+  font-weight: bold;
+}
+body #main .md-cheatsheet {
+  background: #1a1a1a;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 6px;
+  margin: 20px 0;
+}
+body #main .md-cheatsheet summary {
+  cursor: pointer;
+  color: #fff;
+  font-weight: bold;
+  padding: 14px 18px;
+  list-style: none;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 15px;
+  user-select: none;
+}
+body #main .md-cheatsheet summary::-webkit-details-marker {
+  display: none;
+}
+body #main .md-cheatsheet summary::before {
+  content: "\f59c";
+  font-family: "Font Awesome 6 Free";
+  font-weight: 900;
+  color: var(--accent, #fbb7fb);
+}
+body #main .md-cheatsheet summary:hover {
+  background: #222;
+}
+body #main .md-cheatsheet[open] summary {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+body #main .md-cheatsheet__body {
+  padding: 16px 20px;
+  font-size: 13px;
+  color: #ccc;
+  line-height: 1.6;
+}
+body #main .md-cheatsheet__body h4 {
+  color: #fff;
+  margin: 18px 0 8px 0;
+  font-size: 13px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+body #main .md-cheatsheet__body h4:first-child {
+  margin-top: 0;
+}
+body #main .md-cheatsheet__body table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 8px 0;
+}
+body #main .md-cheatsheet__body th,
+body #main .md-cheatsheet__body td {
+  border: 1px solid #333;
+  padding: 7px 10px;
+  text-align: left;
+  vertical-align: top;
+}
+body #main .md-cheatsheet__body th {
+  background: #222;
+  color: #fff;
+}
+body #main .md-cheatsheet__body code {
+  background: #111;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: #fbb7fb;
+  padding: 1px 5px;
+  border-radius: 3px;
+  font-size: 12px;
+  word-break: break-word;
+}
+body #main .md-cheatsheet__body .cheatsheet-link {
+  color: #fbb7fb;
+  text-decoration: underline;
+}
 body #main .admin-mono {
   font-family: "Consolas", monospace;
 }
@@ -659,6 +759,57 @@ body #main .admin-card .checkbox-group .admin-label input[type=checkbox] {
   height: 16px;
   accent-color: #ff4444;
   cursor: pointer;
+}
+body #main .admin-form-stack .EasyMDEContainer {
+  border: 1px solid #444;
+  border-radius: 4px;
+  background: #222;
+}
+body #main .admin-form-stack .EasyMDEContainer .CodeMirror {
+  background: #222;
+  color: #eee;
+  font-size: 14px;
+  line-height: 1.6;
+}
+body #main .admin-form-stack .editor-toolbar {
+  background: #2b2b2b;
+  border-bottom: 1px solid #444;
+  border-left: none;
+  border-top: none;
+  border-right: none;
+  opacity: 1;
+}
+body #main .admin-form-stack .editor-toolbar button {
+  color: #ccc;
+}
+body #main .admin-form-stack .editor-toolbar button:hover,
+body #main .admin-form-stack .editor-toolbar button.active {
+  background: #ff4444;
+  color: #fff;
+  border-color: #ff4444;
+}
+body #main .admin-form-stack .editor-preview {
+  background: #222;
+  color: #eee;
+}
+body #main .admin-form-stack .editor-preview pre {
+  background: #111;
+}
+body #main .admin-form-stack .EasyMDEContainer .CodeMirror .cm-header {
+  color: #ffb3ff;
+}
+body #main .admin-form-stack .EasyMDEContainer .CodeMirror .cm-strong,
+body #main .admin-form-stack .EasyMDEContainer .CodeMirror .cm-em {
+  color: #fff;
+}
+body #main .admin-form-stack .EasyMDEContainer .CodeMirror .cm-quote {
+  color: #aaa;
+}
+body #main .admin-form-stack .EasyMDEContainer .CodeMirror .cm-link {
+  color: #7ec8ff;
+}
+body #main .admin-form-stack .EasyMDEContainer .CodeMirror .cm-url {
+  color: #fbb7fb;
 }
 body #main {
   /********************************/
