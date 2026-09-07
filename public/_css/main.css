@@ -1184,7 +1184,7 @@ body #main #content #join a:hover {
   color: #cbcbcb;
   margin: 0 0 12px;
 }
-#staff .staff-categories {
+#staff.staff-categories {
   display: flex;
   flex-wrap: wrap;
   justify-content: center;
@@ -1795,7 +1795,7 @@ footer a {
   }
 }
 @media all and (max-width: 450px) {
-  body #main #content #staff .staff-categories {
+  body #main #content #staff.staff-categories {
     gap: 14px;
   }
   body #main #content #staff .staff-category {
