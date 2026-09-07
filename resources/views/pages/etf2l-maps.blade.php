@@ -6,6 +6,7 @@
 @section('content')
 <h1>Maps ETF2L — Saison en cours</h1>
 <p class="etf2l-maps-intro">Toutes les maps officielles ETF2L de la saison en cours, hébergées sur Highlander France. Téléchargement direct en <code>.bsp</code></p>
+<p class="etf2l-maps-help"><i class="fa-solid fa-circle-info"></i> Placez les fichiers dans <code>/tf/maps/</code></p>
 
 @php
     $renderGrid = function(array $maps): string {
@@ -23,7 +24,7 @@
             echo '<div class="etf2l-map-card-name">'.e($m['label']).'</div>';
             echo '<div class="etf2l-map-card-file">'.e($m['file']).($size ? ' <span class="etf2l-map-size">· '.$size.'</span>' : '').'</div>';
             if ($exists) {
-                echo '<a class="etf2l-map-dl" href="'.e($m['url']).'" download><i class="fa-solid fa-download"></i> Télécharger .bsp</a>';
+                echo '<a class="etf2l-map-dl" href="'.e($m['url']).'" download><i class="fa-solid fa-download"></i> Télécharger</a>';
             } else {
                 echo '<span class="etf2l-map-missing"><i class="fa-solid fa-triangle-exclamation"></i> Bientôt disponible</span>';
             }
@@ -46,6 +47,4 @@
         {!! $renderGrid($maps9v9) !!}
     </div>
 </section>
-
-<p class="etf2l-maps-help"><i class="fa-solid fa-circle-info"></i> Placez les fichiers dans <code>/tf/maps/</code></p>
 @endsection
