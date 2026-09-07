@@ -67,7 +67,7 @@
 
     <div class="form-group">
         <label class="admin-form-label" for="markdownEditor">Réponse Markdown</label>
-        <textarea id="markdownEditor" name="answer_markdown" rows="16" required>{{ e(old('answer_markdown', $item['answer_markdown'] ?? '')) }}</textarea>
+        <textarea id="markdownEditor" name="answer_markdown" rows="16">{{ e(old('answer_markdown', $item['answer_markdown'] ?? '')) }}</textarea>
         <small class="form-hint">La réponse, rédigée en <span class="hint-label">Markdown étendu</span> (mêmes règles que les guides : blocs <code>:::info</code>/<code>:::conseil</code>/<code>:::danger</code>/<code>:::combo</code>/<code>:::flank</code>, couleurs <code>hl-*</code>, tableaux). Soyez précis et allez droit au but.</small>
     </div>
 

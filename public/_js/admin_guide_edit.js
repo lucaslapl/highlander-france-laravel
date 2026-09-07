@@ -66,4 +66,12 @@ document.addEventListener('DOMContentLoaded', () => {
         ],
     });
     textarea._mde = easyMDE;
+
+    textarea.form?.addEventListener('submit', (e) => {
+        if (easyMDE.value().trim() === '') {
+            e.preventDefault();
+            alert('Le champ "Réponse Markdown" est obligatoire.');
+            easyMDE.codemirror.focus();
+        }
+    });
 });
