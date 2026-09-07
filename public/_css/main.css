@@ -807,6 +807,7 @@ body #main #content #join a:hover {
   padding: 20px;
   margin-bottom: 30px;
   backdrop-filter: blur(5px);
+  overflow: hidden;
 }
 
 .agenda-header h3 {
@@ -1805,6 +1806,20 @@ footer a {
   .agenda-item .match-action {
     order: 2;
     margin-left: auto;
+  }
+  /* Équipes / score : éviter la collision et le débordement sur petits écrans */
+  .teams-line .team-name {
+    width: auto;
+    flex: 1;
+    min-width: 0;
+  }
+  .teams-line .agenda-score {
+    width: auto;
+    flex: 0 0 auto;
+    gap: 6px;
+  }
+  .teams-line .vs-separator {
+    flex: 0 0 auto;
   }
 }
 @media all and (max-width: 450px) {

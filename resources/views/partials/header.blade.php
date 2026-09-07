@@ -55,7 +55,7 @@
                         <li role="none"><a role="menuitem" href="/match-logs" class="{{ $currentPath === '/match-logs' || str_starts_with($currentPath, '/log/') ? 'active' : '' }}">Match Logs</a></li>
                     </ul>
                 </li>
-                @php $isEtf2lActive = str_starts_with($currentPath, '/match') || str_starts_with($currentPath, '/etf2l'); @endphp
+                @php $isEtf2lActive = in_array($currentPath, ['/matchs']) || str_starts_with($currentPath, '/match/') || str_starts_with($currentPath, '/etf2l'); @endphp
                 <li class="nav-dropdown{{ $isEtf2lActive ? ' is-active' : '' }}">
                     <button type="button" class="nav-dropdown-toggle{{ $isEtf2lActive ? ' active' : '' }}" aria-expanded="false" aria-haspopup="true" aria-controls="etf2l-submenu">
                         ETF2L <i class="fa-solid fa-chevron-down nav-dropdown-chevron" aria-hidden="true"></i>
