@@ -117,18 +117,6 @@ window.__dashboardData = {!! json_encode($dashboardData, JSON_UNESCAPED_UNICODE 
             </div>
 
             <div class="admin-action-card" style="--accent: #f39c12;">
-                <h4 class="admin-action-card__title"><i class="fa-solid fa-rotate"></i> Tâches CRON</h4>
-                <p class="admin-action-card__desc">NE PAS UTILISER SAUF URGENCE OU SANS Y AVOIR ÉTÉ INVITÉ</p>
-                <a href="/admin/run-cron-manual" class="admin-link-btn">Panel CRON</a>
-            </div>
-
-            <div class="admin-action-card" style="--accent: #3498db;">
-                <h4 class="admin-action-card__title"><i class="fa-solid fa-database"></i> Logs du site</h4>
-                <p class="admin-action-card__desc">(Indisponible pour le moment)</p>
-                <a href="/admin/view-logs" class="admin-link-btn">Ouvrir l'inspecteur log</a>
-            </div>
-
-            <div class="admin-action-card" style="--accent: #f39c12;">
                 <h4 class="admin-action-card__title"><i class="fa-solid fa-clock-rotate-left"></i> Logs des matchs joués</h4>
                 <p class="admin-action-card__desc">Liste des matchs joués avec nombre de joueurs et durée, avec alertes orange (match court, effectif incomplet).</p>
                 <a href="/admin/match-logs" class="admin-link-btn">Voir les logs</a>
@@ -152,11 +140,30 @@ window.__dashboardData = {!! json_encode($dashboardData, JSON_UNESCAPED_UNICODE 
                 <a href="/admin/guides" class="admin-link-btn">Gérer les guides</a>
             </div>
 
+        </div>
+
+        <h3 class="admin-section-title">Gestion interne du site (dangereux !)</h3>
+
+        <div class="admin-cards-grid">
+
+            <div class="admin-action-card" style="--accent: #3498db;">
+                <h4 class="admin-action-card__title"><i class="fa-solid fa-database"></i> Logs du site</h4>
+                <p class="admin-action-card__desc">Liste des logs du site avec détails et filtres.</p>
+                <a href="/admin/view-logs" class="admin-link-btn">Ouvrir l'inspecteur log</a>
+            </div>
+
+            <div class="admin-action-card" style="--accent: #f39c12;">
+                <h4 class="admin-action-card__title"><i class="fa-solid fa-rotate"></i> Tâches CRON</h4>
+                <p class="admin-action-card__desc">NE PAS UTILISER SAUF URGENCE OU SANS Y AVOIR ÉTÉ INVITÉ</p>
+                <a href="/admin/run-cron-manual" class="admin-link-btn">Panel CRON</a>
+            </div>
+
             <div class="admin-action-card" style="--accent: #9b59b6;">
                 <h4 class="admin-action-card__title"><i class="fa-solid fa-flask"></i> Simulateur d'API</h4>
                 <p class="admin-action-card__desc">Simuler un match en direct, des streams Twitch ou créer des matchs ETF2L factices pour tester les affichages sans serveur réel.</p>
                 <a href="/admin/api-test" class="admin-link-btn">Ouvrir le simulateur</a>
             </div>
+
         </div>
 
         <div class="admin-api-status">
