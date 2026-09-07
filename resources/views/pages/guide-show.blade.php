@@ -32,7 +32,7 @@
             <span>@if ($prev)<a href="/guides/{{ e($prev['slug']) }}">← {{ e($prev['title']) }}</a>@endif</span>
             <span>@if ($next)<a href="/guides/{{ e($next['slug']) }}">{{ e($next['title']) }} →</a>@endif</span>
         </nav>
-        <p><a href="/faq">Une question ? Consulte la FAQ →</a></p>
+        <p class="guide-more"><a href="/faq">Une question ? Consulte la FAQ →</a></p>
     </article>
 </div>
 @endsection

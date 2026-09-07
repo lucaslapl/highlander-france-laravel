@@ -47,7 +47,12 @@ h1:hover .guide-anchor,h2:hover .guide-anchor,h3:hover .guide-anchor{opacity:1}
 .hl-green{color:#5bd68a;font-weight:600}
 .hl-gold{color:#f0c75e;font-weight:600}
 .guide-nav{display:flex;justify-content:space-between;gap:12px;margin:2.5em 0 0;flex-wrap:wrap}
-.guide-nav a{color:#fbb7fb}
+.guide-nav a{color:#fbb7fb;text-decoration:none}
+.guide-nav a:hover{text-decoration:underline}
+.guide-more{text-align:center;margin:24px 0 0}
+.guide-more a{color:#fbb7fb;text-decoration:underline;text-underline-offset:2px}
+.guide-more a:visited{color:#fbb7fb}
+.guide-more a:hover{color:#fff}
 .faq-search{max-width:760px;margin:0 auto 18px;display:flex;gap:8px}
 .faq-search input{flex:1;padding:10px 12px;border-radius:8px;border:1px solid rgba(255,255,255,.15);background:#0d0f12;color:#fff}
 .faq-cluster{max-width:860px;margin:0 auto 8px}

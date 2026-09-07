@@ -31,7 +31,7 @@
     @endif
 @endforeach
 
-<p style="text-align:center;margin-top:24px;"><a href="/guides/debuter-tf2-competitif">Commencer par le guide Débuter →</a></p>
+<p class="guide-more"><a href="/guides/debuter-tf2-competitif">Commencer par le guide Débuter →</a></p>
 @endsection
 
 @push('scripts')
