@@ -30,27 +30,25 @@
         </div>
     </article>
 
+    @if (!empty($groups['moderators']))
     <article class="staff-category">
         <h3>Modération</h3>
         <hr>
         <p>L'équipe en charge du respect des règles et de la bonne ambiance.</p>
         <div class="staff-role">
-            @if (empty($groups['moderators']))
-                <p class="no-data">Aucun modérateur enregistré pour le moment.</p>
-            @else
-                @foreach ($groups['moderators'] as $m)
-                <div class="staff-member">
-                    <img loading="lazy" decoding="async" src="{!! e($m['avatar']) !!}" alt="Avatar de {!! e($m['final_name']) !!}">
-                    <div class="staff-name-group">
-                        <a href="{!! e($m['profile_url']) !!}">
-                            <h4>{!! e($m['final_name']) !!}</h4>
-                        </a>
-                    </div>
+            @foreach ($groups['moderators'] as $m)
+            <div class="staff-member">
+                <img loading="lazy" decoding="async" src="{!! e($m['avatar']) !!}" alt="Avatar de {!! e($m['final_name']) !!}">
+                <div class="staff-name-group">
+                    <a href="{!! e($m['profile_url']) !!}">
+                        <h4>{!! e($m['final_name']) !!}</h4>
+                    </a>
                 </div>
-                @endforeach
-            @endif
+            </div>
+            @endforeach
         </div>
     </article>
+    @endif
 
     <article class="staff-category">
         <h3>Mentors</h3>
