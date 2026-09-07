@@ -44,6 +44,20 @@
             <ul class="nav-links">
                 <li><a href="/" class="{{ $currentPath === '/' ? 'active' : '' }}">Accueil</a></li>
                 <li><a href="/staff" class="{{ $currentPath === '/staff' ? 'active' : '' }}">L'équipe</a></li>
+                @php $isGuidesActive = $currentPath === '/guides' || str_starts_with($currentPath, '/guides/') || $currentPath === '/faq'; @endphp
+                <li class="nav-dropdown{{ $isGuidesActive ? ' is-active' : '' }}">
+                    <button type="button" class="nav-dropdown-toggle{{ $isGuidesActive ? ' active' : '' }}" aria-expanded="false" aria-haspopup="true" aria-controls="guides-submenu">
+                        Guides <i class="fa-solid fa-chevron-down nav-dropdown-chevron" aria-hidden="true"></i>
+                    </button>
+                    <ul id="guides-submenu" class="nav-dropdown-menu" role="menu">
+                        <li role="none"><a role="menuitem" href="/guides" class="{{ $currentPath === '/guides' ? 'active' : '' }}">Tous les guides</a></li>
+                        <li role="none"><a role="menuitem" href="/guides/debuter-tf2-competitif" class="{{ $currentPath === '/guides/debuter-tf2-competitif' ? 'active' : '' }}">Débuter en compétitif</a></li>
+                        <li role="none"><a role="menuitem" href="/guides/highlander-9v9" class="{{ $currentPath === '/guides/highlander-9v9' ? 'active' : '' }}">Highlander 9v9</a></li>
+                        <li role="none"><a role="menuitem" href="/guides/classes-highlander" class="{{ $currentPath === '/guides/classes-highlander' ? 'active' : '' }}">Les 9 classes</a></li>
+                        <li role="none"><a role="menuitem" href="/guides/6v6-debutant" class="{{ $currentPath === '/guides/6v6-debutant' ? 'active' : '' }}">6v6</a></li>
+                        <li role="none"><a role="menuitem" href="/faq" class="{{ $currentPath === '/faq' ? 'active' : '' }}">FAQ</a></li>
+                    </ul>
+                </li>
                 @php $isCommunauteActive = in_array($currentPath, ['/joueurs', '/hall-of-fame', '/match-logs']) || str_starts_with($currentPath, '/log/'); @endphp
                 <li class="nav-dropdown{{ $isCommunauteActive ? ' is-active' : '' }}">
                     <button type="button" class="nav-dropdown-toggle{{ $isCommunauteActive ? ' active' : '' }}" aria-expanded="false" aria-haspopup="true" aria-controls="communaute-submenu">

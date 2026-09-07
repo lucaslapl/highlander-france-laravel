@@ -146,6 +146,12 @@ window.__dashboardData = {!! json_encode($dashboardData, JSON_UNESCAPED_UNICODE 
                 <a href="/admin/maps" class="admin-link-btn">Gérer les maps</a>
             </div>
 
+            <div class="admin-action-card" style="--accent: #fbb7fb;">
+                <h4 class="admin-action-card__title"><i class="fa-solid fa-book-open"></i> Guides & FAQ</h4>
+                <p class="admin-action-card__desc">Guides SEO (Markdown étendu, tableaux, blocs couleur) et FAQ par cluster d’intentions.</p>
+                <a href="/admin/guides" class="admin-link-btn">Gérer les guides</a>
+            </div>
+
             <div class="admin-action-card" style="--accent: #9b59b6;">
                 <h4 class="admin-action-card__title"><i class="fa-solid fa-flask"></i> Simulateur d'API</h4>
                 <p class="admin-action-card__desc">Simuler un match en direct, des streams Twitch ou créer des matchs ETF2L factices pour tester les affichages sans serveur réel.</p>

@@ -32,10 +32,14 @@
                 </ul>
             </div>
             <div class="footer-col">
-                <h4>Guides <span style="font-weight:400;font-size:.75em;opacity:.6;">(à venir)</span></h4>
+                <h4>Guides</h4>
                 <ul>
-                    <li><span style="opacity:.5;">C'est quoi le Highlander ?</span></li>
-                    <li><span style="opacity:.5;">FAQ</span></li>
+                    <li><a href="/guides">Tous les guides</a></li>
+                    <li><a href="/guides/debuter-tf2-competitif">Débuter en compétitif</a></li>
+                    <li><a href="/guides/highlander-9v9">Highlander 9v9</a></li>
+                    <li><a href="/guides/classes-highlander">Les 9 classes</a></li>
+                    <li><a href="/guides/6v6-debutant">6v6</a></li>
+                    <li><a href="/faq">FAQ</a></li>
                 </ul>
             </div>
         </div>

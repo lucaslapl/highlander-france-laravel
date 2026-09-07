@@ -7,8 +7,10 @@ use App\Http\Controllers\Admin\AdminApiTestController;
 use App\Http\Controllers\Admin\AdminController;
 use App\Http\Controllers\Admin\AdminCronController;
 use App\Http\Controllers\Admin\AdminMapController;
+use App\Http\Controllers\Admin\AdminGuideController;
 use App\Http\Controllers\ApiController;
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\GuideController;
 use App\Http\Controllers\PageController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\ServerHookController;
@@ -27,6 +29,9 @@ Route::get('/match/{id}', [PageController::class, 'etf2lMatch'])->whereNumber('i
 Route::get('/matchs', [PageController::class, 'etf2lMatches']);
 Route::get('/etf2l/maps', [PageController::class, 'etf2lMaps']);
 Route::get('/confidentialite', [PageController::class, 'privacy']);
+Route::get('/guides', [GuideController::class, 'index']);
+Route::get('/guides/{slug}', [GuideController::class, 'show'])->where('slug', '[a-z0-9-]+');
+Route::get('/faq', [GuideController::class, 'faq']);
 Route::get('/sitemap.xml', [PageController::class, 'sitemap']);
 
 // ─── API JSON ────────────────────────────────────────────────────────────────
@@ -75,6 +80,19 @@ Route::middleware('admin')->prefix('admin')->group(function (): void {
     Route::post('/maps/{id}/update', [AdminMapController::class, 'update'])->whereNumber('id');
     Route::post('/maps/{id}/delete', [AdminMapController::class, 'delete'])->whereNumber('id');
     Route::post('/maps/{id}/toggle', [AdminMapController::class, 'toggle'])->whereNumber('id');
+    Route::get('/guides', [AdminGuideController::class, 'guides']);
+    Route::get('/guides/nouveau', [AdminGuideController::class, 'guideEdit']);
+    Route::post('/guides/store', [AdminGuideController::class, 'guideStore']);
+    Route::get('/guides/{id}/edit', [AdminGuideController::class, 'guideEdit'])->whereNumber('id');
+    Route::post('/guides/{id}/update', [AdminGuideController::class, 'guideUpdate'])->whereNumber('id');
+    Route::post('/guides/{id}/delete', [AdminGuideController::class, 'guideDelete'])->whereNumber('id');
+    Route::post('/guides/{id}/toggle', [AdminGuideController::class, 'guideToggle'])->whereNumber('id');
+    Route::get('/faq/nouveau', [AdminGuideController::class, 'faqEdit']);
+    Route::post('/faq/store', [AdminGuideController::class, 'faqStore']);
+    Route::get('/faq/{id}/edit', [AdminGuideController::class, 'faqEdit'])->whereNumber('id');
+    Route::post('/faq/{id}/update', [AdminGuideController::class, 'faqUpdate'])->whereNumber('id');
+    Route::post('/faq/{id}/delete', [AdminGuideController::class, 'faqDelete'])->whereNumber('id');
+    Route::post('/faq/{id}/toggle', [AdminGuideController::class, 'faqToggle'])->whereNumber('id');
     Route::get('/api-test', [AdminApiTestController::class, 'page']);
     Route::post('/api-test/live/start', [AdminApiTestController::class, 'liveStart']);
     Route::post('/api-test/live/heartbeat', [AdminApiTestController::class, 'liveHeartbeat']);

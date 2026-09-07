@@ -436,6 +436,8 @@ final class PageController extends Controller
                 '/match-logs' => [0.8, 'daily'],
                 '/matchs' => [0.8, 'daily'],
                 '/etf2l/maps' => [0.7, 'weekly'],
+                '/guides' => [0.9, 'weekly'],
+                '/faq' => [0.9, 'weekly'],
                 '/confidentialite' => [0.3, 'yearly'],
             ];
 
@@ -453,6 +455,16 @@ final class PageController extends Controller
             $lines = [];
             foreach ($staticPages as $path => [$priority, $change]) {
                 $lines[] = $block($base.$path, null, $priority, $change);
+            }
+
+            // Guides publiés + FAQ : piliers SEO à forte priorité.
+            try {
+                $guides = DB::table('guides')->where('is_published', 1)->select('slug', 'updated_at')->get();
+                foreach ($guides as $guide) {
+                    $lastmod = ! empty($guide->updated_at) ? date('Y-m-d', strtotime((string) $guide->updated_at)) : null;
+                    $lines[] = $block($base.'/guides/'.$guide->slug, $lastmod, 0.9, 'weekly');
+                }
+            } catch (\PDOException) {
             }
 
             // Dernier match comme référence de fraîcheur pour /match-logs et l'accueil.

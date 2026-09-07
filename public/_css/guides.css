@@ -1,0 +1,59 @@
+.guides-hero{max-width:900px;margin:0 auto 26px;text-align:center}
+.guides-hero p{opacity:.85}
+.guides-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:16px;max-width:1100px;margin:0 auto}
+.guide-card{border:1px solid rgba(255,255,255,.1);border-radius:10px;padding:18px;background:rgba(255,255,255,.02);display:flex;flex-direction:column;gap:8px}
+.guide-card:hover{border-color:#fbb7fb}
+.guide-card__cat{font-size:.75rem;text-transform:uppercase;letter-spacing:.06em;color:#fbb7fb}
+.guide-card h2{font-size:1.1rem;margin:0}
+.guide-card h2 a{color:#fff;text-decoration:none}
+.guide-card h2 a:hover{color:#fbb7fb;text-decoration:underline}
+.guide-card p{font-size:.92rem;opacity:.8;margin:0}
+.guide-card__link{margin-top:auto;padding-top:8px;color:#fbb7fb;font-size:.9rem}
+.guide-layout{display:grid;grid-template-columns:220px minmax(0,1fr);gap:28px;max-width:1100px;margin:0 auto;align-items:start}
+.guide-aside{position:sticky;top:16px;border:1px solid rgba(255,255,255,.1);border-radius:10px;padding:14px;font-size:.9rem}
+.guide-aside h2{font-size:.85rem;text-transform:uppercase;letter-spacing:.05em;opacity:.7;margin:0 0 8px}
+.guide-aside ul{list-style:none;margin:0;padding:0}
+.guide-aside li{margin:6px 0}
+.guide-aside a{color:#ddd;text-decoration:none}
+.guide-aside a.is-current{color:#fbb7fb;font-weight:700}
+.guide-aside a:hover{text-decoration:underline}
+.guide-content{max-width:760px;min-width:0}
+.guide-content h1{margin-top:0}
+.guide-content h2{margin-top:2em;border-bottom:1px solid rgba(255,255,255,.12);padding-bottom:.3em}
+.guide-content img{max-width:100%;height:auto;border-radius:8px}
+.guide-content table{width:100%;border-collapse:collapse;margin:1em 0;font-size:.92rem;display:block;overflow-x:auto}
+.guide-content thead th{background:rgba(251,183,251,.12)}
+.guide-content th,.guide-content td{border:1px solid rgba(255,255,255,.14);padding:8px 10px;text-align:left;vertical-align:top}
+.guide-content tbody tr:nth-child(even){background:rgba(255,255,255,.03)}
+.guide-content code{background:rgba(255,255,255,.08);padding:1px 5px;border-radius:4px;font-size:.88em}
+.guide-content pre{background:#0d0f12;border:1px solid rgba(255,255,255,.1);border-radius:8px;padding:12px;overflow-x:auto}
+.guide-content pre code{background:none;padding:0}
+.guide-anchor{opacity:0;margin-left:6px;text-decoration:none;color:#fbb7fb}
+h1:hover .guide-anchor,h2:hover .guide-anchor,h3:hover .guide-anchor{opacity:1}
+.guide-callout{border:1px solid;border-radius:10px;padding:12px 14px;margin:1.2em 0}
+.guide-callout p{margin:.4em 0}
+.guide-callout__title{font-weight:700;margin:0 0 6px}
+.guide-callout--info{background:rgba(52,152,219,.1);border-color:rgba(52,152,219,.5)}
+.guide-callout--tip{background:rgba(46,204,113,.08);border-color:rgba(46,204,113,.5)}
+.guide-callout--danger{background:rgba(231,76,60,.1);border-color:rgba(231,76,60,.55)}
+.guide-callout--combo{background:rgba(52,102,219,.12);border-color:rgba(52,102,219,.6)}
+.guide-callout--flank{background:rgba(192,57,43,.12);border-color:rgba(192,57,43,.6)}
+.hl-blue{color:#6ea8fe;font-weight:600}
+.hl-red{color:#ff7b7b;font-weight:600}
+.hl-green{color:#5bd68a;font-weight:600}
+.hl-gold{color:#f0c75e;font-weight:600}
+.guide-nav{display:flex;justify-content:space-between;gap:12px;margin:2.5em 0 0;flex-wrap:wrap}
+.guide-nav a{color:#fbb7fb}
+.faq-search{max-width:760px;margin:0 auto 18px;display:flex;gap:8px}
+.faq-search input{flex:1;padding:10px 12px;border-radius:8px;border:1px solid rgba(255,255,255,.15);background:#0d0f12;color:#fff}
+.faq-cluster{max-width:860px;margin:0 auto 8px}
+.faq-cluster h2{margin:1.6em 0 .6em}
+.faq-item{border:1px solid rgba(255,255,255,.1);border-radius:10px;margin:8px 0;background:rgba(255,255,255,.02)}
+.faq-item summary{cursor:pointer;padding:14px 16px;font-weight:600;list-style:none;display:flex;gap:10px;align-items:center}
+.faq-item summary::-webkit-details-marker{display:none}
+.faq-item summary::before{content:"+";color:#fbb7fb;font-weight:700}
+.faq-item[open] summary::before{content:"–"}
+.faq-item__answer{padding:0 16px 14px}
+.faq-item__answer p{margin:.5em 0}
+.faq-item__answer a{color:#fbb7fb}
+@media(max-width:860px){.guide-layout{grid-template-columns:1fr}.guide-aside{position:static;order:2}}
