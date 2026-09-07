@@ -10,7 +10,7 @@
 .guide-card p{font-size:.92rem;opacity:.8;margin:0}
 .guide-card__link{margin-top:auto;padding-top:8px;color:#fbb7fb;font-size:.9rem}
 .guide-layout{display:grid;grid-template-columns:220px minmax(0,1fr);gap:28px;max-width:1100px;margin:0 auto;align-items:start}
-.guide-aside{position:sticky;top:16px;border:1px solid rgba(255,255,255,.1);border-radius:10px;padding:14px;font-size:.9rem}
+.guide-aside{position:sticky;top:85px;border:1px solid rgba(255,255,255,.1);border-radius:10px;padding:14px;font-size:.9rem}
 .guide-aside h2{font-size:.85rem;text-transform:uppercase;letter-spacing:.05em;opacity:.7;margin:0 0 8px}
 .guide-aside ul{list-style:none;margin:0;padding:0}
 .guide-aside li{margin:6px 0}
