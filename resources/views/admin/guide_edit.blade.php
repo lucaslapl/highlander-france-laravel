@@ -46,7 +46,7 @@
 
     <div class="form-group">
         <label class="admin-form-label" for="guide-meta">Meta description SEO (max 300)</label>
-        <input type="text" class="form-control" id="guide-meta" name="meta_description" required maxlength="300" value="{{ e(old('meta_description', $guide['meta_description'] ?? '')) }}" placeholder="Résumé accrocheur du guide..." >
+        <textarea class="form-control" id="guide-meta" name="meta_description" required maxlength="300" rows="3">{{ e(old('meta_description', $guide['meta_description'] ?? '')) }}</textarea>
         <small class="form-hint">Le petit texte affiché <span class="hint-label">sous le titre dans Google</span>. Résumez en 1 à 2 phrases l'apport du guide (ce que le lecteur va apprendre). <span class="hint-label">150 à 160 caractères conseillés</span> pour ne pas être tronqué, sans répéter le titre.</small>
     </div>
 
@@ -62,7 +62,7 @@
 
     <div class="form-group">
         <label class="admin-form-label" for="guide-excerpt">Extrait (carte hub)</label>
-        <textarea name="excerpt" id="guide-excerpt" class="form-control" rows="3" maxlength="2000" placeholder="1 à 2 phrases résumant le contenu...">{{ e(old('excerpt', $guide['excerpt'] ?? '')) }}</textarea>
+        <textarea name="excerpt" id="guide-excerpt" class="form-control" rows="4" maxlength="2000" placeholder="1 à 2 phrases résumant le contenu...">{{ e(old('excerpt', $guide['excerpt'] ?? '')) }}</textarea>
         <small class="form-hint">Un résumé court affiché sur la <span class="hint-label">carte du guide dans le hub</span> (/guides). Rédigez 1 à 2 phrases accrocheuses pour donner envie de cliquer.</small>
     </div>
 

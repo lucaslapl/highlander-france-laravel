@@ -44,13 +44,13 @@
 
     <div class="form-group">
         <label class="admin-form-label" for="faq-q">Question</label>
-        <input type="text" class="form-control" id="faq-q" name="question" required maxlength="300" value="{{ e(old('question', $item['question'] ?? '')) }}" placeholder="Ex. : Comment rejoindre une équipe ?">
+        <textarea class="form-control" id="faq-q" name="question" required maxlength="300" rows="3" placeholder="Ex. : Comment rejoindre une équipe ?">{{ e(old('question', $item['question'] ?? '')) }}</textarea>
         <small class="form-hint">La question telle que les visiteurs la poseraient. <span class="hint-label">Soignez-la</span> : une question claire et précise est mieux comprise et mieux référencée. Formulez-la de façon naturelle (ex. « Comment puis-je... ? »).</small>
     </div>
 
     <div class="form-group">
         <label class="admin-form-label" for="faq-kw">Mots-clés SEO (séparés par des virgules)</label>
-        <input type="text" class="form-control" id="faq-kw" name="keywords" maxlength="300" value="{{ e(old('keywords', $item['keywords'] ?? '')) }}" placeholder="fortress forever, highlander, équipe, recrutement">
+        <textarea class="form-control" id="faq-kw" name="keywords" maxlength="300" rows="2" placeholder="fortress forever, highlander, équipe, recrutement">{{ e(old('keywords', $item['keywords'] ?? '')) }}</textarea>
         <small class="form-hint">Termes associés à la question, utilisés pour améliorer le <span class="hint-label">référencement SEO</span> et le tri. Séparez-les par des <code>,</code>. <span class="hint-label">3 à 5 mots-clés</span> pertinents suffisent (ex. <code>highlander, 9v9, format</code>). Champ optionnel.</small>
     </div>
 

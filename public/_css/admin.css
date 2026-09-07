@@ -179,6 +179,38 @@ body #main .admin-form-stack {
 body #main .admin-form-stack--wide {
   max-width: 1100px;
 }
+body #main .admin-form-stack .form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+body #main .admin-form-stack .form-control {
+  width: 100%;
+  box-sizing: border-box;
+  background: #222;
+  border: 1px solid #444;
+  color: #fff;
+  padding: 11px 13px;
+  border-radius: 4px;
+  font-size: 14px;
+  font-family: inherit;
+  line-height: 1.5;
+  transition: border-color 0.2s;
+}
+body #main .admin-form-stack .form-control:focus {
+  border-color: var(--accent, #fbb7fb);
+  outline: none;
+}
+body #main .admin-form-stack .form-control::placeholder {
+  color: #777;
+}
+body #main .admin-form-stack select.form-control {
+  min-height: 42px;
+}
+body #main .admin-form-stack textarea.form-control {
+  min-height: 90px;
+  resize: vertical;
+}
 body #main .form-hint {
   display: block;
   color: #888;
