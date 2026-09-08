@@ -36,7 +36,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     item.className = 'search-result-item';
                     
                     item.innerHTML = `
-                        <img src="${player.avatar}" alt="Avatar">
+                        <img src="${player.avatar}" alt="Avatar" loading="lazy" decoding="async" width="32" height="32" onerror="this.style.display='none'">
                         <span>${escapeHtml(player.name)}</span>
                     `;
                     resultsDropdown.appendChild(item);

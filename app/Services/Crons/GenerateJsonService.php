@@ -115,10 +115,11 @@ final class GenerateJsonService
 
                 $finalResults = [];
                 foreach ($rows as $row) {
+                    $steamid64 = SteamId::toSteamId64((string) $row['steamid']);
                     $finalResults[] = [
                         'name' => $row['name'],
-                        'avatar' => $row['avatar'],
-                        'steamid' => SteamId::toSteamId64((string) $row['steamid']),
+                        'avatar' => $steamid64 !== null ? \App\Services\AvatarCache::urlFor($steamid64) : ($row['avatar'] ?? ''),
+                        'steamid' => $steamid64,
                         $category['value_key'] => $row['value'],
                     ];
                 }

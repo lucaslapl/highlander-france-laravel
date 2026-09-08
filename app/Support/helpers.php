@@ -94,6 +94,30 @@ if (! function_exists('hlfr_asset')) {
     }
 }
 
+if (! function_exists('avatar_url')) {
+    function avatar_url(?string $steamid64): string
+    {
+        if ($steamid64 === null || $steamid64 === '') {
+            return '/_img/hf.webp';
+        }
+
+        return \App\Services\AvatarCache::urlFor($steamid64);
+    }
+}
+
+if (! function_exists('flag_sprite')) {
+    function flag_sprite(?string $country, string $label = ''): string
+    {
+        $class = \App\Services\CountryFlags::spriteClass($country);
+
+        if ($class === null) {
+            return '';
+        }
+
+        return '<span class="hlfr-sprite '.$class.'" role="img" aria-label="'.e($label).'"></span>';
+    }
+}
+
 if (! function_exists('hlfr_data_path')) {
     /**
      * Chemin absolu d'un fichier du répertoire de données applicatives

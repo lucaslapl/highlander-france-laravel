@@ -6,6 +6,9 @@
     "use strict";
 
     var POLL_INTERVAL = 60000;
+    var POLL_MAX_INTERVAL = 300000;
+    var pollDelay = POLL_INTERVAL;
+    var pollTimer = null;
     var badgeByMatchId = {};
     var banner = null;
 
@@ -72,18 +75,45 @@
         }
     }
 
+    function scheduleNext() {
+        clearTimeout(pollTimer);
+        pollTimer = setTimeout(poll, pollDelay);
+    }
+
     function poll() {
-        fetch("/api/twitch-live").then(function (response) {
+        if (document.hidden) {
+            scheduleNext();
+            return;
+        }
+        var controller = new AbortController();
+        var timeout = setTimeout(function () { controller.abort(); }, 10000);
+        fetch("/api/twitch-live", { signal: controller.signal }).then(function (response) {
+            clearTimeout(timeout);
+            if (response.status === 429 || response.status >= 500) {
+                throw new Error("retryable");
+            }
             return response.ok ? response.json() : null;
         }).then(function (payload) {
+            pollDelay = POLL_INTERVAL;
             render(payload && payload.data ? payload.data.channels || [] : []);
+            scheduleNext();
         }).catch(function () {
-            // Réseau/API indisponible : on garde l'état courant tel quel.
+            clearTimeout(timeout);
+            pollDelay = Math.min(pollDelay * 2, POLL_MAX_INTERVAL);
+            scheduleNext();
         });
     }
 
     collectBadges();
+    if (Object.keys(badgeByMatchId).length === 0 && !document.querySelector(".etf2l-agenda-container")) {
+        return;
+    }
     poll();
-    setInterval(poll, POLL_INTERVAL);
+    document.addEventListener("visibilitychange", function () {
+        if (!document.hidden) {
+            pollDelay = POLL_INTERVAL;
+            poll();
+        }
+    });
 })();
 </script>

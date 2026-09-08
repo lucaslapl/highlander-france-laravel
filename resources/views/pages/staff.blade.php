@@ -18,7 +18,7 @@
             @else
                 @foreach ($groups['founders'] as $f)
                 <div class="staff-member">
-                    <img loading="lazy" decoding="async" src="{!! e($f['avatar']) !!}" alt="Avatar de {!! e($f['final_name']) !!}">
+                    <img loading="lazy" decoding="async" src="{!! e($f['avatar_url'] ?? $f['avatar']) !!}" alt="Avatar de {!! e($f['final_name']) !!}" width="64" height="64">
                     <div class="staff-name-group">
                         <a href="{!! e($f['profile_url']) !!}">
                             <h4>{!! e($f['final_name']) !!}</h4>
@@ -38,7 +38,7 @@
         <div class="staff-role">
             @foreach ($groups['moderators'] as $m)
             <div class="staff-member">
-                <img loading="lazy" decoding="async" src="{!! e($m['avatar']) !!}" alt="Avatar de {!! e($m['final_name']) !!}">
+                <img loading="lazy" decoding="async" src="{!! e($m['avatar_url'] ?? $m['avatar']) !!}" alt="Avatar de {!! e($m['final_name']) !!}" width="64" height="64">
                 <div class="staff-name-group">
                     <a href="{!! e($m['profile_url']) !!}">
                         <h4>{!! e($m['final_name']) !!}</h4>
@@ -60,7 +60,7 @@
             @else
                 @foreach ($groups['mentors'] as $me)
                 <div class="staff-member">
-                    <img loading="lazy" decoding="async" src="{!! e($me['avatar']) !!}" alt="Avatar de {!! e($me['final_name']) !!}">
+                    <img loading="lazy" decoding="async" src="{!! e($me['avatar_url'] ?? $me['avatar']) !!}" alt="Avatar de {!! e($me['final_name']) !!}" width="64" height="64">
                     <div class="staff-name-group">
                         <a href="{!! e($me['profile_url']) !!}">
                             <h4>{!! e($me['final_name']) !!}</h4>
@@ -82,7 +82,7 @@
             @else
                 @foreach ($groups['mixers'] as $mi)
                 <div class="staff-member">
-                    <img loading="lazy" decoding="async" src="{!! e($mi['avatar']) !!}" alt="Avatar de {!! e($mi['final_name']) !!}">
+                    <img loading="lazy" decoding="async" src="{!! e($mi['avatar_url'] ?? $mi['avatar']) !!}" alt="Avatar de {!! e($mi['final_name']) !!}" width="64" height="64">
                     <div class="staff-name-group">
                         <a href="{!! e($mi['profile_url']) !!}">
                             <h4>{!! e($mi['final_name']) !!}</h4>
@@ -104,7 +104,7 @@
             @else
                 @foreach ($groups['twitch'] as $tw)
                 <div class="staff-member">
-                    <img loading="lazy" decoding="async" src="{!! e($tw['avatar']) !!}" alt="Avatar de {!! e($tw['final_name']) !!}">
+                    <img loading="lazy" decoding="async" src="{!! e($tw['avatar_url'] ?? $tw['avatar']) !!}" alt="Avatar de {!! e($tw['final_name']) !!}" width="64" height="64">
                     <div class="staff-name-group">
                         <a href="{!! e($tw['profile_url']) !!}">
                             <h4>{!! e($tw['final_name']) !!}</h4>

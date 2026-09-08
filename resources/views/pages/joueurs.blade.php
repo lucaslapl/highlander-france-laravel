@@ -72,8 +72,8 @@
                         <tr>
                             <td class="col-player">
                                 <div class="flex align-center gap-10">
-                                    @if (!empty($player['avatar']))
-                                        <img loading="lazy" decoding="async" src="{!! e($player['avatar']) !!}" alt="" class="joueurs-avatar">
+                                    @if (!empty($player['avatar_url'] ?? $player['avatar'] ?? null))
+                                        <img loading="lazy" decoding="async" src="{!! e($player['avatar_url'] ?? $player['avatar']) !!}" alt="" class="joueurs-avatar" width="32" height="32">
                                     @endif
                                     <span class="joueurs-name">
                                         @if (!empty($player['profile_url']))
@@ -118,8 +118,11 @@
                                 @endif
                             </td>
                             <td class="col-country">
-                                @if (!empty($player['flag_url']))
-                                    <img loading="lazy" decoding="async" src="{!! e($player['flag_url']) !!}" alt="{!! e($player['country_label']) !!}" class="joueurs-flag" title="{!! e($player['country_label']) !!}">
+                                @php $jSprite = \App\Services\CountryFlags::spriteClass($player['country'] ?? null); @endphp
+                                @if ($jSprite !== null)
+                                    <span class="hlfr-sprite {{ $jSprite }} joueurs-flag" role="img" aria-label="{!! e($player['country_label'] ?? '') !!}" title="{!! e($player['country_label'] ?? '') !!}"></span>
+                                @elseif (!empty($player['flag_url']))
+                                    <img loading="lazy" decoding="async" src="{!! e($player['flag_url']) !!}" alt="{!! e($player['country_label']) !!}" class="joueurs-flag" title="{!! e($player['country_label']) !!}" width="20" height="13">
                                 @else
                                     <span class="division-none">—</span>
                                 @endif

@@ -36,6 +36,13 @@ final class CommunityNews
         'tftv' => '/_img/src/tftv.ico',
     ];
 
+    /** Classes sprite PNG (1 seule requête) pour chaque source. */
+    public const SOURCE_SPRITE = [
+        'etf2l' => 'news-logo-etf2l',
+        'teamfortress' => 'news-logo-tf2com',
+        'tftv' => 'news-logo-tftv',
+    ];
+
     /**
      * News les plus récentes (toutes sources confondues, triées par date
      * décroissante), limitées au nombre demandé.

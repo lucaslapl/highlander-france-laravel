@@ -151,10 +151,11 @@ final class LiveMatches
 
             if ($steamid3 !== null && isset($known[$steamid3])) {
                 $row = $known[$steamid3];
+                $steamid64 = SteamId::toSteamId64($steamid3);
                 $p['display_name'] = $row['display_name'];
                 $p['name'] = $row['name'];
-                $p['avatar'] = $row['avatar'];
-                $p['steamid64'] = SteamId::toSteamId64($steamid3);
+                $p['avatar'] = $steamid64 !== null ? AvatarCache::urlFor($steamid64) : ($row['avatar'] ?? null);
+                $p['steamid64'] = $steamid64;
             } else {
                 $p['display_name'] = null;
                 $p['avatar'] = null;

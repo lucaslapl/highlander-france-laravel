@@ -49,7 +49,7 @@ final class PageController extends Controller
                 $hasCountry = ! empty($row['country']) && $row['country'] !== 'unknown';
                 $latestPlayers[] = [
                     'name' => ($row['display_name'] ?? '') !== '' ? $row['display_name'] : ($row['name'] ?? 'Joueur'),
-                    'avatar' => (string) $row['avatar'],
+                    'avatar' => \App\Services\AvatarCache::urlFor($steamid64),
                     'steamid64' => $steamid64,
                     'profile_url' => '/profile/'.$steamid64,
                     'country' => $hasCountry ? (string) $row['country'] : null,
@@ -287,6 +287,7 @@ final class PageController extends Controller
                 : ($row['name'] ?? 'Joueur');
             $steamid64 = SteamId::toSteamId64((string) $row['steamid']);
             $row['profile_url'] = $steamid64 !== null ? '/profile/'.$steamid64 : null;
+            $row['avatar_url'] = $steamid64 !== null ? \App\Services\AvatarCache::urlFor($steamid64) : ($row['avatar'] ?? '');
             $row['classes'] = $topClasses[$row['steamid']] ?? [];
             $hasCountry = ! empty($row['country']) && $row['country'] !== 'unknown';
             $row['flag_url'] = $hasCountry ? CountryFlags::flag((string) $row['country']) : null;
@@ -327,7 +328,9 @@ final class PageController extends Controller
         foreach ($members as $member) {
             $member = (array) $member;
             $member['final_name'] = ! empty($member['display_name']) ? $member['display_name'] : $member['name'];
-            $member['profile_url'] = '/profile/'.SteamId::toSteamId64($member['steamid']);
+            $steamid64 = SteamId::toSteamId64((string) $member['steamid']);
+            $member['profile_url'] = '/profile/'.$steamid64;
+            $member['avatar_url'] = $steamid64 !== null ? \App\Services\AvatarCache::urlFor($steamid64) : ($member['avatar'] ?? '');
             $member['is_caster'] = (int) ($member['is_caster'] ?? 0);
             $member['is_producer'] = (int) ($member['is_producer'] ?? 0);
 

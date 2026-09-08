@@ -52,7 +52,7 @@ async function loadLeaderboard(mode, category = 'matches') {
                 <td>
                     <div class="player-info">
                         <a href="/profile/${player.steamid}" class="player-link">
-                            <img src="${player.avatar}" class="player-avatar" alt="Avatar de ${escapeHtml(player.name)}">
+                            <img src="${player.avatar}" class="player-avatar" alt="Avatar de ${escapeHtml(player.name)}" loading="lazy" decoding="async" width="32" height="32" onerror="this.style.display='none'">
                             <span>${escapeHtml(player.name)}</span>
                         </a>
                     </div>

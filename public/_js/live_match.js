@@ -1,7 +1,10 @@
 (function () {
     'use strict';
 
-    const POLL_INTERVAL = 20000; // 20 s
+    const POLL_INTERVAL = 60000;
+    const POLL_MAX_INTERVAL = 300000;
+    let pollDelay = POLL_INTERVAL;
+    let pollTimer = null;
 
     function escapeHtml(value) {
         return String(value == null ? '' : value)
@@ -13,9 +16,17 @@
     }
 
     function fetchLiveMatches() {
-        return fetch('/api/live-matches', { headers: { Accept: 'application/json' } })
-            .then(function (r) { return r.json(); })
-            .then(function (json) { return json.data || []; });
+        const controller = new AbortController();
+        const timeout = setTimeout(function () { controller.abort(); }, 10000);
+        return fetch('/api/live-matches', { headers: { Accept: 'application/json' }, signal: controller.signal })
+            .then(function (r) {
+                if (r.status === 429 || r.status >= 500) {
+                    throw new Error('retryable:' + r.status);
+                }
+                return r.json();
+            })
+            .then(function (json) { return json.data || []; })
+            .finally(function () { clearTimeout(timeout); });
     }
 
     // ---- Badge "EN DIRECT" dans la barre de navigation ----
@@ -56,7 +67,7 @@
             ? '<img src="/_img/classes/' + cls + '.png" alt="' + cls + '" class="class-icon" title="' + cls + '">'
             : '<span class="class-unknown">?</span>';
         const avatar = p.avatar
-            ? '<img src="' + escapeHtml(p.avatar) + '" alt="Avatar de ' + pseudoHtml + '" class="player-avatar">'
+            ? '<img src="' + escapeHtml(p.avatar) + '" alt="Avatar de ' + pseudoHtml + '" class="player-avatar" loading="lazy" decoding="async" width="32" height="32" onerror="this.style.display=\'none\'">'
             : '';
         const link = p.steamid64
             ? '<a href="/profile/' + escapeHtml(p.steamid64) + '" class="player-link">' + pseudoHtml + '</a>'
@@ -134,18 +145,43 @@
 
     // ---- Boucle ----
     const detailSeen = !!document.getElementById('liveMatchDetail');
+    const badgeSeen = !!document.getElementById('liveNavBadge');
+
+    if (!detailSeen && !badgeSeen) {
+        return;
+    }
+
+    function scheduleNext() {
+        clearTimeout(pollTimer);
+        pollTimer = setTimeout(tick, pollDelay);
+    }
 
     function tick() {
+        if (document.hidden) {
+            scheduleNext();
+            return;
+        }
         fetchLiveMatches()
             .then(function (matches) {
+                pollDelay = POLL_INTERVAL;
                 updateNavBadge(matches);
                 if (detailSeen) {
                     updateDetail(matches);
                 }
+                scheduleNext();
             })
-            .catch(function () { /* on garde l'état affiché */ });
+            .catch(function () {
+                pollDelay = Math.min(pollDelay * 2, POLL_MAX_INTERVAL);
+                scheduleNext();
+            });
     }
 
+    document.addEventListener('visibilitychange', function () {
+        if (!document.hidden) {
+            pollDelay = POLL_INTERVAL;
+            tick();
+        }
+    });
+
     tick();
-    setInterval(tick, POLL_INTERVAL);
 })();

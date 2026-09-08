@@ -105,7 +105,7 @@
                 @php
     $flag = \App\Services\CountryFlags::flag($team['country'] ?? null); 
 @endphp
-                <img loading="lazy" decoding="async" src="{!! e($flag) !!}" alt="{!! e($team['country'] ?? '') !!}" class="team-flag" title="{!! e($team['country'] ?? '') !!}">
+                @include('partials.flag', ['country' => $team['country'] ?? null, 'label' => (string) ($team['country'] ?? ''), 'class' => ''])
                 <span class="team-name">{!! e($team['name']) !!}</span>
                 {!! $resultBadge(($team['key'] ?? '') === 'team1' ? ($result1 ?? null) : ($result2 ?? null)) !!}
                 @if (!empty($team['tag']))
@@ -122,7 +122,7 @@
     $pFlag = \App\Services\CountryFlags::flag($player['country'] ?? null); 
 @endphp
                         <li class="etf2l-roster-item flex align-center gap-10">
-                            <img loading="lazy" decoding="async" src="{!! e($pFlag) !!}" alt="{!! e($player['country'] ?? '') !!}" class="team-flag" title="{!! e($player['country'] ?? '') !!}">
+                            @include('partials.flag', ['country' => $player['country'] ?? null, 'label' => (string) ($player['country'] ?? ''), 'class' => ''])
                             <a href="{!! e($player['profile_url']) !!}" class="roster-player-link" {{ $player['exists_on_site'] ? '' : 'target="_blank" rel="noopener"' }}>
                                 {!! e($player['name']) !!}
                                 @if (!$player['exists_on_site'])

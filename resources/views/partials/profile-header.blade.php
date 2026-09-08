@@ -11,7 +11,7 @@ $rolesConfig = [
 @endphp
 <div class="personnal-info__top">
     <div class="profile-header flex align-center">
-        <img src="/img/avatar/{!! e($steamid64 ?? $player['steamid'] ?? '') !!}" alt="Avatar de {!! e($playerName) !!}" class="profile-avatar" loading="lazy" decoding="async">
+        <img src="{!! e(avatar_url($steamid64 ?? null)) !!}" alt="Avatar de {!! e($playerName) !!}" class="profile-avatar" loading="lazy" decoding="async" width="100" height="100" onerror="this.onerror=null;this.src='/img/avatar/{!! e($steamid64 ?? '') !!}'">
 
         <div class="flex flex-column justify-center gap-5" style="align-items: flex-start;">
             <div class="flex align-center gap-10">

@@ -168,7 +168,7 @@ body {
 }
 body #header {
   /**background: linear-gradient(90deg, rgba(0, 0, 0, 1) 5%,rgba(0, 0, 0, .8) 10%,rgba(0, 0, 0, 0) 50%, rgba(0, 0, 0, .8) 90%, rgba(0, 0, 0, 1) 95%),url("../_img/suijin.png");**/
-  background-image: url("../_img/sulfur1.png");
+  background-image: url("../_img/sulfur1.webp");
   background-size: cover;
   background-repeat: no-repeat;
   background-position: bottom;

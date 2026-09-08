@@ -193,10 +193,11 @@ final class ApiController extends Controller
 
         $results = [];
         foreach ((new PlayerRepository())->search($query) as $player) {
+            $steamid64 = SteamId::toSteamId64($player['steamid']);
             $results[] = [
-                'steamid' => SteamId::toSteamId64($player['steamid']),
+                'steamid' => $steamid64,
                 'name' => !empty($player['display_name']) ? $player['display_name'] : $player['name'],
-                'avatar' => $player['avatar'],
+                'avatar' => $steamid64 !== null ? \App\Services\AvatarCache::urlFor($steamid64) : ($player['avatar'] ?? ''),
             ];
         }
 

@@ -53,7 +53,7 @@
                         <div class="teams-line flex align-center">
 
                             <span class="team-name text-right flex align-center justify-end gap-10{{ $win1 ? ' winner' : '' }}">
-                                <img loading="lazy" decoding="async" src="{!! e($flag1) !!}" alt="{!! ucfirst(e($match['team1_country'])) !!}" class="team-flag" title="{!! ucfirst(e($match['team1_country'])) !!}">
+                                @include('partials.flag', ['country' => $match['team1_country'] ?? null, 'label' => ucfirst((string) ($match['team1_country'] ?? '')), 'class' => ''])
                                 <span class="truncate-text">{!! e($match['team1_name']) !!}</span>
                             </span>
 
@@ -69,7 +69,7 @@
 
                             <span class="team-name text-left flex align-center gap-10{{ $win2 ? ' winner' : '' }}">
                                 <span class="truncate-text">{!! e($match['team2_name']) !!}</span>
-                                <img loading="lazy" decoding="async" src="{!! e($flag2) !!}" alt="{!! ucfirst(e($match['team2_country'])) !!}" class="team-flag" title="{!! ucfirst(e($match['team2_country'])) !!}">
+                                @include('partials.flag', ['country' => $match['team2_country'] ?? null, 'label' => ucfirst((string) ($match['team2_country'] ?? '')), 'class' => ''])
                             </span>
 
                         </div>

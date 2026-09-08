@@ -112,6 +112,36 @@ final class CountryFlags
         'northireland' => 'gb',
     ];
 
+    /** Codes couverts par le sprite PNG /_img/sprite-hlfr.png (1 requête). */
+    public const SPRITE_CODES = [
+        'fr', 'be', 'eu', 'lu', 'sw', 'uk', 'ca', 'al', 'mo', 'tu', 'breizh', 'unknown',
+    ];
+
+    /**
+     * Classe CSS sprite pour un pays, ou null si non couvert (fallback <img>).
+     */
+    public static function spriteClass(?string $country): ?string
+    {
+        $raw = $country !== null ? strtolower(trim((string) $country)) : '';
+        $raw = $raw === '' ? 'unknown' : $raw;
+
+        if ($raw === 'unknown') {
+            return 'flag-unknown';
+        }
+
+        $code = self::resolveCode($raw);
+
+        if ($code === 'gb') {
+            $code = 'uk';
+        }
+
+        if ($code !== null && in_array($code, self::SPRITE_CODES, true)) {
+            return 'flag-'.$code;
+        }
+
+        return null;
+    }
+
     /**
      * URL du drapeau pour un pays (nom complet ou code ISO).
      */

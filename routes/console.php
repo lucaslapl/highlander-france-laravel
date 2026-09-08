@@ -45,5 +45,8 @@ Schedule::command('app:sync-steam')->hourly()->withoutOverlapping(30);
 // Réparation des profils Steam cassés (avatars/pseudos vides).
 Schedule::command('app:sync-steam-avatars')->everySixHours()->withoutOverlapping(30);
 
+// Pré-chauffage du cache statique des avatars (évite la rafale PHP/nginx).
+Schedule::command('app:warm-avatars')->dailyAt('04:30')->withoutOverlapping(30);
+
 // Rosters Équipe de France 6v6 et Highlander (badges).
 Schedule::command('app:sync-france')->everySixHours()->withoutOverlapping(30);

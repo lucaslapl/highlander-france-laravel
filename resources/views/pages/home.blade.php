@@ -25,7 +25,7 @@
     Nous mettons un point d'honneur à faire de notre communauté un <b>lieu sûr pour tous.</b></p>
     <div class="vid-container">
         <div class="pres-video">
-            <video muted loop playsinline preload="none" data-deferred-autoplay poster="/_img/meta-bg-hlfr.jpg">
+            <video muted loop playsinline preload="none" data-deferred-autoplay poster="/_img/meta-bg-hlfr.webp">
                 <source data-src="https://i.imgur.com/We4yrzC.mp4" type="video/mp4">
                 Votre navigateur ne supporte pas la lecture de vidéos.
             </video>

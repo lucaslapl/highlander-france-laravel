@@ -98,7 +98,12 @@
     <link rel="preconnect" href="https://kit.fontawesome.com" crossorigin>
     <link rel="preconnect" href="https://ka-f.fontawesome.com" crossorigin>
 
+    <link rel="preload" href="/_img/hf.webp" as="image" fetchpriority="high">
+    <link rel="preload" href="/_img/sprite-hlfr.png" as="image">
+    <link rel="preload" href="/_fonts/Montserrat-Regular.woff2" as="font" type="font/woff2" crossorigin>
+    <link rel="preload" href="/_fonts/Montserrat-Bold.woff2" as="font" type="font/woff2" crossorigin>
     <link rel="stylesheet" href="{{ hlfr_asset('/_css/main.css') }}">
+    <link rel="stylesheet" href="{{ hlfr_asset('/_css/sprite.css') }}">
     @stack('styles')
 
     <!-- Google tag (gtag.js) -->

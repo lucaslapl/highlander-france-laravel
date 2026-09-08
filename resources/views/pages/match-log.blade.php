@@ -22,8 +22,14 @@ function matchRowHtml(array $p, int $rank): string
         ? '<img src="' . $iconPath . '" alt="' . ucfirst($classPlayed) . '" class="class-icon" title="' . ucfirst($classPlayed) . '">'
         : '<span class="class-unknown" title="' . ucfirst($classPlayed) . '">?</span>';
 
-    $avatarHtml = !empty($p['avatar'])
-        ? '<img src="' . htmlspecialchars($p['avatar']) . '" alt="Avatar de ' . $pseudoDisplay . '" class="player-avatar">'
+    $avatarSrc = '';
+    if (!empty($steamid64) && preg_match('/^\d{17}$/', (string) $steamid64)) {
+        $avatarSrc = \App\Services\AvatarCache::urlFor((string) $steamid64);
+    } elseif (!empty($p['avatar'])) {
+        $avatarSrc = (string) $p['avatar'];
+    }
+    $avatarHtml = $avatarSrc !== ''
+        ? '<img src="' . htmlspecialchars($avatarSrc) . '" alt="Avatar de ' . $pseudoDisplay . '" class="player-avatar" loading="lazy" decoding="async" width="32" height="32" onerror="this.style.display=\'none\'">'
         : '';
 
     $linkHtml = $steamid64

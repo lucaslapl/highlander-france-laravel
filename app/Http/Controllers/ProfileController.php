@@ -69,16 +69,24 @@ final class ProfileController extends Controller
     }
 
     /**
-     * GET /img/avatar/{steamid} — proxy de l'avatar Steam mis en cache localement.
+     * GET /img/avatar/{steamid} — compatibilité vers le cache statique nginx.
      *
-     * Le CDN de Steam (avatars.steamstatic.com) renvoie parfois des 429 quand le
-     * navigateur charge l'image en direct. On sert donc l'avatar depuis notre
-     * domaine : le serveur télécharge les octets une fois (avec les bons
-     * en-têtes), les met en cache, puis les renvoie sans jamais retransmettre
-     * de 429 au client.
+     * Les vues utilisent désormais /storage/avatars/{steamid}.ext (servi
+     * directement par nginx, sans PHP). Cette route ne sert que de repli :
+     * 301 vers le fichier statique s'il existe, sinon fetch unique sous lock
+     * puis 301. On ne retransmet jamais le 429 de Steam au client.
      */
-    public function avatar(Request $request, string $steamid): Response
+    public function avatar(Request $request, string $steamid): Response|\Illuminate\Http\RedirectResponse
     {
+        if (! preg_match('/^\d{17}$/', $steamid)) {
+            abort(404);
+        }
+
+        $static = \App\Services\AvatarCache::urlFor($steamid);
+        if ($static !== '/img/avatar/'.$steamid) {
+            return redirect($static, 301);
+        }
+
         $steamid3 = SteamId::toSteamId3($steamid);
         $player = $this->players->findById($steamid3);
 
@@ -87,66 +95,86 @@ final class ProfileController extends Controller
             abort(404);
         }
 
+        $migrated = $this->migrateLegacyAvatar($source);
+        if ($migrated !== null) {
+            $stored = \App\Services\AvatarCache::fetchAndStore($steamid, $source);
+            if ($stored === null) {
+                $ext = strtolower((string) pathinfo((string) parse_url($source, PHP_URL_PATH), PATHINFO_EXTENSION));
+                if (! in_array($ext, ['jpg', 'jpeg', 'png', 'gif'], true)) {
+                    $ext = 'jpg';
+                }
+                if ($ext === 'jpeg') {
+                    $ext = 'jpg';
+                }
+                $dir = public_path('storage/avatars');
+                if (! is_dir($dir)) {
+                    @mkdir($dir, 0755, true);
+                }
+                @copy($migrated, $dir.'/'.$steamid.'.'.$ext);
+                $stored = \App\Services\AvatarCache::urlFor($steamid);
+                if ($stored === '/img/avatar/'.$steamid) {
+                    return $this->serveBytes($migrated, $request);
+                }
+            }
+
+            return redirect($stored ?? '/img/avatar/'.$steamid, 301);
+        }
+
+        $lock = \Illuminate\Support\Facades\Cache::lock('avatar-fetch-'.$steamid, 10);
+        if (! $lock->get()) {
+            abort(429, '', ['Retry-After' => '5']);
+        }
+
+        try {
+            $stored = \App\Services\AvatarCache::fetchAndStore($steamid, $source);
+        } finally {
+            $lock->release();
+        }
+
+        if ($stored !== null) {
+            return redirect($stored, 301);
+        }
+
+        abort(404);
+    }
+
+    private function migrateLegacyAvatar(string $source): ?string
+    {
         $ext = strtolower((string) pathinfo((string) parse_url($source, PHP_URL_PATH), PATHINFO_EXTENSION));
         if (! in_array($ext, ['jpg', 'jpeg', 'png', 'gif'], true)) {
             $ext = 'jpg';
         }
-        $mime = ['jpg' => 'image/jpeg', 'jpeg' => 'image/jpeg', 'png' => 'image/png', 'gif' => 'image/gif'][$ext];
-
-        $cacheDir = storage_path('app/avatars');
-        $cacheFile = $cacheDir.'/'.md5($source).'.'.$ext;
-        $ttl = 86400;
-
-        $serve = function () use ($cacheFile, $mime): Response {
-            $body = @file_get_contents($cacheFile);
-            if ($body === false) {
-                abort(404);
-            }
-
-            return new Response($body, 200, [
-                'Content-Type' => $mime,
-                'Cache-Control' => 'public, max-age=86400',
-                'Content-Length' => (string) strlen($body),
-            ]);
-        };
-
-        if (is_file($cacheFile) && time() - (int) filemtime($cacheFile) < $ttl) {
-            return $serve();
+        $legacy = storage_path('app/avatars/'.md5($source).'.'.$ext);
+        if (is_file($legacy) && @filesize($legacy) > 0) {
+            return $legacy;
         }
 
-        $ch = curl_init($source);
-        curl_setopt_array($ch, [
-            CURLOPT_RETURNTRANSFER => true,
-            CURLOPT_FOLLOWLOCATION => true,
-            CURLOPT_TIMEOUT        => 8,
-            CURLOPT_CONNECTTIMEOUT => 5,
-            CURLOPT_SSL_VERIFYPEER => config('hlfr.curl_verify_ssl'),
-            CURLOPT_USERAGENT      => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36',
-            CURLOPT_HTTPHEADER     => ['Referer: https://steamcommunity.com/'],
+        return null;
+    }
+
+    private function serveBytes(string $file, Request $request): Response
+    {
+        $ext = strtolower((string) pathinfo($file, PATHINFO_EXTENSION));
+        $mime = ['jpg' => 'image/jpeg', 'png' => 'image/png', 'gif' => 'image/gif'][$ext] ?? 'image/jpeg';
+        $mtime = (int) @filemtime($file);
+        $etag = '"'.md5($file.$mtime).'"';
+
+        if ($request->header('If-None-Match') === $etag) {
+            return new Response('', 304, ['ETag' => $etag, 'Cache-Control' => 'public, max-age=31536000, immutable']);
+        }
+
+        $body = @file_get_contents($file);
+        if ($body === false) {
+            abort(404);
+        }
+
+        return new Response($body, 200, [
+            'Content-Type' => $mime,
+            'Cache-Control' => 'public, max-age=31536000, immutable',
+            'Content-Length' => (string) strlen($body),
+            'ETag' => $etag,
+            'Last-Modified' => gmdate('D, d M Y H:i:s', $mtime).' GMT',
         ]);
-        $data = curl_exec($ch);
-        $code = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
-        curl_close($ch);
-
-        if ($data !== false && $code >= 200 && $code < 300 && $data !== '') {
-            if (! is_dir($cacheDir) && @mkdir($cacheDir, 0775, true) === false && ! is_dir($cacheDir)) {
-                // Répertoire inaccessible : on sert quand même les octets fraîchement récupérés.
-            } else {
-                @file_put_contents($cacheFile, $data);
-            }
-
-            return new Response($data, 200, [
-                'Content-Type' => $mime,
-                'Cache-Control' => 'public, max-age=86400',
-                'Content-Length' => (string) strlen($data),
-            ]);
-        }
-
-        if (is_file($cacheFile)) {
-            return $serve();
-        }
-
-        abort(404);
     }
 
     /**

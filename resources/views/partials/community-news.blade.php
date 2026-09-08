@@ -12,7 +12,12 @@
             @foreach ($communityNews as $item)
                 <li>
                     <a href="{{ e($item['url']) }}" target="_blank" rel="noopener noreferrer" class="news-item" title="{{ e($item['source_label']) }}">
-                        <img loading="lazy" decoding="async" src="{{ e($item['logo']) }}" alt="{{ e($item['source_label']) }}" class="news-source-logo">
+                        @php $newsSprite = \App\Services\CommunityNews::SOURCE_SPRITE[$item['source']] ?? null; @endphp
+                        @if ($newsSprite !== null)
+                            <span class="hlfr-sprite {{ $newsSprite }} news-source-logo" role="img" aria-label="{{ e($item['source_label']) }}"></span>
+                        @else
+                            <img loading="lazy" decoding="async" src="{{ e($item['logo']) }}" alt="{{ e($item['source_label']) }}" class="news-source-logo" width="16" height="16">
+                        @endif
                         <span class="news-item-date">{{ $item['date_label'] ?? '' }}</span>
                         <span class="news-item-title">{{ $item['title'] }}</span>
                     </a>
