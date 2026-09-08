@@ -20,6 +20,7 @@ body #main #content .personnal-info .profile-header {
 }
 body #main #content .personnal-info .profile-header .profile-avatar {
   width: 125px;
+  height: 125px;
   border-radius: 50%;
 }
 body #main #content .personnal-info .profile-header h2 {
