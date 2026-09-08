@@ -108,6 +108,9 @@ final class SyncFranceService
             if (is_resource($lock)) {
                 fclose($lock);
             }
+
+            AdminLogger::skipped(self::SCRIPT_NAME, 'Tâche ignorée : une autre exécution est déjà en cours.');
+
             return 'Synchronisation France ignorée : une autre exécution est déjà en cours.';
         }
 

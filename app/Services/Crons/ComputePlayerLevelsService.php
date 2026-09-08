@@ -243,6 +243,8 @@ final class ComputePlayerLevelsService
                 fclose($lock);
             }
 
+            AdminLogger::skipped(self::SCRIPT_NAME, 'Tâche ignorée : une autre exécution est déjà en cours.');
+
             return 'Calcul des niveaux ignoré : une autre exécution est déjà en cours.';
         }
 

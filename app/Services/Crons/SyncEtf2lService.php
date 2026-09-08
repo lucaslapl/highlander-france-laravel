@@ -174,6 +174,8 @@ final class SyncEtf2lService
                 fclose($lock);
             }
 
+            AdminLogger::skipped(self::SCRIPT_NAME, 'Tâche ignorée : une autre exécution est déjà en cours.');
+
             return 'Synchronisation ETF2L ignorée : une autre exécution est déjà en cours.';
         }
 
