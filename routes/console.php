@@ -25,6 +25,9 @@ Schedule::command('app:generate-json')->everyThreeHours()->withoutOverlapping(30
 // Agenda des matchs ETF2L français.
 Schedule::command('app:sync-etf2l')->everyThirtyMinutes()->withoutOverlapping(120);
 
+// Logs.tf officiels des matchs ETF2L (scraping pages match).
+Schedule::command('app:sync-etf2l-logs')->hourly()->withoutOverlapping(60);
+
 // Niveaux réels des joueurs inscrits (division moyenne ETF2L par mode).
 Schedule::command('app:compute-player-levels')->weeklyOn(0, '5:00')->withoutOverlapping(60);
 
