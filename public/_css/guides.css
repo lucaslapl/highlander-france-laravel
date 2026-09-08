@@ -62,7 +62,7 @@ h1:hover .guide-anchor,h2:hover .guide-anchor,h3:hover .guide-anchor{opacity:1}
 .faq-item summary::-webkit-details-marker{display:none}
 .faq-item summary::before{content:"+";color:#fbb7fb;font-weight:700}
 .faq-item[open] summary::before{content:"–"}
-.faq-item__answer{padding:0 16px 14px}
+.faq-item__answer{padding:0 16px 14px;line-height:1.35em;}
 .faq-item__answer p{margin:.5em 0}
 .faq-item__answer a{color:#fbb7fb;text-decoration:underline;text-underline-offset:2px}
 .faq-item__answer a:hover{color:#fff}
