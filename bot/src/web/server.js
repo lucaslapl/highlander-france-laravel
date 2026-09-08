@@ -58,6 +58,14 @@ async function route(req, res, deps) {
         return forceSync(req, res, deps);
     }
 
+    if (req.method === 'POST' && path === '/admin/stream/config') {
+        return streamConfig(req, res, deps);
+    }
+
+    if (req.method === 'POST' && path === '/admin/stream/test') {
+        return streamTest(req, res, deps);
+    }
+
     sendHtml(res, 404, views.notFoundPage());
 }
 
@@ -72,6 +80,7 @@ function health(res, deps) {
             ? 'absent'
             : (deps.client.isReady() ? 'connected' : 'connecting'),
         ...(deps.readSyncHealth ? deps.readSyncHealth() : {}),
+        ...(deps.readStreamMonitor ? { stream: deps.readStreamMonitor() } : {}),
     };
 
     sendJson(res, 200, payload);
@@ -96,6 +105,13 @@ async function home(req, res, deps) {
         lastPushAt: null,
         lastPushOk: null,
         lastError: null,
+
+        streamMonitorActive: false,
+        streamCurrentlyLive: false,
+        streamLastPollAt: null,
+        streamChannelId: deps.config?.streamAnnounceChannelId ?? '',
+        streamMention: deps.config?.streamAnnounceMention ?? '@everyone',
+        streamMessage: deps.config?.streamAnnounceMessage ?? '',
     };
 
     if (deps.readSyncHealth) {
@@ -114,6 +130,18 @@ async function home(req, res, deps) {
         data.guildName = guild?.name ?? null;
     } catch {
         // Guilde pas encore en cache (bot en connexion) : affichage « Inconnu ».
+    }
+
+    if (deps.readStreamMonitor) {
+        const monitor = deps.readStreamMonitor();
+        const streamCfg = deps.readStreamConfig();
+
+        data.streamMonitorActive = monitor.active;
+        data.streamCurrentlyLive = monitor.currentlyLive;
+        data.streamLastPollAt = monitor.lastPollAt;
+        data.streamChannelId = streamCfg.channelId ?? data.streamChannelId;
+        data.streamMention = streamCfg.mention ?? data.streamMention;
+        data.streamMessage = streamCfg.message ?? data.streamMessage;
     }
 
     sendHtml(res, 200, views.dashboardPage({
@@ -237,6 +265,78 @@ async function forceSync(req, res, deps) {
     await deps.pushMemberCount(deps.client, 'manual');
 
     sendJson(res, 200, { ok: true, ...(deps.readSyncHealth ? deps.readSyncHealth() : {}) });
+}
+
+async function streamConfig(req, res, deps) {
+    const session = auth.getSession(req);
+
+    if (!session) {
+        return sendJson(res, 401, { ok: false, error: 'Session invalide.' });
+    }
+
+    const token = req.headers['x-csrf-token'];
+
+    if (typeof token !== 'string' || token !== session.csrfToken) {
+        return sendJson(res, 403, { ok: false, error: 'Jeton CSRF invalide.' });
+    }
+
+    const body = JSON.parse(await readRawBody(req));
+
+    if (!deps.updateStreamConfig) {
+        return sendJson(res, 503, { ok: false, error: 'Moniteur stream pas encore prêt.' });
+    }
+
+    deps.updateStreamConfig({
+        channelId: String(body.channelId ?? '').trim(),
+        mention: String(body.mention ?? '').trim(),
+        message: String(body.message ?? ''),
+    });
+
+    sendJson(res, 200, { ok: true });
+}
+
+async function streamTest(req, res, deps) {
+    const session = auth.getSession(req);
+
+    if (!session) {
+        return sendJson(res, 401, { ok: false, error: 'Session invalide.' });
+    }
+
+    const token = req.headers['x-csrf-token'];
+
+    if (typeof token !== 'string' || token !== session.csrfToken) {
+        return sendJson(res, 403, { ok: false, error: 'Jeton CSRF invalide.' });
+    }
+
+    if (!deps.client || !deps.sendStreamTest) {
+        return sendJson(res, 503, { ok: false, error: 'Bot pas encore prêt.' });
+    }
+
+    const ok = await deps.sendStreamTest(deps.client);
+
+    if (!ok) {
+        return sendJson(res, 500, { ok: false, error: "Envoi du message de test impossible (salon introuvable ou erreur Discord)." });
+    }
+
+    sendJson(res, 200, { ok: true });
+}
+
+function readRawBody(req) {
+    return new Promise((resolve, reject) => {
+        let raw = '';
+
+        req.on('data', (chunk) => {
+            raw += chunk;
+
+            if (raw.length > 10_000) {
+                reject(new Error('Corps de requête trop volumineux.'));
+                req.destroy();
+            }
+        });
+
+        req.on('end', () => resolve(raw));
+        req.on('error', reject);
+    });
 }
 
 function oauthConfig(deps) {

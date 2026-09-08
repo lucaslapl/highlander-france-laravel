@@ -2,7 +2,9 @@
 
 Bot Node.js (discord.js v14) qui pousse le nombre de membres du serveur Discord
 vers le site (`/api/discord/member-count`) à chaque arrivée/départ, plus une
-sync de sécurité au démarrage et toutes les 6 h.
+sync de sécurité au démarrage et toutes les 6 h. Il surveille aussi les streams
+Twitch de Highlander France (via le cache `/api/twitch-live` du site) et poste
+une annonce automatique quand un stream démarre.
 
 ## Structure
 
@@ -11,13 +13,14 @@ src/
 ├── index.js              # Point d'entrée : bootstrap incassable + events + login
 ├── config.js             # Lecture/validation des variables d'environnement
 ├── events/               # Un fichier = un event (chargement automatique)
-│   ├── ready.js          # Sync initiale + sync périodique
+│   ├── ready.js          # Sync initiale + sync périodique + démarrage moniteur Twitch
 │   ├── guildMemberAdd.js
 │   └── guildMemberRemove.js
 ├── services/
-│   └── siteSync.js       # Push vers le site + debounce anti-raid + état /health
+│   ├── siteSync.js       # Push vers le site + debounce anti-raid + état /health
+│   └── twitchMonitor.js  # Poll /api/twitch-live, détection de transition, annonce
 └── web/
-    ├── server.js         # Routeur HTTP (/, /login, /callback, /admin/sync, /health)
+    ├── server.js         # Routeur HTTP (/, /login, /callback, /admin/sync, /admin/stream/*, /health)
     ├── auth.js           # OAuth2 Discord, sessions, vérification des rôles
     └── views.js          # Templates HTML de la page d'administration
 tools/
@@ -26,6 +29,31 @@ tools/
 
 Ajouter une feature = ajouter un fichier dans `events/` (ou un dossier
 `commands/` le moment venu) — rien d'autre à modifier.
+
+## Annonce automatique de stream
+
+Le bot interroge `/api/twitch-live` du site (cache alimenté par le cron
+`app:sync-twitch`) toutes les 60 s. Quand la chaîne `highlanderfrance` passe
+**hors ligne → en direct**, il envoie un message d'annonce dans le salon
+configuré. La fin du stream n'est pas annoncée. Le premier poll au démarrage
+marque l'état courant **sans** annoncer, pour éviter les fausses annonces.
+
+Configuration (`.env` ou UI Plesk) :
+
+| Variable | Description | Défaut |
+|---|---|---|
+| `TWITCH_LIVE_API_URL` | Endpoint du site | `https://highlanderfrance.tf/api/twitch-live` |
+| `TWITCH_LIVE_API_TOKEN` | Token partagé optionnel (Bearer) | *(vide)* |
+| `STREAM_ANNOUNCE_CHANNEL_ID` | ID du salon Discord | `1477355924002701313` |
+| `STREAM_ANNOUNCE_MENTION` | Mention (`@everyone`, `@here`, `<@&Rôle>`) | `@everyone` |
+| `STREAM_ANNOUNCE_MESSAGE` | Template du message | message avec `{title}`, `{viewers}`, `{url}`, `{channel}` |
+
+La config (salon, mention, message) est modifiable et **persistée** dans
+`bot/data/stream_config.json` (hors versionnement) via la page d'admin :
+section **Annonce Stream** avec boutons *Sauvegarder* et *Tester l'annonce*.
+
+L'état du moniteur (actif/inactif, en direct ou non, dernier poll) est visible
+sur le dashboard et dans `/health`.
 
 ## Page d'administration
 

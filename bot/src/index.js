@@ -25,6 +25,10 @@ const deps = {
     client: null,
     pushMemberCount: null,
     readSyncHealth: null,
+    readStreamMonitor: null,
+    readStreamConfig: null,
+    updateStreamConfig: null,
+    sendStreamTest: null,
 };
 
 function fail(stage, error) {
@@ -118,6 +122,18 @@ async function main() {
         deps.readSyncHealth = readSyncHealth;
     } catch (error) {
         return fail('siteSync', error);
+    }
+
+    try {
+        boot.stage = 'twitchMonitor';
+        ({
+            getMonitorState: deps.readStreamMonitor,
+            getStreamConfig: deps.readStreamConfig,
+            updateStreamConfig: deps.updateStreamConfig,
+            sendTestMessage: deps.sendStreamTest,
+        } = await import('./services/twitchMonitor.js'));
+    } catch (error) {
+        return fail('twitchMonitor', error);
     }
 
     try {

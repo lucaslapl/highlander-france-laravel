@@ -98,6 +98,18 @@ function layout(title, body) {
     .logo span { color: var(--accent); }
     .msg-error { border-left: 3px solid var(--err); padding: 10px 14px; background: rgba(237,66,69,.08); border-radius: 6px; margin: 14px 0; word-break: break-word; }
     footer { margin-top: auto; padding-top: 30px; color: var(--muted); font-size: .8rem; }
+    .form-label { display: block; font-size: .82rem; color: var(--muted); text-transform: uppercase; letter-spacing: .05em; margin-bottom: 5px; }
+    .form-input {
+        background: var(--bg);
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        color: var(--text);
+        padding: 9px 12px;
+        font-size: .92rem;
+        font-family: inherit;
+        resize: vertical;
+    }
+    .form-input:focus { outline: none; border-color: var(--accent); }
 </style>
 </head>
 <body>
@@ -132,6 +144,22 @@ export function dashboardPage({ session, avatar, csrfToken, data }) {
         : (data.lastPushOk
             ? '<span class="badge badge-ok">Succès</span>'
             : '<span class="badge badge-err">Échec</span>');
+
+    const streamActive = data.streamMonitorActive
+        ? '<span class="badge badge-ok">Actif</span>'
+        : '<span class="badge badge-warn">Inactif</span>';
+
+    const streamLive = data.streamCurrentlyLive
+        ? '<span class="badge badge-ok">En direct</span>'
+        : '<span class="badge badge-err">Hors ligne</span>';
+
+    const streamLastPoll = data.streamLastPollAt
+        ? new Date(data.streamLastPollAt).toLocaleString('fr-FR')
+        : 'Jamais';
+
+    const escChannelId = esc(data.streamChannelId ?? '');
+    const escMention = esc(data.streamMention ?? '@everyone');
+    const escMessage = esc(data.streamMessage ?? '');
 
     return layout('Administration', `
 <header>
@@ -171,6 +199,31 @@ export function dashboardPage({ session, avatar, csrfToken, data }) {
         <a class="btn btn-ghost" href="/health" target="_blank" rel="noopener">Voir /health</a>
     </div>
     <p class="muted" id="sync-result" style="margin-top:14px"></p>
+</div>
+
+<div class="card">
+    <h2>Annonce Stream</h2>
+    <div class="grid">
+        <div class="stat"><div class="label">Moniteur</div><div class="value" id="stream-active">${streamActive}</div></div>
+        <div class="stat"><div class="label">État</div><div class="value" id="stream-live">${streamLive}</div></div>
+        <div class="stat"><div class="label">Dernier poll</div><div class="value" id="stream-last-poll" style="font-size:.95rem">${esc(streamLastPoll)}</div></div>
+    </div>
+    <div style="margin-top:16px">
+        <label class="form-label" for="stream-channel-id">Salon Discord (ID)</label>
+        <input type="text" id="stream-channel-id" class="form-input" value="${escChannelId}" style="width:100%;max-width:300px;margin-bottom:10px">
+
+        <label class="form-label" for="stream-mention">Mention</label>
+        <input type="text" id="stream-mention" class="form-input" value="${escMention}" placeholder="@everyone" style="width:100%;max-width:300px;margin-bottom:10px">
+
+        <label class="form-label" for="stream-message">Message (variables : {title}, {viewers}, {url}, {channel})</label>
+        <textarea id="stream-message" class="form-input" rows="4" style="width:100%;max-width:500px;margin-bottom:14px;font-family:inherit">${escMessage}</textarea>
+
+        <div class="actions">
+            <button type="button" id="stream-save-btn" data-csrf="${esc(csrfToken)}">Sauvegarder</button>
+            <button type="button" id="stream-test-btn" data-csrf="${esc(csrfToken)}">Tester l'annonce</button>
+        </div>
+        <p class="muted" id="stream-result" style="margin-top:14px"></p>
+    </div>
 </div>
 
 <script>
@@ -215,6 +268,65 @@ export function dashboardPage({ session, avatar, csrfToken, data }) {
     }
 
     setInterval(refresh, 30000);
+})();
+</script>
+
+<script>
+(function () {
+    var saveBtn = document.getElementById('stream-save-btn');
+    var testBtn = document.getElementById('stream-test-btn');
+    var result = document.getElementById('stream-result');
+
+    if (!saveBtn || !testBtn) return;
+
+    saveBtn.addEventListener('click', function () {
+        saveBtn.disabled = true;
+        result.textContent = 'Sauvegarde…';
+
+        var body = JSON.stringify({
+            channelId: document.getElementById('stream-channel-id').value.trim(),
+            mention: document.getElementById('stream-mention').value.trim(),
+            message: document.getElementById('stream-message').value,
+        });
+
+        fetch('/admin/stream/config', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-Token': saveBtn.dataset.csrf,
+            },
+            body: body,
+        })
+        .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
+        .then(function (r) {
+            result.textContent = r.ok && r.j.ok
+                ? 'Configuration sauvegardée.'
+                : 'Échec : ' + (r.j.error || ('HTTP ' + r.j.status));
+        })
+        .catch(function () { result.textContent = 'Erreur réseau.'; })
+        .finally(function () { saveBtn.disabled = false; });
+    });
+
+    testBtn.addEventListener('click', function () {
+        testBtn.disabled = true;
+        result.textContent = 'Envoi du message de test…';
+
+        fetch('/admin/stream/test', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-Token': testBtn.dataset.csrf,
+            },
+        })
+        .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
+        .then(function (r) {
+            result.textContent = r.ok && r.j.ok
+                ? 'Message de test envoyé !'
+                : 'Échec : ' + (r.j.error || ('HTTP ' + r.j.status));
+        })
+        .catch(function () { result.textContent = 'Erreur réseau.'; })
+        .finally(function () { testBtn.disabled = false; });
+    });
 })();
 </script>`);
 }

@@ -26,6 +26,14 @@ export const config = {
         .split(',')
         .map((id) => id.trim())
         .filter(Boolean),
+
+    // Annonce automatique de stream Twitch (poll du /api/twitch-live du site).
+    twitchLiveApiUrl: process.env.TWITCH_LIVE_API_URL ?? 'https://highlanderfrance.tf/api/twitch-live',
+    twitchLiveApiToken: process.env.TWITCH_LIVE_API_TOKEN ?? '',
+    streamAnnounceChannelId: process.env.STREAM_ANNOUNCE_CHANNEL_ID ?? '1477355924002701313',
+    streamAnnounceMention: process.env.STREAM_ANNOUNCE_MENTION ?? '@everyone',
+    streamAnnounceMessage: process.env.STREAM_ANNOUNCE_MESSAGE
+        ?? '🔴 **Le stream Highlander France est en direct !**\n\n**{title}**\n👁 {viewers} spectateurs\n\n🔗 {url}',
 };
 
 /**
