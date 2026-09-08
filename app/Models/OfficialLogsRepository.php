@@ -77,15 +77,29 @@ final class OfficialLogsRepository
 
     /**
      * Logs officiels non encore traités par le pipeline stats
-     * (clé : log_id => catégorie). Les logs blacklistés sont ignorés.
+     * (clé : log_id => catégorie). Les logs blacklistés (individuels ou
+     * appartenant à une équipe blacklistée) sont ignorés.
      *
      * @return array<int, string>
      */
     public function pendingLogIds(): array
     {
-        return DB::table('official_logs')
+        $query = DB::table('official_logs')
             ->whereNotIn('log_id', DB::table('processed_logs')->select('id'))
-            ->whereNotIn('log_id', DB::table('log_blacklist')->select('log_id'))
+            ->whereNotIn('log_id', DB::table('log_blacklist')->select('log_id'));
+
+        $teams = DB::table('team_blacklist')->pluck('team_id')->map('intval')->all();
+        if ($teams !== []) {
+            $query->whereNotIn('log_id', DB::table('official_logs')
+                ->where(function ($q) use ($teams): void {
+                    $q->whereIn('red_team_id', $teams)
+                        ->orWhereIn('blue_team_id', $teams)
+                        ->orWhereIn('scope_team_id', $teams);
+                })
+                ->select('log_id'));
+        }
+
+        return $query
             ->orderByDesc('created_at')
             ->get()
             ->mapWithKeys(static fn ($row): array => [(int) $row->log_id => (string) $row->category])
@@ -137,7 +151,7 @@ final class OfficialLogsRepository
      */
     public function logsForTeam(int $teamId, string $category): array
     {
-        return DB::table('official_logs as ol')
+        $query = DB::table('official_logs as ol')
             ->leftJoin('log_dates as ld', 'ld.log_id', '=', 'ol.log_id')
             ->leftJoin('match_scores as ms', 'ms.match_id', '=', 'ol.log_id')
             ->leftJoin('etf2l_matches as em', 'em.match_id', '=', 'ol.etf2l_match_id')
@@ -147,7 +161,20 @@ final class OfficialLogsRepository
                 $q->where('ol.red_team_id', $teamId)
                     ->orWhere('ol.blue_team_id', $teamId)
                     ->orWhere('ol.scope_team_id', $teamId);
-            })
+            });
+
+        $teams = DB::table('team_blacklist')->pluck('team_id')->map('intval')->all();
+        if ($teams !== []) {
+            $query->whereNotIn('ol.log_id', DB::table('official_logs')
+                ->where(function ($q) use ($teams): void {
+                    $q->whereIn('red_team_id', $teams)
+                        ->orWhereIn('blue_team_id', $teams)
+                        ->orWhereIn('scope_team_id', $teams);
+                })
+                ->select('log_id'));
+        }
+
+        return $query
             ->orderByDesc('ld.date')
             ->select(
                 'ol.log_id', 'ol.etf2l_match_id', 'ol.red_team_id', 'ol.blue_team_id', 'ol.scope_team_id',
@@ -163,7 +190,24 @@ final class OfficialLogsRepository
 
     private function blacklistedIds(): array
     {
-        return (new MatchLogRepository)->blacklistedIds();
+        // Logs blacklistés individuellement + logs impliquant une équipe blacklistée.
+        $ids = array_map('intval', DB::table('log_blacklist')->pluck('log_id')->all());
+
+        $teams = DB::table('team_blacklist')->pluck('team_id')->map('intval')->all();
+        if ($teams !== []) {
+            $teamLogs = DB::table('official_logs')
+                ->where(function ($q) use ($teams): void {
+                    $q->whereIn('red_team_id', $teams)
+                        ->orWhereIn('blue_team_id', $teams)
+                        ->orWhereIn('scope_team_id', $teams);
+                })
+                ->pluck('log_id')
+                ->map('intval')
+                ->all();
+            $ids = array_merge($ids, $teamLogs);
+        }
+
+        return array_values(array_unique($ids));
     }
 
     /**

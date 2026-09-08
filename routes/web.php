@@ -100,6 +100,8 @@ Route::middleware('admin')->prefix('admin')->group(function (): void {
     Route::post('/ligue-logs/scrape-match', [AdminLigueLogsController::class, 'scrapeMatch']);
     Route::post('/ligue-logs/detach', [AdminLigueLogsController::class, 'detach']);
     Route::post('/ligue-logs/attach-team-log', [AdminLigueLogsController::class, 'attachTeamLog']);
+    Route::post('/ligue-logs/blacklist-team', [AdminLigueLogsController::class, 'blacklistTeam']);
+    Route::post('/ligue-logs/unblacklist-team', [AdminLigueLogsController::class, 'unblacklistTeam']);
     Route::get('/overlays', [AdminOverlayController::class, 'index']);
     Route::get('/api-test', [AdminApiTestController::class, 'page']);
     Route::post('/api-test/live/start', [AdminApiTestController::class, 'liveStart']);

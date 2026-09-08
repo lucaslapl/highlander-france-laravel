@@ -50,7 +50,7 @@
 
     function currentDefs() {
         var d = options[typeSel.value];
-        return (d && typeof d.list === 'function') ? d() : d;
+        return (d && typeof d === 'function') ? d() : d;
     }
 
     function refresh() {

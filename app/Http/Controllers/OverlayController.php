@@ -246,7 +246,12 @@ final class OverlayController extends Controller
             foreach ($roster as &$player) {
                 $info = $infos->get($player['steamid']);
                 if ($info !== null) {
-                    $player['name'] = (string) ($info->display_name ?? $info->name ?? $player['name']);
+                    // Priorité aux pseudos non vides : on ne remplace pas un nom
+                    // renseigné par une valeur vide de players_info.
+                    $resolved = trim((string) ($info->display_name ?? '')) !== ''
+                        ? (string) $info->display_name
+                        : (trim((string) ($info->name ?? '')) !== '' ? (string) $info->name : $player['name']);
+                    $player['name'] = (string) $resolved;
                     $player['avatar'] = $info->avatar;
                 }
             }

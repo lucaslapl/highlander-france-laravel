@@ -42,6 +42,21 @@ final class AdminLigueLogsController extends Controller
 
         $repo = new OfficialLogsRepository;
         $blacklisted = (new MatchLogRepository)->blacklistedIds();
+        $blacklistedTeams = DB::table('team_blacklist')
+            ->orderByDesc('created_at')
+            ->get()
+            ->map(function ($row): array {
+                $name = DB::table('etf2l_teams')->where('team_id', (int) $row->team_id)->value('name');
+
+                return [
+                    'team_id' => (int) $row->team_id,
+                    'name' => $name !== null ? (string) $name : 'Équipe #'.(int) $row->team_id,
+                    'reason' => (string) ($row->reason ?? ''),
+                    'added_by' => (string) ($row->added_by ?? ''),
+                    'created_at' => $row->created_at,
+                ];
+            })
+            ->all();
 
         foreach ($matches as &$match) {
             $match['logs'] = $repo->logsForMatch((int) $match['match_id']);
@@ -55,6 +70,7 @@ final class AdminLigueLogsController extends Controller
             'scripts' => ['/_js/admin_ligue_logs.js'],
             'matches' => $matches,
             'blacklisted' => $blacklisted,
+            'blacklistedTeams' => $blacklistedTeams,
             'teams' => $this->teamOptions(),
             'franceTeams' => $this->franceTeamOptions(),
         ]);
@@ -190,6 +206,50 @@ final class AdminLigueLogsController extends Controller
         return null;
     }
 
+    /**
+     * Blackliste une équipe ETF2L : ses logs officiels sont exclus des overlays.
+     */
+    public function blacklistTeam(Request $request): RedirectResponse
+    {
+        Auth::requireAdmin();
+
+        $data = $request->validate([
+            'team_id' => ['required', 'integer', 'min:1'],
+            'reason' => ['nullable', 'string', 'max:255'],
+        ]);
+
+        $teamId = (int) $data['team_id'];
+
+        if (! DB::table('etf2l_teams')->where('team_id', $teamId)->exists()) {
+            return back()->with('error', "Équipe ETF2L {$teamId} introuvable.");
+        }
+
+        DB::table('team_blacklist')->insertOrIgnore([
+            'team_id' => $teamId,
+            'reason' => $data['reason'] !== null && $data['reason'] !== '' ? $data['reason'] : null,
+            'added_by' => $this->adminName(),
+            'created_at' => now(),
+        ]);
+
+        return back()->with('success', "Équipe {$teamId} blacklistée : ses logs ne compteront plus dans les stats.");
+    }
+
+    /**
+     * Retire une équipe de la blacklist.
+     */
+    public function unblacklistTeam(Request $request): RedirectResponse
+    {
+        Auth::requireAdmin();
+
+        $data = $request->validate([
+            'team_id' => ['required', 'integer', 'min:1'],
+        ]);
+
+        DB::table('team_blacklist')->where('team_id', (int) $data['team_id'])->delete();
+
+        return back()->with('success', 'Équipe retirée de la blacklist.');
+    }
+
     private function adminName(): string
     {
         $player = Auth::player();
@@ -204,9 +264,12 @@ final class AdminLigueLogsController extends Controller
      */
     private function teamOptions(): array
     {
+        $blacklisted = DB::table('team_blacklist')->pluck('team_id')->map('intval')->all();
+
         return DB::table('etf2l_teams')
             ->orderBy('name')
             ->get()
+            ->reject(static fn ($row): bool => in_array((int) $row->team_id, $blacklisted, true))
             ->map(static fn ($row): array => ['team_id' => (int) $row->team_id, 'name' => (string) $row->name, 'is_france' => false])
             ->all();
     }

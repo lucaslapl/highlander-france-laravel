@@ -19,6 +19,7 @@ window.__dashboardData = {!! json_encode($dashboardData, JSON_UNESCAPED_UNICODE 
 @endpush
 
 @section('content')
+@include('admin.partials.alerts')
 
 <div class="admin-header" style="--accent: #ff4444;">
     <h2><i class="fa-solid fa-screwdriver-wrench"></i> Panel d'Administration</h2>

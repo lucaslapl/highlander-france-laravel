@@ -6,6 +6,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Services\Auth;
+use App\Services\SteamId;
 use Illuminate\Contracts\View\View;
 use Illuminate\Support\Facades\DB;
 
@@ -52,9 +53,12 @@ final class AdminOverlayController extends Controller
             }
         }
 
+        $blacklistedTeams = DB::table('team_blacklist')->pluck('team_id')->map('intval')->all();
+
         $teams = DB::table('etf2l_teams')
             ->orderBy('name')
             ->get()
+            ->reject(static fn ($row): bool => in_array((int) $row->team_id, $blacklistedTeams, true))
             ->map(static fn ($row): array => [
                 'team_id' => (int) $row->team_id,
                 'name' => (string) $row->name,
@@ -62,16 +66,25 @@ final class AdminOverlayController extends Controller
             ])
             ->all();
 
-        $players = DB::table('france_national_players')
-            ->join('players_info as pi', 'pi.steamid', '=', 'france_national_players.steamid')
-            ->select('france_national_players.steamid64', 'pi.name', 'pi.display_name')
-            ->distinct()
-            ->orderBy('pi.display_name')
+        $players = DB::table('players_info')
+            ->whereNotNull('steamid')
+            ->where('steamid', '!=', '')
+            ->orderBy('display_name')
+            ->select('steamid', 'name', 'display_name')
             ->get()
-            ->map(static fn ($row): array => [
-                'steamid64' => (string) $row->steamid64,
-                'name' => (string) ($row->display_name ?? $row->name ?? $row->steamid64),
-            ])
+            ->map(function ($row): ?array {
+                $steamid64 = SteamId::toSteamId64((string) $row->steamid);
+                if ($steamid64 === null) {
+                    return null;
+                }
+
+                return [
+                    'steamid64' => $steamid64,
+                    'name' => (string) ($row->display_name ?? '') ?: ((string) ($row->name ?? '') ?: $steamid64),
+                ];
+            })
+            ->filter(static fn (?array $entry): bool => $entry !== null)
+            ->values()
             ->all();
 
         $matches = DB::table('etf2l_matches')

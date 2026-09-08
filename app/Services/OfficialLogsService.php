@@ -119,6 +119,15 @@ final class OfficialLogsService
         $team2Id = (int) ($match->team2_id ?? 0);
         $matchDate = (int) ($match->match_date ?? 0);
 
+        // Équipes blacklistées : on ne rattache rien (leurs logs polluent les stats).
+        $blacklistedTeams = DB::table('team_blacklist')->pluck('team_id')->map('intval')->all();
+        if ($team1Id > 0 && in_array($team1Id, $blacklistedTeams, true)) {
+            return $result;
+        }
+        if ($team2Id > 0 && in_array($team2Id, $blacklistedTeams, true)) {
+            return $result;
+        }
+
         foreach ($logIds as $logId) {
             $logId = (int) $logId;
             $result['logs'][] = $logId;
@@ -158,6 +167,10 @@ final class OfficialLogsService
      */
     public function attachTeamLog(int $logId, int $teamId, string $category, ?string $addedBy): bool
     {
+        if (DB::table('team_blacklist')->where('team_id', $teamId)->exists()) {
+            return false;
+        }
+
         $repo = new OfficialLogsRepository;
 
         $details = $this->fetchLogDetail($logId);
@@ -309,9 +322,12 @@ final class OfficialLogsService
 
         $steamids = [];
         foreach (array_merge($rows, $extra) as $steamid64) {
-            if ($steamid64 !== '') {
-                $steamids[SteamId::toSteamId3((string) $steamid64)] = true;
+            // Ignore les valeurs invalides : une steamid64 est un entier (17 chiffres) ;
+            // toSteamId3 lève une ValueError sur une entrée non numérique.
+            if (!is_numeric($steamid64) || (preg_match('/^\d{17}$/', trim((string) $steamid64)) !== 1)) {
+                continue;
             }
+            $steamids[SteamId::toSteamId3(trim((string) $steamid64))] = true;
         }
 
         return $steamids;

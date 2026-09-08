@@ -20,15 +20,7 @@
     </p>
 </div>
 
-@if (session('success'))
-    <div class="admin-alert admin-alert--success">{{ session('success') }}</div>
-@endif
-@if (session('error'))
-    <div class="admin-alert admin-alert--error">{{ session('error') }}</div>
-@endif
-@if (session('info'))
-    <div class="admin-alert admin-alert--info">{{ session('info') }}</div>
-@endif
+@include('admin.partials.alerts')
 
 {{-- Bloc : équipe de France / log d'équipe hors match ETF2L --}}
 <div class="admin-card">
@@ -75,6 +67,73 @@
             </button>
         </div>
     </form>
+</div>
+
+{{-- Bloc : équipes blacklistées (exclues des stats des overlays) --}}
+<div class="admin-card">
+    <h3 class="admin-card__title">
+        <i class="fa-solid fa-ban"></i> Équipes blacklistées
+        <span class="status-pill" style="--accent: #e74c3c;">{{ count($blacklistedTeams) }}</span>
+    </h3>
+    <p class="admin-hint">
+        Une équipe blacklistée (ex. non réellement française) disparaît des équipes sélectionnables et
+        tous les logs officiels auxquels elle a participé sont exclus des stats des overlays.
+    </p>
+
+    <form action="/admin/ligue-logs/blacklist-team" method="POST" class="admin-form-row" style="--accent: #e74c3c;">
+        @csrf
+        <div class="form-group">
+            <label class="admin-form-label" for="bl-team-id">ID équipe ETF2L</label>
+            <input type="number" name="team_id" id="bl-team-id" class="form-control" min="1" required
+                   placeholder="Ex : 100">
+        </div>
+        <div class="form-group form-group--grow">
+            <label class="admin-form-label" for="bl-team-reason">Raison (facultatif)</label>
+            <input type="text" name="reason" id="bl-team-reason" class="form-control"
+                   placeholder="Ex : Équipe non française">
+        </div>
+        <div>
+            <button type="submit" class="admin-btn admin-btn--danger" style="--accent: #e74c3c;">
+                <i class="fa-solid fa-ban"></i> Blacklister
+            </button>
+        </div>
+    </form>
+
+    @if ($blacklistedTeams === [])
+        <p class="admin-hint" style="margin-bottom: 0;">Aucune équipe blacklistée.</p>
+    @else
+        <div class="admin-table-scroll">
+            <table class="admin-table">
+                <thead>
+                    <tr>
+                        <th>Équipe</th>
+                        <th>ID</th>
+                        <th>Raison</th>
+                        <th class="text-center">Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach ($blacklistedTeams as $blTeam)
+                        <tr>
+                            <td>{{ e($blTeam['name']) }}</td>
+                            <td><a href="https://etf2l.org/tf2/team/{{ (int) $blTeam['team_id'] }}/" target="_blank" rel="noopener" class="admin-mono">{{ (int) $blTeam['team_id'] }}</a></td>
+                            <td style="color: #ccc;">{{ e($blTeam['reason'] ?: '—') }}</td>
+                            <td class="text-center">
+                                <form action="/admin/ligue-logs/unblacklist-team" method="POST"
+                                      onsubmit="return confirm('Retirer cette équipe de la blacklist ?');">
+                                    @csrf
+                                    <input type="hidden" name="team_id" value="{{ (int) $blTeam['team_id'] }}">
+                                    <button type="submit" class="admin-btn admin-btn--success">
+                                        <i class="fa-solid fa-rotate-left"></i> Restaurer
+                                    </button>
+                                </form>
+                            </td>
+                        </tr>
+                    @endforeach
+                </tbody>
+            </table>
+        </div>
+    @endif
 </div>
 
 {{-- Liste des derniers matchs ETF2L terminés --}}
