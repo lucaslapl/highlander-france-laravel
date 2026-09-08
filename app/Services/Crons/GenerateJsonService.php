@@ -15,6 +15,9 @@ final class GenerateJsonService
 {
     private const SCRIPT_NAME = 'generate_json.php';
 
+    /** Verrou anti-concurrence : une seule exécution à la fois (cron + webhook + panel admin). */
+    private const LOCK_FILE = 'generate_json.lock';
+
     private const MIN_MATCHES = 5;
 
     private \PDO $db;
@@ -25,6 +28,25 @@ final class GenerateJsonService
     }
 
     public function run(): string
+    {
+        $lock = fopen(hlfr_data_path(self::LOCK_FILE), 'c');
+        if ($lock === false || ! flock($lock, LOCK_EX | LOCK_NB)) {
+            if (is_resource($lock)) {
+                fclose($lock);
+            }
+
+            return 'Génération JSON ignorée : une autre exécution est déjà en cours.';
+        }
+
+        try {
+            return $this->doRun();
+        } finally {
+            flock($lock, LOCK_UN);
+            fclose($lock);
+        }
+    }
+
+    private function doRun(): string
     {
         $logToken = AdminLogger::log(self::SCRIPT_NAME);
 

@@ -77,7 +77,9 @@ final class AdminLogger
         // Log à entrée unique (ex: webhook) : déjà terminé dès l'écriture.
         if (str_starts_with(strtoupper(trim($rawStatus)), 'STARTED')) {
             $status = 'started';
-            $message = null;
+            // PID du processus : permet d'identifier les exécutions concurrentes
+            // (plusieurs schedule:run empilés) dans /admin/view-logs.
+            $message = 'PID ' . getmypid();
             $startedAt = Carbon::now();
             $finishedAt = null;
         } else {

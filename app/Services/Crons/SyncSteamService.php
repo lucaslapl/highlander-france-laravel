@@ -16,6 +16,9 @@ final class SyncSteamService
 {
     private const SCRIPT_NAME = 'sync_steam.php';
 
+    /** Verrou anti-concurrence : une seule exécution à la fois (cron + webhook + panel admin). */
+    private const LOCK_FILE = 'sync_steam.lock';
+
     private \PDO $db;
 
     public function __construct()
@@ -24,6 +27,25 @@ final class SyncSteamService
     }
 
     public function run(): string
+    {
+        $lock = fopen(hlfr_data_path(self::LOCK_FILE), 'c');
+        if ($lock === false || ! flock($lock, LOCK_EX | LOCK_NB)) {
+            if (is_resource($lock)) {
+                fclose($lock);
+            }
+
+            return 'Synchronisation Steam ignorée : une autre exécution est déjà en cours.';
+        }
+
+        try {
+            return $this->doRun();
+        } finally {
+            flock($lock, LOCK_UN);
+            fclose($lock);
+        }
+    }
+
+    private function doRun(): string
     {
         $logToken = AdminLogger::log(self::SCRIPT_NAME);
         $historyFile = hlfr_data_path('log_sync_steam.txt');
