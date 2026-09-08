@@ -30,6 +30,9 @@ final class Etf2lHistoryService
     /** Nombre maximal de pages de résultats par joueur (garde-fou). */
     private const MAX_RESULTS_PAGES = 30;
 
+    /** Pages de résultats récupérées en parallèle (bonne citoyenneté API). */
+    private const CONCURRENCY = 2;
+
     private const SEASON_CATEGORIES = [
         'Highlander Season',
         '6v6 Season',
@@ -234,16 +237,17 @@ final class Etf2lHistoryService
     /**
      * Récupère et stocke l'historique officiel (catégories Season) d'un joueur.
      *
+     * @param  callable(int):void|null  $onPage  Appelé après chaque page avec son n° (progression).
      * @return array{fetched: int, stored: int}
      */
-    public function refreshPlayer(string $steamid3, bool $force = false): array
+    public function refreshPlayer(string $steamid3, bool $force = false, ?callable $onPage = null): array
     {
         $steamid64 = SteamId::toSteamId64($steamid3);
         if ($steamid64 === null) {
             return ['fetched' => 0, 'stored' => 0];
         }
 
-        $results = $this->fetchPlayerResults($steamid64, $force);
+        $results = $this->fetchPlayerResults($steamid64, $force, $onPage);
 
         [$matches, $seasons] = $this->normalizeHistory($steamid3, $results);
 
@@ -262,30 +266,270 @@ final class Etf2lHistoryService
     }
 
     /**
+     * Récupère les résultats en paginant par petits lots parallèles (les pages
+     * sont indépendantes) et s'arrête dès que les 3 dernières saisons de chaque
+     * catégorie ont été couvertes (les résultats sont triés du plus récent au
+     * plus ancien, donc toute page ultérieure serait obsolète pour la fenêtre).
+     *
+     * @param  callable(int):void|null  $onPage  Appelé après chaque page traitée.
      * @return array<int, array<string, mixed>> Résultats bruts (toutes pages).
      */
-    private function fetchPlayerResults(string $steamid64, bool $force): array
+    private function fetchPlayerResults(string $steamid64, bool $force, ?callable $onPage = null): array
     {
         $out = [];
+        $coveredSeasons = [];
+        $page = 1;
+        $lastPage = null;
+        $cap = self::MAX_RESULTS_PAGES;
 
-        for ($page = 1; $page <= self::MAX_RESULTS_PAGES; $page++) {
-            $url = 'https://api-v2.etf2l.org/player/'.$steamid64.'/results?limit='.self::RESULTS_PER_PAGE.'&page='.$page;
-            $response = $this->cachedGet($url, $force);
-
-            $pageResults = $response['data'] ?? [];
-            if (is_array($pageResults) && $pageResults !== []) {
-                array_push($out, ...$pageResults);
-            } else {
+        while ($page <= $cap) {
+            $maxThisBatch = $lastPage !== null ? min($lastPage, $cap) : $cap;
+            $pKeys = [];
+            $urlMap = [];
+            for ($k = 0; $k < self::CONCURRENCY && $page + $k <= $maxThisBatch; $k++) {
+                $p = $page + $k;
+                $urlMap['p'.$p] = 'https://api-v2.etf2l.org/player/'.$steamid64.'/results?limit='.self::RESULTS_PER_PAGE.'&page='.$p;
+                $pKeys[] = $p;
+            }
+            if ($pKeys === []) {
                 break;
             }
 
-            $lastPage = (int) ($response['last_page'] ?? $page);
-            if ($page >= $lastPage) {
+            $responses = count($pKeys) <= 1
+                ? ['p'.$pKeys[0] => $this->cachedGet($urlMap['p'.$pKeys[0]], $force)]
+                : $this->cachedGetBatch($urlMap, $force);
+
+            $allEmpty = true;
+            foreach ($pKeys as $pp) {
+                $response = $responses['p'.$pp] ?? [];
+                $pageResults = $response['data'] ?? [];
+                if (is_array($pageResults) && $pageResults !== []) {
+                    $allEmpty = false;
+                    array_push($out, ...$pageResults);
+                    $this->noteCoveredSeasons($pageResults, $coveredSeasons);
+                }
+                if (is_array($response) && isset($response['last_page'])) {
+                    $lastPage = (int) $response['last_page'];
+                }
+                if ($onPage !== null) {
+                    $onPage($pp);
+                }
+            }
+
+            $this->pruneToCovered($out, $coveredSeasons);
+            if ($allEmpty || $this->hasThreeSeasonsPerCategory($coveredSeasons)) {
                 break;
             }
+            if ($lastPage !== null && $page >= $lastPage) {
+                break;
+            }
+
+            $page += count($pKeys);
         }
 
         return $out;
+    }
+
+    /**
+     * Supprime de la sortie les résultats plus anciens que les 3 dernières
+     * saisons déjà connues de chaque catégorie présente.
+     *
+     * @param  array<int, array<string, mixed>>  $out
+     * @param  array<string, array<string, true>>  $covered
+     */
+    private function pruneToCovered(array &$out, array $covered): void
+    {
+        if ($covered === []) {
+            return;
+        }
+        $out = array_values(array_filter($out, static function (array $r) use ($covered): bool {
+            $comp = $r['competition'] ?? null;
+            if (! is_array($comp)) {
+                return true;
+            }
+            $cat = (string) ($comp['category'] ?? '');
+            $labels = $covered[$cat] ?? null;
+            if ($labels === null) {
+                return true;
+            }
+            $name = (string) ($comp['name'] ?? '');
+            if (! preg_match('/season\s+(\d+)/i', $name, $m)) {
+                return true;
+            }
+            $low = (int) $m[1];
+            foreach (array_keys($labels) as $known) {
+                if ($low >= (int) $known) {
+                    return true;
+                }
+            }
+            return false;
+        }));
+    }
+
+    /**
+     * Mémorise les numéros de saison (par catégorie) présents sur une page.
+     *
+     * @param  array<int, array<string, mixed>>  $pageResults
+     * @param  array<string, array<string, true>>  $covered
+     */
+    private function noteCoveredSeasons(array $pageResults, array &$covered): void
+    {
+        foreach ($pageResults as $r) {
+            $comp = $r['competition'] ?? null;
+            if (! is_array($comp)) {
+                continue;
+            }
+            $cat = (string) ($comp['category'] ?? '');
+            if (! in_array($cat, self::SEASON_CATEGORIES, true)) {
+                continue;
+            }
+            $name = (string) ($comp['name'] ?? '');
+            if (preg_match('/season\s+(\d+)/i', $name, $m)) {
+                $covered[$cat][$m[1]] = true;
+            }
+        }
+    }
+
+    /**
+     * Vrai si chaque catégorie présente a déjà couvert au moins 3 saisons.
+     *
+     * @param  array<string, array<string, true>>  $covered
+     */
+    private function hasThreeSeasonsPerCategory(array $covered): bool
+    {
+        if ($covered === []) {
+            return false;
+        }
+        foreach ($covered as $labels) {
+            if (count($labels) < 3) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    /**
+     * Récupère plusieurs URLs en parallèle (curl_multi), en respectant un même
+     * intervalle de politesse entre les lots. Les URLs non cachées sont
+     * récupérées puis stockées dans etf2l_api_cache.
+     *
+     * @param  array<string, string>  $urlMap  map clé => url
+     * @return array<string, array<string, mixed>>
+     */
+    private function cachedGetBatch(array $urlMap, bool $force): array
+    {
+        $now = time();
+        $result = [];
+        $needCurl = [];
+
+        foreach ($urlMap as $key => $url) {
+            if (! $force) {
+                $stmt = $this->db->prepare('SELECT payload FROM etf2l_api_cache WHERE url = ? AND fetched_at > ?');
+                $stmt->execute([$url, $now - self::CACHE_TTL]);
+                $payload = $stmt->fetchColumn();
+                if (is_string($payload) && $payload !== '') {
+                    $decoded = json_decode($payload, true);
+                    if (is_array($decoded)) {
+                        $result[$key] = $decoded;
+                        continue;
+                    }
+                }
+            }
+            $needCurl[$key] = $url;
+        }
+
+        if ($needCurl !== []) {
+            $elapsed = microtime(true) - $this->lastHttpAt;
+            if ($this->lastHttpAt > 0 && $elapsed < self::API_CALL_DELAY_S) {
+                usleep((int) ((self::API_CALL_DELAY_S - $elapsed) * 1e6));
+            }
+            $this->lastHttpAt = microtime(true);
+
+            $fetched = $this->multiFetch($needCurl);
+            foreach ($fetched as $key => $data) {
+                if (is_array($data) && $data !== []) {
+                    $result[$key] = $data;
+                    $this->cachePut($needCurl[$key], $data);
+                } else {
+                    $result[$key] = [];
+                }
+            }
+        }
+
+        return $result;
+    }
+
+    /**
+     * Exécute plusieurs cURL en parallèle. Chaque URL bloquante/transitoire
+     * retombe sur fetchWithRetry (backoff 5/20 s) pour rester fiable.
+     *
+     * @param  array<string, string>  $urls  map clé => url
+     * @return array<string, array<string, mixed>|array{}>
+     */
+    private function multiFetch(array $urls): array
+    {
+        $mh = curl_multi_init();
+        $handles = [];
+
+        foreach ($urls as $key => $url) {
+            $ch = curl_init();
+            curl_setopt_array($ch, [
+                CURLOPT_URL => $url,
+                CURLOPT_RETURNTRANSFER => true,
+                CURLOPT_CONNECTTIMEOUT => self::HTTP_TIMEOUT_S,
+                CURLOPT_TIMEOUT => self::HTTP_TIMEOUT_S,
+                CURLOPT_USERAGENT => 'Highlander France Bot/1.0',
+                CURLOPT_HTTPHEADER => ['Accept: application/json'],
+            ]);
+            curl_multi_add_handle($mh, $ch);
+            $handles[$key] = $ch;
+        }
+
+        $running = null;
+        do {
+            $status = curl_multi_exec($mh, $running);
+            if ($running > 0) {
+                curl_multi_select($mh, 1);
+            }
+        } while ($running > 0 && $status === CURLM_OK);
+
+        $out = [];
+        foreach ($handles as $key => $ch) {
+            $body = curl_multi_getcontent($ch);
+            $decoded = (is_string($body) && trim($body) !== '')
+                ? json_decode($body, true)
+                : null;
+            curl_multi_remove_handle($mh, $ch);
+            curl_close($ch);
+
+            $code = is_array($decoded) && isset($decoded['status']['code']) ? (int) $decoded['status']['code'] : 0;
+            if (is_array($decoded) && ($code === 0 || $code === 200)) {
+                $out[$key] = $decoded;
+                continue;
+            }
+
+            if (! is_array($decoded) || in_array($code, [429, 500, 502, 503, 504], true)) {
+                $out[$key] = $this->fetchWithRetry($urls[$key]);
+                continue;
+            }
+            $out[$key] = is_array($decoded) ? $decoded : [];
+        }
+        curl_multi_close($mh);
+
+        return $out;
+    }
+
+    private function cachePut(string $url, array $data): void
+    {
+        $isMysql = $this->db->getAttribute(\PDO::ATTR_DRIVER_NAME) === 'mysql';
+        $sql = $isMysql
+            ? 'INSERT INTO etf2l_api_cache (url, payload, fetched_at) VALUES (?, ?, ?)
+               ON DUPLICATE KEY UPDATE payload = VALUES(payload), fetched_at = VALUES(fetched_at)'
+            : 'INSERT INTO etf2l_api_cache (url, payload, fetched_at) VALUES (?, ?, ?)
+               ON CONFLICT(url) DO UPDATE SET payload = excluded.payload, fetched_at = excluded.fetched_at';
+
+        $this->db->prepare($sql)->execute([$url, json_encode($data, JSON_THROW_ON_ERROR), time()]);
     }
 
     /**

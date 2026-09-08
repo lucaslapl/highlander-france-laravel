@@ -11,6 +11,8 @@
     </a>
 </div>
 
+<div id="sd-run" data-run-id="{{ $run ?: '' }}"></div>
+
 <div class="admin-header" style="--accent: #2ec4b6;">
     <h2><i class="fa-solid fa-shuffle"></i> Stats équipes</h2>
     <p>
@@ -28,7 +30,7 @@
     <h3 class="admin-card__title">
         <i class="fa-solid fa-people-group"></i> Équipes
     </h3>
-    <form action="/admin/stats-duel/run" method="POST" class="admin-form-row" style="--accent: #2ec4b6;">
+    <form action="/admin/stats-duel/run" method="POST" class="admin-form-row" style="--accent: #2ec4b6;" id="sd-form">
         @csrf
         <div class="form-group">
             <label class="admin-form-label" for="sd-team1">Équipe 1 (ID ETF2L)</label>
@@ -75,18 +77,24 @@
     </div>
 @endif
 
-@if ($teamA !== null || $teamB !== null)
-    <div class="sd-grid">
-        @if ($teamA !== null)
-            @php($team = $teamA)
-            @include('admin.partials.stats_duel_team')
-        @endif
-        @if ($teamB !== null)
-            @php($team = $teamB)
-            @include('admin.partials.stats_duel_team')
-        @endif
+{{-- Progression du calcul en arrière-plan (AJAX) --}}
+<div class="admin-card sd-progress" id="sd-progress" style="display:none;">
+    <div class="sd-progress__head">
+        <div class="sd-progress__title">
+            <i class="fa-solid fa-spinner fa-spin"></i>
+            <span id="sd-progress-label">Calcul en cours…</span>
+        </div>
+        <span class="sd-progress__pct" id="sd-progress-pct">0 %</span>
     </div>
-@endif
+    <div class="sd-progress__bar">
+        <div class="sd-progress__fill" id="sd-progress-fill" style="width:0%;"></div>
+    </div>
+    <div class="sd-progress__message" id="sd-progress-message"></div>
+    <div class="sd-progress__error" id="sd-progress-error" style="display:none; color:#e74c3c;"></div>
+</div>
+
+{{-- Résultats injectés depuis le calcul asynchrone --}}
+<div class="sd-grid" id="sd-results"></div>
 
 {{-- Gestion des équipes blacklistées --}}
 <div class="admin-card">

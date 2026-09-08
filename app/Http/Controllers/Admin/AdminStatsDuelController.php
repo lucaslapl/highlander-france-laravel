@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Jobs\ComputeTeamStatsJob;
 use App\Models\MatchLogRepository;
 use App\Models\OfficialMatchRepository;
 use App\Services\Auth;
@@ -35,30 +36,12 @@ final class AdminStatsDuelController extends Controller
     public function index(Request $request): View
     {
         Auth::requireAdmin();
-        set_time_limit(300);
 
         $t1 = (int) $request->query('t1', 0);
         $t2 = (int) $request->query('t2', 0);
         $mode1 = (string) $request->query('mode1', '');
         $mode2 = (string) $request->query('mode2', '');
-
-        $teamA = null;
-        $teamB = null;
-        $error = null;
-
-        if ($t1 > 0 || $t2 > 0) {
-            try {
-                if ($t1 > 0) {
-                    $teamA = $this->service->buildTeam($t1, $mode1 !== '' ? $mode1 : null, $this->adminName());
-                }
-                if ($t2 > 0 && $teamA !== null && $teamA['team_id'] !== $t2) {
-                    $teamB = $this->service->buildTeam($t2, $mode2 !== '' ? $mode2 : null, $this->adminName());
-                }
-            } catch (\Throwable $e) {
-                $error = $e->getMessage();
-                error_log('Stats duel : '.$e->getMessage());
-            }
-        }
+        $run = (int) $request->query('run', 0);
 
         return view('admin.stats_duel', [
             'title' => 'Admin - Stats équipes',
@@ -66,12 +49,102 @@ final class AdminStatsDuelController extends Controller
             'styles' => ['/_css/admin.css'],
             'scripts' => ['/_js/admin_stats_duel.js'],
             'form' => ['t1' => $t1, 't2' => $t2, 'mode1' => $mode1, 'mode2' => $mode2],
-            'teamA' => $teamA,
-            'teamB' => $teamB,
-            'error' => $error,
+            'run' => $run,
+            'error' => null,
             'teamOptions' => $this->teamOptions(),
             'blacklistedTeams' => $this->blacklistedTeams(),
         ]);
+    }
+
+    /**
+     * POST /admin/stats-duel/run-async — valide, crée une ligne de progression
+     * et lance le Job en arrière-plan. Renvoie immédiatement l'identifiant du
+     * run pour que le frontend puisse interroger la progression (AJAX).
+     */
+    public function runAsync(Request $request): JsonResponse
+    {
+        Auth::requireAdmin();
+
+        try {
+            $data = $request->validate([
+                'team_1' => ['required', 'integer', 'min:1'],
+                'team_2' => ['required', 'integer', 'min:1'],
+                'mode_1' => ['nullable', 'in:,9v9,6s'],
+                'mode_2' => ['nullable', 'in:,9v9,6s'],
+            ]);
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            return response()->json(['ok' => false, 'error' => 'Valeurs invalides.'], 422);
+        }
+
+        $runId = DB::table('stats_duel_runs')->insertGetId([
+            't1' => (int) $data['team_1'],
+            't2' => (int) $data['team_2'],
+            'mode1' => (string) ($data['mode_1'] ?? '') !== '' ? (string) $data['mode_1'] : null,
+            'mode2' => (string) ($data['mode_2'] ?? '') !== '' ? (string) $data['mode_2'] : null,
+            'status' => 0,
+            'progress' => 0,
+            'message' => 'Préparation…',
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        ComputeTeamStatsJob::dispatchAfterResponse(
+            t1: (int) $data['team_1'],
+            t2: (int) $data['team_2'],
+            mode1: (string) ($data['mode_1'] ?? '') !== '' ? (string) $data['mode_1'] : null,
+            mode2: (string) ($data['mode_2'] ?? '') !== '' ? (string) $data['mode_2'] : null,
+            addedBy: $this->adminName(),
+            runId: (int) $runId,
+        );
+
+        return response()->json([
+            'ok' => true,
+            'run_id' => (int) $runId,
+            'redirect' => route('admin.stats-duel', ['run' => $runId]),
+        ]);
+    }
+
+    /**
+     * GET /admin/stats-duel/progress/{run} — état courant d'un run (AJAX).
+     */
+    public function progress(int $run): JsonResponse
+    {
+        Auth::requireAdmin();
+
+        $row = DB::table('stats_duel_runs')->where('id', $run)->first();
+        if ($row === null) {
+            return response()->json(['ok' => false, 'error' => 'Run introuvable.'], 404);
+        }
+
+        return response()->json([
+            'ok' => true,
+            'status' => (int) $row->status,
+            'progress' => (int) $row->progress,
+            'message' => (string) ($row->message ?? ''),
+        ]);
+    }
+
+    /**
+     * GET /admin/stats-duel/result/{run} — HTML des deux équipes une fois le
+     * calcul terminé (renvoie le rendu des partials pour injection AJAX).
+     */
+    public function result(int $run): JsonResponse
+    {
+        Auth::requireAdmin();
+
+        $row = DB::table('stats_duel_runs')->where('id', $run)->first();
+        if ($row === null) {
+            return response()->json(['ok' => false, 'error' => 'Run introuvable.'], 404);
+        }
+        if ((int) $row->status !== 2) {
+            return response()->json(['ok' => false, 'error' => 'Calcul pas encore terminé.'], 409);
+        }
+
+        $result = json_decode((string) $row->result, true) ?? ['teamA' => null, 'teamB' => null];
+
+        $html = view('admin.partials.stats_duel_result', ['result' => $result])->render();
+
+        return response()->json(['ok' => true, 'html' => $html]);
     }
 
     /**

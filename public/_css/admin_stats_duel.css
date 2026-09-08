@@ -169,6 +169,60 @@
     white-space: nowrap;
 }
 
+/* Barre de progression du calcul asynchrone */
+.sd-progress {
+    margin-bottom: 24px;
+}
+
+.sd-progress__head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 10px;
+}
+
+.sd-progress__title {
+    font-weight: 600;
+    color: #eef2f6;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.sd-progress__pct {
+    font-variant-numeric: tabular-nums;
+    font-weight: 700;
+    color: #2ec4b6;
+}
+
+.sd-progress__bar {
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 999px;
+    height: 14px;
+    overflow: hidden;
+}
+
+.sd-progress__fill {
+    height: 100%;
+    width: 0;
+    background: linear-gradient(90deg, #2ec4b6, #86e3da);
+    border-radius: 999px;
+    transition: width 0.4s ease;
+}
+
+.sd-progress__message {
+    margin-top: 8px;
+    font-size: 0.88em;
+    color: #9aa4b2;
+}
+
+.sd-progress__error {
+    margin-top: 10px;
+    font-weight: 600;
+}
+
 @media (max-width: 700px) {
     .sd-stats {
         grid-template-columns: repeat(2, 1fr);

@@ -96,6 +96,9 @@ Route::middleware('admin')->prefix('admin')->group(function (): void {
     Route::post('/faq/{id}/toggle', [AdminGuideController::class, 'faqToggle'])->whereNumber('id');
     Route::get('/stats-duel', [AdminStatsDuelController::class, 'index'])->name('admin.stats-duel');
     Route::post('/stats-duel/run', [AdminStatsDuelController::class, 'run']);
+    Route::post('/stats-duel/run-async', [AdminStatsDuelController::class, 'runAsync']);
+    Route::get('/stats-duel/progress/{run}', [AdminStatsDuelController::class, 'progress'])->whereNumber('run');
+    Route::get('/stats-duel/result/{run}', [AdminStatsDuelController::class, 'result'])->whereNumber('run');
     Route::post('/stats-duel/attach-log', [AdminStatsDuelController::class, 'attachLog']);
     Route::post('/stats-duel/detach-log', [AdminStatsDuelController::class, 'detachLog']);
     Route::post('/stats-duel/scrape', [AdminStatsDuelController::class, 'scrape']);

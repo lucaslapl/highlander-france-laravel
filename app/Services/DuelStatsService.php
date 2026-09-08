@@ -124,6 +124,58 @@ final class DuelStatsService
     }
 
     /**
+     * Récupère et prépare l'historique ETF2L des joueurs d'une équipe (utilisé
+     * par le Job en arrière-plan pour ne pas bloquer la requête HTTP). No-op
+     * pour les joueurs dont l'historique est déjà en cache.
+     *
+     * @param  callable(int, string):void|null  $onPlayer  Appelé au début de chaque joueur à traiter (index 0-based, nom).
+     * @param  callable(int):void|null  $onPage  Appelé après chaque page (n° de page).
+     */
+    public function preloadHistory(int $teamId, ?callable $onPlayer = null, ?callable $onPage = null): void
+    {
+        $this->ensureTeamSynced($teamId);
+
+        $index = 0;
+        foreach ($this->roster($teamId) as $p) {
+            if ($this->repo->hasPlayerHistory($p['steamid'])) {
+                continue;
+            }
+            if ($onPlayer !== null) {
+                $onPlayer($index++, (string) $p['name']);
+            }
+            $this->history->refreshPlayer($p['steamid'], false, $onPage);
+        }
+    }
+
+    /**
+     * Synchronise la fiche d'une équipe via l'API ETF2L si elle est inconnue.
+     */
+    public function ensureTeamSynced(int $teamId): void
+    {
+        $row = DB::table('etf2l_teams')->where('team_id', $teamId)->first();
+        if ($row === null) {
+            $this->history->syncTeam($teamId);
+        }
+    }
+
+    /**
+     * Nombre de joueurs du roster dont l'historique reste à pré-charger.
+     */
+    public function countPendingHistory(int $teamId): int
+    {
+        $this->ensureTeamSynced($teamId);
+
+        $count = 0;
+        foreach ($this->roster($teamId) as $p) {
+            if (! $this->repo->hasPlayerHistory($p['steamid'])) {
+                $count++;
+            }
+        }
+
+        return $count;
+    }
+
+    /**
      * Roster actuel (etf2l_players + infos du site) avec visibilité lineup.
      *
      * @return array<int, array<string, mixed>>
