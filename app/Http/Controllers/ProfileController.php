@@ -510,7 +510,11 @@ final class ProfileController extends Controller
         ];
 
         $isPrivate = !empty($data['noIndex']);
-        $playerDescription = $data['description'] ?? 'Profil TF2 de '.$data['playerName'].' sur Highlander France : stats 9v9, divisions ETF2L et palmarès.';
+        $playerDescription = $data['description'] ?? $this->buildProfileDescription(
+            $data['playerName'],
+            $data['player'],
+            $steamid3,
+        );
         $breadcrumbs = $data['breadcrumbs'] ?? (!$isPrivate ? [
             ['name' => 'Accueil', 'url' => site_url().'/'],
             ['name' => $data['playerName'], 'url' => site_url().'/profile/'.$data['steamid64']],
@@ -537,6 +541,77 @@ final class ProfileController extends Controller
             'age' => $age,
             'structuredData' => $structuredData,
         ]);
+    }
+
+    /**
+     * Description meta unique par profil (anti contenu dupliqué).
+     * Construite depuis les stats 9v9, la classe principale, les maps
+     * favorites, le pays et la division ETF2L. Tronquée à ~155 caractères.
+     */
+    private function buildProfileDescription(string $playerName, array $player, string $steamid3): string
+    {
+        $countries = (array) config('hlfr.countries', []);
+        $countryCode = strtolower((string) ($player['country'] ?? ''));
+        $country = $countries[$countryCode] ?? null;
+
+        try {
+            $total = $this->stats->totalMatches($steamid3, '9v9');
+        } catch (\Throwable) {
+            $total = 0;
+        }
+        try {
+            $classes = $this->stats->classesPlayed($steamid3, '9v9');
+        } catch (\Throwable) {
+            $classes = [];
+        }
+        try {
+            $maps = $this->stats->topMaps($steamid3, '9v9');
+        } catch (\Throwable) {
+            $maps = [];
+        }
+        try {
+            $levels = $this->etf2l->playerLevels($steamid3);
+        } catch (\Throwable) {
+            $levels = [];
+        }
+
+        $mainClass = isset($classes[0]['class_played']) ? (string) $classes[0]['class_played'] : '';
+        $mapNames = [];
+        foreach (array_slice($maps, 0, 2) as $row) {
+            if (! empty($row['map_name'])) {
+                $mapNames[] = (string) $row['map_name'];
+            }
+        }
+        $division = null;
+        foreach ($levels as $row) {
+            foreach (['division', 'level', 'div', 'name'] as $key) {
+                if (! empty($row[$key])) {
+                    $division = (string) $row[$key];
+                    break 2;
+                }
+            }
+        }
+
+        $parts = [];
+        $parts[] = 'Profil TF2 de '.$playerName.($country !== null ? ' ('.$country.')' : '');
+        $parts[] = $total > 0 ? $total.' match'.($total > 1 ? 's' : '').' Highlander 9v9' : 'joueur Highlander 9v9';
+        if ($mainClass !== '') {
+            $parts[] = 'classe '.$mainClass;
+        }
+        if ($mapNames !== []) {
+            $parts[] = 'maps '.implode(', ', $mapNames);
+        }
+        if ($division !== null) {
+            $parts[] = 'ETF2L '.$division;
+        }
+        $parts[] = 'stats et palmarès sur Highlander France.';
+
+        $description = implode(' : ', [$parts[0], implode(', ', array_slice($parts, 1))]);
+        if (mb_strlen($description) > 160) {
+            $description = mb_substr($description, 0, 157).'...';
+        }
+
+        return $description;
     }
 
     private function flashError(string $message, string $url): RedirectResponse

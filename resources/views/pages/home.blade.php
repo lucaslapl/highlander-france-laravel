@@ -25,8 +25,8 @@
     Nous mettons un point d'honneur à faire de notre communauté un <b>lieu sûr pour tous.</b></p>
     <div class="vid-container">
         <div class="pres-video">
-            <video autoplay muted loop playsinline>
-                <source src="https://i.imgur.com/We4yrzC.mp4" type="video/mp4">
+            <video muted loop playsinline preload="none" data-deferred-autoplay poster="/_img/meta-bg-hlfr.jpg">
+                <source data-src="https://i.imgur.com/We4yrzC.mp4" type="video/mp4">
                 Votre navigateur ne supporte pas la lecture de vidéos.
             </video>
             <p class="vid-desc">Matchs des équipes françaises streamés en direct sur Twitch!</p>
@@ -64,5 +64,32 @@
 @include('partials.index-stats-script')
 @include('partials.twitch-live-script')
 @include('partials.twitch-header-script')
+<script>
+(function () {
+    var video = document.querySelector("video[data-deferred-autoplay]");
+    if (!video) return;
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    function loadAndPlay() {
+        var source = video.querySelector("source[data-src]");
+        if (source && !source.src) source.src = source.getAttribute("data-src");
+        if (video.readyState === 0) video.load();
+        var p = video.play();
+        if (p && p.catch) p.catch(function () {});
+    }
+    if ("IntersectionObserver" in window) {
+        var observer = new IntersectionObserver(function (entries) {
+            entries.forEach(function (entry) {
+                if (entry.isIntersecting) {
+                    loadAndPlay();
+                    observer.disconnect();
+                }
+            });
+        }, { rootMargin: "200px" });
+        observer.observe(video);
+    } else {
+        window.addEventListener("load", loadAndPlay, { once: true });
+    }
+})();
+</script>
 @endpush
 @endsection

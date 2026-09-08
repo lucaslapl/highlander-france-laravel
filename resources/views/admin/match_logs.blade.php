@@ -43,71 +43,77 @@
 </div>
 
 <script>
-$("#log-search").on("input", function () {
+document.getElementById("log-search").addEventListener("input", function () {
     const q = this.value.toLowerCase();
-    $("#logsTable tbody tr").each(function () {
-        $(this).toggle($(this).text().toLowerCase().includes(q));
+    document.querySelectorAll("#logsTable tbody tr").forEach(function (row) {
+        row.style.display = row.textContent.toLowerCase().includes(q) ? "" : "none";
     });
 });
 
 // Blacklister un log
-$(document).on("click", ".btn-blacklist", function () {
-    const btn = $(this);
-    const logId = btn.data("log-id");
-    const logTitle = btn.data("log-title");
+document.addEventListener("click", function (event) {
+    const btn = event.target.closest("#logsTable .btn-blacklist");
+    if (!btn) return;
+    const logId = btn.getAttribute("data-log-id");
+    const logTitle = btn.getAttribute("data-log-title");
 
     if (!confirm(`Blacklister le log #${logId} (« ${logTitle} ») ?\nIl sera exclu des Match Stats et des statistiques.`)) {
         return;
     }
 
-    $.ajax({
-        type: "POST",
-        url: "/api/admin/blacklist",
-        data: { action: "add", log_id: logId },
+    fetch("/api/admin/blacklist", {
+        method: "POST",
         headers: {
+            "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
             "X-Requested-With": "XMLHttpRequest",
             "X-CSRF-Token": "{{ csrf_token() }}"
         },
-        dataType: "json"
-    }).done(function (res) {
-        if (res.success) {
-            btn.closest("tr").remove();
-            if ($("#logsTable tbody tr").length === 0) {
-                $("#logsTable tbody").html('<tr><td colspan="7" style="padding: 20px; text-align: center; color: #aaa; font-style: italic;">Aucun log à afficher.</td></tr>');
+        body: new URLSearchParams({ action: "add", log_id: String(logId) })
+    }).then(function (response) {
+        return response.ok ? response.json() : null;
+    }).then(function (res) {
+        if (res && res.success) {
+            const row = btn.closest("tr");
+            if (row) row.remove();
+            const tbody = document.querySelector("#logsTable tbody");
+            if (tbody && tbody.querySelectorAll("tr").length === 0) {
+                tbody.innerHTML = '<tr><td colspan="7" style="padding: 20px; text-align: center; color: #aaa; font-style: italic;">Aucun log à afficher.</td></tr>';
             }
         } else {
-            alert(res.message);
+            alert(res && res.message ? res.message : "Erreur lors du blacklisting du log.");
         }
-    }).fail(function () {
+    }).catch(function () {
         alert("Erreur lors du blacklisting du log.");
     });
 });
 
 // Changer le mode de jeu (6s / 9v9)
-$(document).on("click", ".btn-mode", function () {
-    const btn = $(this);
-    const logId = btn.data("log-id");
-    const targetMode = btn.data("mode");
+document.addEventListener("click", function (event) {
+    const btn = event.target.closest("#logsTable .btn-mode");
+    if (!btn) return;
+    const logId = btn.getAttribute("data-log-id");
+    const targetMode = btn.getAttribute("data-mode");
 
-    if (!confirm(`Passer le log #${logId} en mode ${targetMode.toUpperCase()} dans la base de données ?`)) {
+    if (!confirm(`Passer le log #${logId} en mode ${String(targetMode).toUpperCase()} dans la base de données ?`)) {
         return;
     }
 
-    $.ajax({
-        type: "POST",
-        url: "/api/admin/match-mode",
-        data: { action: "switch_mode", log_id: logId, mode: targetMode },
+    fetch("/api/admin/match-mode", {
+        method: "POST",
         headers: {
+            "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
             "X-Requested-With": "XMLHttpRequest",
             "X-CSRF-Token": "{{ csrf_token() }}"
         },
-        dataType: "json"
-    }).done(function (res) {
-        alert(res.message);
-        if (res.success) {
+        body: new URLSearchParams({ action: "switch_mode", log_id: String(logId), mode: String(targetMode) })
+    }).then(function (response) {
+        return response.ok ? response.json() : null;
+    }).then(function (res) {
+        alert(res && res.message ? res.message : "Réponse inattendue du serveur.");
+        if (res && res.success) {
             location.reload();
         }
-    }).fail(function () {
+    }).catch(function () {
         alert("Erreur lors du changement de mode.");
     });
 });

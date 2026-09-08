@@ -2,13 +2,29 @@
 <script>
     const HLFR_IS_ADMIN = {{ $isAdmin ? 'true' : 'false' }};
 
-    $.getJSON("/api/logs", function (logs) {
+    fetch("/api/logs").then(function (response) {
+        return response.ok ? response.json() : [];
+    }).then(function (result) {
+        let logs = Array.isArray(result) ? result : [];
 
         // Supprimer les 4 plus anciennes logs
         logs = logs.slice(0, logs.length - 4);
 
-        if (HLFR_IS_ADMIN) {
-            $("#logsTable thead tr").append('<th style="text-align:center;">Action</th>');
+        const logsTable = document.getElementById("logsTable");
+        const tbody = logsTable ? logsTable.querySelector("tbody") : null;
+        const pagination = document.getElementById("pagination");
+        const filterDate = document.getElementById("filter-date");
+        const filterMap = document.getElementById("filter-map");
+
+        if (HLFR_IS_ADMIN && logsTable) {
+            const headerRow = logsTable.querySelector("thead tr");
+            if (headerRow && !headerRow.querySelector("th:last-child[data-admin-action]")) {
+                const th = document.createElement("th");
+                th.style.textAlign = "center";
+                th.setAttribute("data-admin-action", "true");
+                th.textContent = "Action";
+                headerRow.appendChild(th);
+            }
         }
 
         // Précalcul des chaînes une seule fois (évite de re-formater les dates à chaque rendu/filtre)
@@ -21,12 +37,13 @@
                 hour: "2-digit",
                 minute: "2-digit"
             };
+            const display = d.toLocaleString("fr-FR", opts);
             return {
                 id: log.id,
                 map: log.map,
                 title: log.title,
-                _display: d.toLocaleString("fr-FR", opts),
-                _filter: d.toLocaleString("fr-FR", opts).toLowerCase(),
+                _display: display,
+                _filter: display.toLowerCase(),
                 _map: String(log.map).toLowerCase(),
                 _title: String(log.title).toLowerCase()
             };
@@ -38,8 +55,8 @@
         let filteredLogs = [...logs];
 
         function applyFilters() {
-            const dateFilter = $("#filter-date").val().trim().toLowerCase();
-            const mapFilter = $("#filter-map").val().trim().toLowerCase();
+            const dateFilter = filterDate ? filterDate.value.trim().toLowerCase() : "";
+            const mapFilter = filterMap ? filterMap.value.trim().toLowerCase() : "";
 
             if (!dateFilter && !mapFilter) {
                 filteredLogs = logs;
@@ -70,6 +87,7 @@
         }
 
         function renderTable(page) {
+            if (!tbody) return;
             const start = (page - 1) * logsPerPage;
             const end = start + logsPerPage;
             const pageLogs = filteredLogs.slice(start, end);
@@ -110,18 +128,19 @@
                 rows = '<tr><td colspan="' + (HLFR_IS_ADMIN ? 4 : 3) + '">Aucun log à afficher.</td></tr>';
             }
 
-            $("#logsTable tbody").html(rows);
+            tbody.innerHTML = rows;
 
-            $(".log-row").each(function (i) {
-                setTimeout(() => $(this).addClass("visible"), i * 80);
+            tbody.querySelectorAll(".log-row").forEach(function (row, i) {
+                setTimeout(function () { row.classList.add("visible"); }, i * 80);
             });
         }
 
         function renderPagination() {
+            if (!pagination) return;
             const totalPages = Math.max(1, Math.ceil(filteredLogs.length / logsPerPage));
 
             if (totalPages <= 1) {
-                $("#pagination").html("");
+                pagination.innerHTML = "";
                 return;
             }
 
@@ -156,66 +175,76 @@
 
             buttons += next;
 
-            $("#pagination").html(buttons);
+            pagination.innerHTML = buttons;
         }
 
         // Délégation : les handlers sont bindés une seule fois, quel que soit le nombre de pages
-        $("#pagination").on("click", ".page-btn", function () {
-            if ($(this).is("[disabled]")) return;
-            const page = parseInt($(this).data("page"), 10);
-            if (isNaN(page) || page === currentPage) return;
-            currentPage = page;
-            renderTable(currentPage);
-            renderPagination();
-        });
+        if (pagination) {
+            pagination.addEventListener("click", function (event) {
+                const btn = event.target.closest(".page-btn");
+                if (!btn || btn.hasAttribute("disabled")) return;
+                const page = parseInt(btn.getAttribute("data-page"), 10);
+                if (isNaN(page) || page === currentPage) return;
+                currentPage = page;
+                renderTable(currentPage);
+                renderPagination();
+            });
+        }
 
         // Délégation pour le blacklist (admin uniquement)
-        $("#logsTable tbody").on("click", ".btn-blacklist", function () {
-            const logId = $(this).data("log-id");
-            const logTitle = $(this).data("log-title");
+        if (tbody) {
+            tbody.addEventListener("click", function (event) {
+                const btn = event.target.closest(".btn-blacklist");
+                if (!btn) return;
+                const logId = btn.getAttribute("data-log-id");
+                const logTitle = btn.getAttribute("data-log-title");
 
-            if (!confirm(`Blacklister le log #${logId} (« ${logTitle} ») ?\nIl sera exclu des Match Stats et des statistiques.`)) {
-                return;
-            }
-
-            $.ajax({
-                type: "POST",
-                url: "/api/admin/blacklist",
-                data: {
-                    action: "add",
-                    log_id: logId
-                },
-                headers: {
-                    "X-Requested-With": "XMLHttpRequest",
-                    "X-CSRF-Token": "{{ csrf_token() }}"
-                },
-                dataType: "json"
-            }).done(function (res) {
-                if (res.success) {
-                    $(`.btn-blacklist[data-log-id="${logId}"]`).closest("tr").remove();
-                    if ($("#logsTable tbody tr").length === 0) {
-                        $("#logsTable tbody").html('<tr><td colspan="4">Aucun log à afficher.</td></tr>');
-                    }
-                } else {
-                    alert(res.message);
+                if (!confirm(`Blacklister le log #${logId} (« ${logTitle} ») ?\nIl sera exclu des Match Stats et des statistiques.`)) {
+                    return;
                 }
-            }).fail(function () {
-                alert("Erreur lors du blacklisting du log.");
+
+                fetch("/api/admin/blacklist", {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
+                        "X-Requested-With": "XMLHttpRequest",
+                        "X-CSRF-Token": "{{ csrf_token() }}"
+                    },
+                    body: new URLSearchParams({ action: "add", log_id: String(logId) })
+                }).then(function (response) {
+                    return response.ok ? response.json() : null;
+                }).then(function (res) {
+                    if (res && res.success) {
+                        const row = btn.closest("tr");
+                        if (row) row.remove();
+                        if (tbody.querySelectorAll("tr").length === 0) {
+                            tbody.innerHTML = '<tr><td colspan="4">Aucun log à afficher.</td></tr>';
+                        }
+                    } else {
+                        alert(res && res.message ? res.message : "Erreur lors du blacklisting du log.");
+                    }
+                }).catch(function () {
+                    alert("Erreur lors du blacklisting du log.");
+                });
             });
-        });
+        }
 
         // Événements des filtres (debounce 200ms pour éviter de recalculer à chaque frappe)
         let filterTimer;
-        $("#filter-date").on("input", function () {
-            clearTimeout(filterTimer);
-            filterTimer = setTimeout(applyFilters, 200);
-        });
-        $("#filter-map").on("input", function () {
-            clearTimeout(filterTimer);
-            filterTimer = setTimeout(applyFilters, 200);
-        });
+        function bindFilter(input) {
+            if (!input) return;
+            input.addEventListener("input", function () {
+                clearTimeout(filterTimer);
+                filterTimer = setTimeout(applyFilters, 200);
+            });
+        }
+        bindFilter(filterDate);
+        bindFilter(filterMap);
 
         // Affichage initial
         applyFilters();
+    }).catch(function () {
+        const tbody = document.querySelector("#logsTable tbody");
+        if (tbody) tbody.innerHTML = '<tr><td colspan="3">Impossible de charger les logs.</td></tr>';
     });
 </script>

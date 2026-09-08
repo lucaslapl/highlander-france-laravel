@@ -44,34 +44,34 @@
     })();
 
     @if ($isAdmin)
-    $(document).on("click", ".matchlog-admin .btn-blacklist", function () {
-        const logId = $(this).data("log-id");
-        const logTitle = $(this).data("log-title");
+    document.addEventListener("click", function (event) {
+        const btn = event.target.closest(".matchlog-admin .btn-blacklist");
+        if (!btn) return;
+        const logId = btn.getAttribute("data-log-id");
+        const logTitle = btn.getAttribute("data-log-title");
 
         if (!confirm(`Blacklister le log #${logId} (« ${logTitle} ») ?\nIl sera exclu des Match Stats et des statistiques.`)) {
             return;
         }
 
-        $.ajax({
-            type: "POST",
-            url: "/api/admin/blacklist",
-            data: {
-                action: "add",
-                log_id: logId
-            },
+        fetch("/api/admin/blacklist", {
+            method: "POST",
             headers: {
+                "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
                 "X-Requested-With": "XMLHttpRequest",
                 "X-CSRF-Token": "{{ csrf_token() }}"
             },
-            dataType: "json"
-        }).done(function (res) {
-            if (res.success) {
+            body: new URLSearchParams({ action: "add", log_id: String(logId) })
+        }).then(function (response) {
+            return response.ok ? response.json() : null;
+        }).then(function (res) {
+            if (res && res.success) {
                 alert("Log blacklisté. Il a été retiré des statistiques.");
                 window.location.href = "/match-logs";
             } else {
-                alert(res.message);
+                alert(res && res.message ? res.message : "Erreur lors du blacklisting du log.");
             }
-        }).fail(function () {
+        }).catch(function () {
             alert("Erreur lors du blacklisting du log.");
         });
     });

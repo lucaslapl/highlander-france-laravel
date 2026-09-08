@@ -35,7 +35,7 @@
     <li><b>Steam</b> (Valve) : authentification OpenID et récupération du profil (pseudo, avatar).</li>
     <li><b>logs.tf</b> : données de statistiques de matchs.</li>
     <li><b>ETF2L</b> : agenda des prochains matchs des équipes françaises.</li>
-    <li><b>Font Awesome</b>, <b>jQuery</b> (cdnjs), <b>Chart.js</b> (jsdelivr) : bibliothèques et icônes chargées depuis des CDN.</li>
+    <li><b>Font Awesome</b>, <b>Chart.js</b> (jsdelivr) : bibliothèques et icônes chargées depuis des CDN.</li>
     <li><b>Discord</b> et <b>imgur</b> : liens externes et contenus embarqués.</li>
 </ul>
 <h3>7. Stockage, sécurité et conservation</h3>
