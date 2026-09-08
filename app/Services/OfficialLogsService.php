@@ -18,7 +18,7 @@ use Illuminate\Support\Facades\DB;
  */
 final class OfficialLogsService
 {
-    private int $lastHttpAt = 0;
+    private float $lastHttpAt = 0.0;
 
     /**
      * Catégorie depuis le nom de compétition ETF2L.
