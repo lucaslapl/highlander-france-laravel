@@ -284,10 +284,10 @@ final class AdminStatsDuelController extends Controller
 
     private function adminName(): string
     {
-        $player = Auth::player();
+        $user = Auth::user();
 
-        return $player !== null
-            ? (string) ($player['display_name'] ?? $player['name'] ?? 'admin')
+        return $user !== null
+            ? (string) ($user->display_name ?? $user->name ?? 'admin')
             : 'admin';
     }
 
