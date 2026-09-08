@@ -10,10 +10,6 @@
 #
 # Une seule entrée suffit : le planificateur Laravel (routes/console.php)
 # exécute les tâches aux fréquences définies, identiques à l'ancien crontab.
-# ⚠️ NE JAMAIS dupliquer cette ligne (ni via Plesk + cron système en parallèle) :
-# chaque invocation concurrente ré-exécuterait les tâches dues. En second
-# rempart, routes/console.php ajoute withoutOverlapping() et chaque service
-# lourd un verrou flock.
 * * * * * cd <APP_ROOT> && php artisan schedule:run >> /dev/null 2>&1
 
 # Optionnel mais recommandé : rotation des logs Laravel (évite les fichiers géants).

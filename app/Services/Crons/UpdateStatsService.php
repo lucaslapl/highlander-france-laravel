@@ -18,9 +18,6 @@ final class UpdateStatsService
 {
     private const SCRIPT_NAME = 'update_stats.php';
 
-    /** Verrou anti-concurrence : une seule exécution à la fois (cron + webhook + panel admin). */
-    private const LOCK_FILE = 'update_stats.lock';
-
     private const LOGS_TF_URLS = [
         'https://logs.tf/api/v1/log?title=Highlander%20France',
         'https://logs.tf/api/v1/log?title=highlanderfrance.tf',
@@ -34,25 +31,6 @@ final class UpdateStatsService
     }
 
     public function run(): string
-    {
-        $lock = fopen(hlfr_data_path(self::LOCK_FILE), 'c');
-        if ($lock === false || ! flock($lock, LOCK_EX | LOCK_NB)) {
-            if (is_resource($lock)) {
-                fclose($lock);
-            }
-
-            return 'Mise à jour des stats ignorée : une autre exécution est déjà en cours.';
-        }
-
-        try {
-            return $this->doRun();
-        } finally {
-            flock($lock, LOCK_UN);
-            fclose($lock);
-        }
-    }
-
-    private function doRun(): string
     {
         $logToken = AdminLogger::log(self::SCRIPT_NAME);
 
