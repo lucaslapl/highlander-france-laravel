@@ -37,6 +37,15 @@
         <i class="fa-solid fa-circle-check"></i> {{ session('success') }}
     </div>
 @endif
+@if ($errors->any())
+    <div style="background: #3d1c1c; color: #e74c3c; border: 1px solid #c0392b; padding: 12px 15px; border-radius: 4px; margin: 20px auto; max-width: 1200px; font-size: 14px;">
+        <ul style="margin: 0; padding-left: 18px;">
+            @foreach ($errors->all() as $error)
+                <li>{{ $error }}</li>
+            @endforeach
+        </ul>
+    </div>
+@endif
 
 @include('partials.header')
 

@@ -79,7 +79,7 @@
 
     <div class="form-group">
         <label class="admin-form-label" for="markdownEditor">Contenu Markdown étendu</label>
-        <textarea id="markdownEditor" name="content_markdown" rows="28" required>{{ e(old('content_markdown', $guide['content_markdown'] ?? '')) }}</textarea>
+        <textarea id="markdownEditor" name="content_markdown" rows="28">{{ e(old('content_markdown', $guide['content_markdown'] ?? '')) }}</textarea>
         <small class="form-hint">Le corps du guide, rédigé en <span class="hint-label">Markdown étendu</span>. Utilisez la barre d'outils de l'éditeur et l'aide ci-dessous. Blocs : <code>:::info Titre</code> / <code>:::conseil</code> / <code>:::danger</code> / <code>:::combo</code> / <code>:::flank</code> … <code>:::</code>. Couleurs : <code>&lt;span class="hl-blue"&gt;texte&lt;/span&gt;</code> (hl-blue, hl-red, hl-green, hl-gold). Tableaux GFM supportés.</small>
     </div>
 
