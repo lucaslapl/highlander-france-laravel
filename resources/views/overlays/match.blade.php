@@ -17,7 +17,7 @@
 
         @forelse ($maps as $index => $map)
             <div class="ov-side-label ov-side-label--{{ $index % 2 === 0 ? 'red' : 'blue' }}">
-                <span>Match @{{ $index + 1 }}</span>
+                <span>Match {{ $index + 1 }}</span>
                 <span class="ov-score">
                     @if ($map['red_score'] !== null)
                         <span class="ov-chip-red">{{ $map['red_score'] }}</span> – <span class="ov-chip-blue">{{ $map['blue_score'] }}</span>
