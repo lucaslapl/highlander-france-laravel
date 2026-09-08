@@ -1,0 +1,176 @@
+/* Page Stats équipes (/admin/stats-duel). */
+
+.sd-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(560px, 1fr));
+    gap: 18px;
+    margin-bottom: 24px;
+}
+
+.sd-team-title {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.sd-team-title a {
+    color: #fff;
+    text-decoration: none;
+}
+
+.sd-team-title a:hover {
+    color: #2ec4b6;
+}
+
+.sd-tag {
+    font-size: 0.82em;
+    color: #2ec4b6;
+    border: 1px solid rgba(46, 196, 182, 0.35);
+    border-radius: 4px;
+    padding: 1px 7px;
+}
+
+.sd-stats {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 10px;
+    margin-bottom: 16px;
+}
+
+.sd-stat {
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.07);
+    border-radius: 8px;
+    padding: 10px 12px;
+    text-align: center;
+}
+
+.sd-stat__value {
+    font-size: 1.35em;
+    font-weight: 700;
+    color: #fff;
+}
+
+.sd-stat__label {
+    font-size: 0.72em;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: #9aa4b2;
+    margin-top: 2px;
+}
+
+.sd-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-bottom: 14px;
+}
+
+.sd-filter-playing {
+    margin-left: auto;
+    color: #cdd5df;
+    font-size: 0.9em;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.sd-subtitle {
+    color: #eef2f6;
+    font-size: 0.95em;
+    margin: 18px 0 8px;
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+}
+
+.sd-subtitle small {
+    color: #9aa4b2;
+    font-weight: 400;
+}
+
+.sd-player {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.sd-avatar {
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    object-fit: cover;
+}
+
+.sd-role {
+    font-size: 0.78em;
+    color: #9aa4b2;
+}
+
+.sd-role--lead {
+    color: #ffd700;
+}
+
+.sd-player-row.is-hidden td {
+    opacity: 0.32;
+}
+
+.sd-players.sd-hide-unchecked tbody .sd-player-row.is-hidden {
+    display: none;
+}
+
+.sd-season {
+    display: inline-block;
+    font-size: 0.72em;
+    color: #2ec4b6;
+    border: 1px solid rgba(46, 196, 182, 0.35);
+    border-radius: 4px;
+    padding: 0 5px;
+    margin-left: 6px;
+    vertical-align: middle;
+}
+
+.sd-round {
+    font-size: 0.8em;
+    color: #9aa4b2;
+}
+
+.sd-score {
+    font-weight: 700;
+    white-space: nowrap;
+}
+
+.sd-red {
+    color: #e74c3c;
+}
+
+.sd-blue {
+    color: #3498db;
+}
+
+.sd-chip {
+    color: #2ecc71;
+    font-weight: 700;
+    margin-left: 4px;
+}
+
+.sd-match-actions {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    flex-wrap: wrap;
+}
+
+.nowrap {
+    white-space: nowrap;
+}
+
+@media (max-width: 700px) {
+    .sd-stats {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}

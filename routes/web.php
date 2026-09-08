@@ -8,8 +8,7 @@ use App\Http\Controllers\Admin\AdminController;
 use App\Http\Controllers\Admin\AdminCronController;
 use App\Http\Controllers\Admin\AdminMapController;
 use App\Http\Controllers\Admin\AdminGuideController;
-use App\Http\Controllers\Admin\AdminLigueLogsController;
-use App\Http\Controllers\Admin\AdminOverlayController;
+use App\Http\Controllers\Admin\AdminStatsDuelController;
 use App\Http\Controllers\ApiController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\GuideController;
@@ -95,14 +94,18 @@ Route::middleware('admin')->prefix('admin')->group(function (): void {
     Route::post('/faq/{id}/update', [AdminGuideController::class, 'faqUpdate'])->whereNumber('id');
     Route::post('/faq/{id}/delete', [AdminGuideController::class, 'faqDelete'])->whereNumber('id');
     Route::post('/faq/{id}/toggle', [AdminGuideController::class, 'faqToggle'])->whereNumber('id');
-    Route::get('/ligue-logs', [AdminLigueLogsController::class, 'index']);
-    Route::post('/ligue-logs/attach-to-match', [AdminLigueLogsController::class, 'attachToMatch']);
-    Route::post('/ligue-logs/scrape-match', [AdminLigueLogsController::class, 'scrapeMatch']);
-    Route::post('/ligue-logs/detach', [AdminLigueLogsController::class, 'detach']);
-    Route::post('/ligue-logs/attach-team-log', [AdminLigueLogsController::class, 'attachTeamLog']);
-    Route::post('/ligue-logs/blacklist-team', [AdminLigueLogsController::class, 'blacklistTeam']);
-    Route::post('/ligue-logs/unblacklist-team', [AdminLigueLogsController::class, 'unblacklistTeam']);
-    Route::get('/overlays', [AdminOverlayController::class, 'index']);
+    Route::get('/stats-duel', [AdminStatsDuelController::class, 'index'])->name('admin.stats-duel');
+    Route::post('/stats-duel/run', [AdminStatsDuelController::class, 'run']);
+    Route::post('/stats-duel/attach-log', [AdminStatsDuelController::class, 'attachLog']);
+    Route::post('/stats-duel/detach-log', [AdminStatsDuelController::class, 'detachLog']);
+    Route::post('/stats-duel/scrape', [AdminStatsDuelController::class, 'scrape']);
+    Route::post('/stats-duel/recompute', [AdminStatsDuelController::class, 'recompute']);
+    Route::post('/stats-duel/refresh-history', [AdminStatsDuelController::class, 'refreshHistory']);
+    Route::post('/stats-duel/toggle-player', [AdminStatsDuelController::class, 'togglePlayer']);
+    Route::post('/stats-duel/blacklist-log', [AdminStatsDuelController::class, 'blacklistLog']);
+    Route::post('/stats-duel/unblacklist-log', [AdminStatsDuelController::class, 'unblacklistLog']);
+    Route::post('/stats-duel/blacklist-team', [AdminStatsDuelController::class, 'blacklistTeam']);
+    Route::post('/stats-duel/unblacklist-team', [AdminStatsDuelController::class, 'unblacklistTeam']);
     Route::get('/api-test', [AdminApiTestController::class, 'page']);
     Route::post('/api-test/live/start', [AdminApiTestController::class, 'liveStart']);
     Route::post('/api-test/live/heartbeat', [AdminApiTestController::class, 'liveHeartbeat']);
@@ -130,10 +133,3 @@ Route::post('/profile/update-name', [ProfileController::class, 'updateName']);
 Route::post('/profile/update-country', [ProfileController::class, 'updateCountry']);
 Route::post('/profile/update-links', [ProfileController::class, 'updateLinks']);
 Route::post('/profile/update-personal-info', [ProfileController::class, 'updatePersonalInfo']);
-
-// ─── Overlays OBS ─────────────────────────────────────────────────────────────
-// Rendu statique (aucun JS), fond sombre, conçu pour être capturé par OBS.
-Route::get('/overlay/equipe/{teamId}', [App\Http\Controllers\OverlayController::class, 'equipe'])->whereNumber('teamId');
-Route::get('/overlay/match/{matchId}', [App\Http\Controllers\OverlayController::class, 'match'])->whereNumber('matchId');
-Route::get('/overlay/joueur/{steamid}', [App\Http\Controllers\OverlayController::class, 'joueur'])->where('steamid', '[0-9]{17}');
-Route::get('/overlay/scoreboard/{logId}', [App\Http\Controllers\OverlayController::class, 'scoreboard'])->whereNumber('logId');

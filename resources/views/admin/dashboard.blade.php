@@ -142,15 +142,9 @@ window.__dashboardData = {!! json_encode($dashboardData, JSON_UNESCAPED_UNICODE 
             </div>
 
             <div class="admin-action-card" style="--accent: #2ec4b6;">
-                <h4 class="admin-action-card__title"><i class="fa-solid fa-link"></i> Logs officiels</h4>
-                <p class="admin-action-card__desc">Rattachez les logs.tf aux matchs ETF2L et aux équipes de France. Ces logs alimentent les overlays OBS.</p>
-                <a href="/admin/ligue-logs" class="admin-link-btn">Gérer les logs officiels</a>
-            </div>
-
-            <div class="admin-action-card" style="--accent: #2ec4b6;">
-                <h4 class="admin-action-card__title"><i class="fa-solid fa-tv"></i> Overlays OBS</h4>
-                <p class="admin-action-card__desc">Rendus statiques (stats officielles) à copier dans OBS en source navigateur : équipe, match, joueur, scoreboard.</p>
-                <a href="/admin/overlays" class="admin-link-btn">Configurer les overlays</a>
+                <h4 class="admin-action-card__title"><i class="fa-solid fa-shuffle"></i> Stats équipes</h4>
+                <p class="admin-action-card__desc">Stats officielles de deux équipes ETF2L sur leurs 3 dernières saisons : récupération des logs.tf, calcul des winrates et perfs joueurs (futur backend des overlays).</p>
+                <a href="/admin/stats-duel" class="admin-link-btn">Préparer un match (2 équipes)</a>
             </div>
 
         </div>
