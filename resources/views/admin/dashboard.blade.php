@@ -19,7 +19,6 @@ window.__dashboardData = {!! json_encode($dashboardData, JSON_UNESCAPED_UNICODE 
 @endpush
 
 @section('content')
-@include('admin.partials.alerts')
 
 <div class="admin-header" style="--accent: #ff4444;">
     <h2><i class="fa-solid fa-screwdriver-wrench"></i> Panel d'Administration</h2>
@@ -139,12 +138,6 @@ window.__dashboardData = {!! json_encode($dashboardData, JSON_UNESCAPED_UNICODE 
                 <h4 class="admin-action-card__title"><i class="fa-solid fa-book-open"></i> Guides & FAQ</h4>
                 <p class="admin-action-card__desc">Guides SEO (Markdown étendu, tableaux, blocs couleur) et FAQ par cluster d’intentions.</p>
                 <a href="/admin/guides" class="admin-link-btn">Gérer les guides</a>
-            </div>
-
-            <div class="admin-action-card" style="--accent: #2ec4b6;">
-                <h4 class="admin-action-card__title"><i class="fa-solid fa-shuffle"></i> Stats équipes</h4>
-                <p class="admin-action-card__desc">Stats officielles de deux équipes ETF2L sur leurs 3 dernières saisons : récupération des logs.tf, calcul des winrates et perfs joueurs (futur backend des overlays).</p>
-                <a href="/admin/stats-duel" class="admin-link-btn">Préparer un match (2 équipes)</a>
             </div>
 
         </div>
