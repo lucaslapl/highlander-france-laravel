@@ -34,6 +34,33 @@ final class AdminLogger
     }
 
     /**
+     * Enregistre une exécution ignorée (statut "ignored", déjà terminée).
+     *
+     * Utilisé notamment par le listener ScheduledTaskSkipped : une tâche
+     * planifiée sautée (withoutOverlapping, planificateur en pause ou filtre)
+     * n'exécute jamais son code, donc n'appelle pas log(). Ce point d'entrée
+     * garantit qu'elle apparaît quand même sur /admin/view-logs.
+     */
+    public static function skipped(string $script, ?string $message = null): void
+    {
+        ['context' => $context, 'steamid' => $steamid, 'name' => $name, 'ip' => $ip] = self::actor();
+
+        $now = Carbon::now();
+
+        DB::table('admin_logs')->insert([
+            'script' => $script,
+            'status' => 'ignored',
+            'message' => $message,
+            'context' => $context,
+            'user_steamid' => $steamid,
+            'user_name' => $name,
+            'ip' => $ip,
+            'started_at' => $now,
+            'finished_at' => $now,
+        ]);
+    }
+
+    /**
      * Dernière exécution terminée (SUCCESS/FAILED/IGNORED) de chaque script.
      *
      * @return array<string, array{status: string, message: string, date: string, ts: int}>
