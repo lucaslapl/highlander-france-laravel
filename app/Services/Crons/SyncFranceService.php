@@ -136,7 +136,7 @@ final class SyncFranceService
 
         if ($allTeamIds === []) {
             $msg = 'Aucune équipe de France configurée (hlfr.france_teams).';
-            AdminLogger::log(self::SCRIPT_NAME, $logToken, 'ERROR ' . $msg);
+            AdminLogger::log(self::SCRIPT_NAME, $logToken, 'FAILED ' . $msg);
             return $msg;
         }
 

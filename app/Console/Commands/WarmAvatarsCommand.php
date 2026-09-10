@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Console\Commands;
 
 use App\Models\PlayerRepository;
+use App\Services\AdminLogger;
 use App\Services\AvatarCache;
 use App\Services\SteamId;
 use Illuminate\Console\Command;
@@ -19,6 +20,26 @@ final class WarmAvatarsCommand extends Command
     public function handle(): int
     {
         set_time_limit(300);
+
+        $logToken = AdminLogger::log('warm_avatars.php');
+
+        try {
+            [$ok, $skip, $fail] = $this->warm();
+        } catch (\Throwable $e) {
+            AdminLogger::log('warm_avatars.php', $logToken, 'FAILED (' . $e->getMessage() . ')');
+            $this->error('Erreur lors du pré-chauffage des avatars : ' . $e->getMessage());
+
+            return self::FAILURE;
+        }
+
+        AdminLogger::log('warm_avatars.php', $logToken, "SUCCESS ({$ok} téléchargés, {$skip} déjà en cache, {$fail} échecs)");
+        $this->info("Avatars pré-chauffés : {$ok} téléchargés, {$skip} déjà en cache, {$fail} échecs.");
+
+        return self::SUCCESS;
+    }
+
+    private function warm(): array
+    {
         $repo = new PlayerRepository;
         $limit = max(1, min((int) $this->option('limit'), 200));
 
@@ -77,8 +98,6 @@ final class WarmAvatarsCommand extends Command
             usleep(100000);
         }
 
-        $this->info("Avatars pré-chauffés : {$ok} téléchargés, {$skip} déjà en cache, {$fail} échecs.");
-
-        return self::SUCCESS;
+        return [$ok, $skip, $fail];
     }
 }
