@@ -23,7 +23,7 @@ final class LogScheduledTaskSkipped
         $command = (string) ($event->task->command ?? '');
 
         $script = self::scriptName($command);
-        if ($script === null) {
+        if ($script === null || $script === 'sync_twitch.php') {
             return;
         }
 
