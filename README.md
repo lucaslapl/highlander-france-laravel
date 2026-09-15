@@ -34,6 +34,19 @@ Refonte du site MVC maison sous **Laravel 13** (PHP 8.3+, MySQL 8).
 
 ## Installation (développement)
 
+### Avec Docker (recommandé)
+
+```bash
+# Installer Docker Desktop, puis :
+cp .env.example .env        # renseigner STEAM_API_KEY, tokens webhooks…
+docker compose up app       # http://127.0.0.1:8000
+# Dans un autre terminal :
+docker compose run --rm test          # lancer les tests
+docker compose run --rm test sh       # shell PHP dans le conteneur
+```
+
+### Sans Docker (WAMP)
+
 ```bash
 composer install
 cp .env.example .env        # renseigner STEAM_API_KEY, tokens webhooks…

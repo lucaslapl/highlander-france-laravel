@@ -1,0 +1,14 @@
+services:
+  app:
+    build: .
+    ports:
+      - "8000:8000"
+    volumes:
+      - .:/var/www/html
+    command: composer dev
+
+  test:
+    build: .
+    volumes:
+      - .:/var/www/html
+    command: composer test

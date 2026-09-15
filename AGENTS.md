@@ -11,6 +11,15 @@ Three components live in this repo:
 
 All UI strings, comments, and docblocks are in **French**. Read `README.md`, `bot/README.md`, and `plugins/*/README.md` before touching those areas.
 
+## Local environment
+
+- **Docker is mandatory.** Never run `composer test`, `php artisan`, `vendor/bin/pint`, or `npm` directly on the host. Always use Docker:
+  - Tests : `docker compose run --rm test`
+  - Dev server : `docker compose up app`
+  - Pint : `docker compose run --rm test vendor/bin/pint --test`
+  - Build assets : `docker compose run --rm test npm run build`
+  - Shell : `docker compose run --rm test sh`
+
 ## Architecture rules (do not break these)
 
 - **No Eloquent for domain data.** Business data is accessed via repository classes (`*Repository`, e.g. `PlayerRepository`) using the `DB` query builder facade. `User` is the only Eloquent model. Do not introduce Eloquent models for the domain without being asked.
