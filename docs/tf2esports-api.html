@@ -1,0 +1,1031 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>tf2esports.com — Documentation API v1 (détaillée)</title>
+<style>
+  :root {
+    --bg: #0d0f13;
+    --panel: #16191f;
+    --border: #262b33;
+    --text: #e6e8eb;
+    --muted: #9aa0a8;
+    --accent: #e2581f;
+    --accent-soft: rgba(226,88,31,.12);
+    --link: #f08a5d;
+    --green: #4caf7d;
+    --yellow: #e0b12f;
+    --red: #e05a5a;
+    --code-bg: #0a0c0f;
+    --radius: 10px;
+  }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; scroll-padding-top: 20px; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    line-height: 1.6;
+  }
+  code, pre { font-family: "SF Mono", "JetBrains Mono", "Fira Code", Consolas, monospace; }
+  code {
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 1px 6px;
+    font-size: .9em;
+    color: var(--link);
+  }
+  pre {
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 14px 16px;
+    overflow-x: auto;
+    font-size: .82rem;
+    line-height: 1.5;
+    max-height: 480px;
+  }
+  pre code { background: none; border: none; color: var(--text); padding: 0; }
+  a { color: var(--link); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+
+  .layout { display: flex; min-height: 100vh; }
+  nav {
+    width: 310px;
+    flex-shrink: 0;
+    background: var(--panel);
+    border-right: 1px solid var(--border);
+    padding: 24px 16px;
+    position: sticky;
+    top: 0;
+    height: 100vh;
+    overflow-y: auto;
+  }
+  nav .brand { font-size: 1.1rem; font-weight: 700; margin-bottom: 4px; }
+  nav .brand span { color: var(--accent); }
+  nav .sub { color: var(--muted); font-size: .8rem; margin-bottom: 20px; }
+  nav .section-label {
+    text-transform: uppercase;
+    font-size: .68rem;
+    letter-spacing: .1em;
+    color: var(--muted);
+    margin: 18px 0 6px;
+  }
+  nav a { display: block; color: var(--text); padding: 4px 8px; border-radius: 6px; font-size: .86rem; }
+  nav a:hover { background: var(--accent-soft); color: var(--link); text-decoration: none; }
+  nav a .m { color: var(--accent); font-family: monospace; font-size: .74rem; }
+
+  main { flex: 1; max-width: 1020px; padding: 40px 48px 80px; }
+  header.hero { border-bottom: 1px solid var(--border); padding-bottom: 24px; margin-bottom: 32px; }
+  header.hero h1 { margin: 0 0 10px; font-size: 1.9rem; }
+  header.hero p { color: var(--muted); margin: 4px 0; }
+  .badge {
+    display: inline-block; padding: 2px 10px; border-radius: 999px; font-size: .72rem;
+    font-weight: 600; margin-right: 6px; border: 1px solid var(--border); background: var(--panel); color: var(--muted);
+  }
+  .badge.live { color: var(--green); border-color: var(--green); background: rgba(76,175,125,.1); }
+
+  h2 { font-size: 1.35rem; margin: 56px 0 12px; padding-bottom: 8px; border-bottom: 1px solid var(--border); }
+  h2 .anchor { color: var(--muted); font-size: 1rem; margin-left: 4px; }
+  h3 { font-size: 1.05rem; margin: 28px 0 8px; }
+  p { margin: 8px 0; }
+  ul { padding-left: 20px; }
+  li { margin: 4px 0; }
+  .muted { color: var(--muted); }
+  .callout { border-left: 3px solid var(--accent); background: var(--accent-soft); padding: 10px 14px; border-radius: 0 var(--radius) var(--radius) 0; margin: 16px 0; }
+  .callout.warn { border-left-color: var(--yellow); background: rgba(224,177,47,.08); }
+  .callout.info { border-left-color: #5da0e0; background: rgba(93,160,224,.08); }
+
+  .endpoint { border: 1px solid var(--border); border-radius: var(--radius); background: var(--panel); margin: 20px 0; overflow: hidden; }
+  .endpoint-head { display: flex; align-items: center; gap: 12px; padding: 12px 16px; background: rgba(255,255,255,.02); border-bottom: 1px solid var(--border); flex-wrap: wrap; }
+  .method { font-family: monospace; font-weight: 700; font-size: .75rem; padding: 3px 10px; border-radius: 6px; background: var(--accent); color: #fff; letter-spacing: .05em; }
+  .path { font-family: monospace; font-size: .95rem; word-break: break-all; color: var(--text); }
+  .scope-chip { margin-left: auto; font-size: .72rem; color: var(--muted); border: 1px solid var(--border); border-radius: 999px; padding: 2px 10px; white-space: nowrap; }
+  .endpoint-body { padding: 16px; }
+  .endpoint-body .summary { margin-top: 0; color: var(--text); }
+  .endpoint h4 { margin: 18px 0 6px; font-size: .8rem; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); }
+
+  table { width: 100%; border-collapse: collapse; font-size: .87rem; margin: 8px 0 4px; }
+  th { text-align: left; text-transform: uppercase; font-size: .7rem; letter-spacing: .06em; color: var(--muted); border-bottom: 1px solid var(--border); padding: 8px 10px; }
+  td { border-bottom: 1px solid var(--border); padding: 8px 10px; vertical-align: top; }
+  tr:last-child td { border-bottom: none; }
+  .req { color: var(--red); font-weight: 700; }
+  .opt { color: var(--muted); }
+  .enum { color: var(--green); }
+  .null { color: var(--yellow); }
+  table.resp-codes td:first-child { font-family: monospace; font-weight: 700; white-space: nowrap; }
+  .c-2xx { color: var(--green); }
+  .t-num { color: #7fc8ff; }
+  .t-str { color: #e0b12f; }
+  details { margin: 10px 0; border: 1px solid var(--border); border-radius: 8px; background: var(--bg); }
+  summary { cursor: pointer; color: var(--link); font-size: .86rem; font-family: monospace; padding: 8px 12px; user-select: none; }
+
+  .search-box { width: 100%; margin: 12px 0 8px; padding: 8px 12px; background: var(--bg); border: 1px solid var(--border); border-radius: 8px; color: var(--text); font-size: .85rem; }
+  .search-box:focus { outline: none; border-color: var(--accent); }
+
+  footer { margin-top: 60px; padding-top: 16px; border-top: 1px solid var(--border); color: var(--muted); font-size: .8rem; }
+
+  @media (max-width: 900px) {
+    .layout { flex-direction: column; }
+    nav { width: 100%; height: auto; position: static; border-right: none; border-bottom: 1px solid var(--border); }
+    main { padding: 24px 20px 60px; }
+    .scope-chip { display: none; }
+  }
+</style>
+</head>
+<body>
+<div class="layout">
+
+<nav>
+  <div class="brand">tf2esports <span>API v1</span></div>
+  <div class="sub">Documentation détaillée</div>
+  <input type="text" class="search-box" id="filter" placeholder="Filtrer les endpoints…">
+  <div class="section-label">Général</div>
+  <a href="#intro">Introduction</a>
+  <a href="#acces"><span class="m">·</span> Accès &amp; authentification</a>
+  <a href="#scopes"><span class="m">·</span> Scopes</a>
+  <a href="#conventions"><span class="m">·</span> Conventions &amp; bizarreries</a>
+  <a href="#erreurs"><span class="m">·</span> Codes &amp; erreurs</a>
+  <a href="#exemples"><span class="m">·</span> Exemples de code</a>
+  <div class="section-label">Meta</div>
+  <a href="#get-api-v1"><span class="m">GET</span> /api/v1</a>
+  <a href="#get-meta"><span class="m">GET</span> /api/v1/stats/meta</a>
+  <div class="section-label">Rankings</div>
+  <a href="#get-rankings"><span class="m">GET</span> /api/v1/rankings</a>
+  <a href="#get-rankings-history"><span class="m">GET</span> /api/v1/rankings/history</a>
+  <div class="section-label">Teams</div>
+  <a href="#get-team"><span class="m">GET</span> /api/v1/teams/{id}</a>
+  <a href="#get-team-matches"><span class="m">GET</span> /api/v1/teams/{id}/matches</a>
+  <a href="#get-team-ranking-history"><span class="m">GET</span> /api/v1/teams/{id}/ranking-history</a>
+  <div class="section-label">Players</div>
+  <a href="#get-player-stats"><span class="m">GET</span> /api/v1/players/{id}/stats</a>
+  <a href="#get-leaderboard"><span class="m">GET</span> /api/v1/leaderboard</a>
+  <div class="section-label">Matches</div>
+  <a href="#get-matches"><span class="m">GET</span> /api/v1/matches</a>
+  <a href="#get-head-to-head"><span class="m">GET</span> /api/v1/stats/head-to-head</a>
+  <div class="section-label">Maps</div>
+  <a href="#get-maps"><span class="m">GET</span> /api/v1/stats/maps</a>
+</nav>
+
+<main>
+
+<header class="hero">
+  <h1>API Analysis — tf2esports.com</h1>
+  <p>
+    <span class="badge live">v1.0.0</span>
+    <span class="badge">OpenAPI 3.0.3</span>
+    <span class="badge">Read-only</span>
+    <span class="badge">Invite-only</span>
+    <span class="badge">60 req/min</span>
+  </p>
+  <p class="muted">
+    Documentation construite à partir de la spec Swagger <code>/api/v1/docs/</code> <strong>et</strong> de captures réelles
+    de chaque endpoint (clé valide) effectuées le <strong>15 septembre 2026</strong>. Les schémas de réponse sont donc
+    observés sur le terrain, pas devinés.
+  </p>
+</header>
+
+<!-- ============ INTRODUCTION ============ -->
+<section id="intro">
+  <h2>1. Introduction <a class="anchor" href="#intro">#</a></h2>
+  <p>
+    API <strong>d'analyse</strong> (lecture seule) de la plateforme tf2esports : classements (rankings), équipes, joueurs,
+    matchs et statistiques par carte du TF2 compétitif (6v6 &amp; Highlander), tous les ligues/évènements confondus
+    (ETF2L, RGL, ozfortress, Matcha…).
+  </p>
+  <ul>
+    <li><strong>Base URL</strong> : <code>https://tf2esports.com</code> — chemins préfixés <code>/api/v1</code></li>
+    <li><strong>Contenu-type</strong> : <code>application/json; charset=utf-8</code></li>
+    <li><strong>Serveur</strong> : Node.js/Express derrière Cloudflare (HTTP/2, CSP stricts)</li>
+    <li><strong>Volume de données</strong> (capture 15/09/2026) : ~35 059 équipes, ~108 283 joueurs, ~177 932 matchs terminés, ~930 195 statistiques joueur/carte</li>
+  </ul>
+</section>
+
+<!-- ============ ACCES ============ -->
+<section id="acces">
+  <h2>2. Accès &amp; authentification <a class="anchor" href="#acces">#</a></h2>
+  <p>Accès <strong>sur invitation</strong> : connexion sur tf2esports.com → demander l'accès API depuis les paramètres de compte → une fois approuvé, générer une clé.</p>
+  <p>La clé s'envoie d'une des deux façons (une seule suffit) :</p>
+  <table>
+    <tr><th>Méthode</th><th>Header</th><th>Exemple</th></tr>
+    <tr><td>Header API-Key</td><td><code>X-API-Key</code></td><td><code>X-API-Key: tf2_live_…</code></td></tr>
+    <tr><td>Bearer token</td><td><code>Authorization</code></td><td><code>Authorization: Bearer tf2_live_…</code></td></tr>
+  </table>
+  <p class="muted">
+    Les questions de validité/scopes/limites se règlent avec l'endpoint <a href="#get-api-v1"><code>GET /api/v1</code></a> qui
+    décrit la clé. En cas de réutilisation de la réponse, mettre en cache : la clé peut être révoquée ou limitée.
+  </p>
+</section>
+
+<!-- ============ SCOPES ============ -->
+<section id="scopes">
+  <h2>3. Scopes <a class="anchor" href="#scopes">#</a></h2>
+  <p>Chaque endpoint exige un scope (sauf Meta, ouvert à toute clé valide). Clé sans scope requis → <code>403</code>.</p>
+  <table>
+    <tr><th>Scope</th><th>Endpoints</th></tr>
+    <tr><td><code>rankings</code></td><td><code>/rankings</code>, <code>/rankings/history</code>, <code>/teams/{id}/ranking-history</code></td></tr>
+    <tr><td><code>matches</code></td><td><code>/teams/{id}</code>, <code>/teams/{id}/matches</code>, <code>/matches</code>, <code>/stats/head-to-head</code></td></tr>
+    <tr><td><code>players</code></td><td><code>/players/{id}/stats</code>, <code>/leaderboard</code></td></tr>
+    <tr><td><code>maps</code></td><td><code>/stats/maps</code></td></tr>
+    <tr><td>— (clé valide)</td><td><code>/api/v1</code>, <code>/stats/meta</code></td></tr>
+  </table>
+  <p class="muted">
+    Attention : le profil d'équipe (<code>/teams/{id}</code>) est sous scope <code>matches</code>, pas <code>rankings</code>.
+    La clé utilisée pour cette doc déclare les 4 scopes : <code>["rankings","players","matches","maps"]</code>.
+  </p>
+</section>
+
+<!-- ============ CONVENTIONS ============ -->
+<section id="conventions">
+  <h2>4. Conventions &amp; bizarreries de l'API <a class="anchor" href="#conventions">#</a></h2>
+
+  <h3>4.1 Pagination</h3>
+  <p><code>page</code> (<code>≥1</code>, défaut 1) et <code>limit</code> (<code>1–100</code>, défaut 50) sur les endpoints listés.
+  Comportements observés :</p>
+  <ul>
+    <li><code>/rankings</code> retourne <code>total</code> (nb d'éléments du board) → pagination calculable.</li>
+    <li><code>/matches</code> et <code>/teams/{id}/matches</code> <strong>n'ont pas de champ <code>total</code></strong> → fin de pagination détectée quand une page retourne <code>[]</code> vide.</li>
+    <li><code>/rankings</code>, <code>/rankings/history</code> au-delà de la fin : <code>200</code> avec <code>rankings: []</code> (pas d'erreur).</li>
+    <li><code>/leaderboard</code> et <code>/stats/maps</code> n'ont <strong>pas de paramètre <code>page</code></strong> : liste complète en une seule réponse.</li>
+  </ul>
+
+  <h3>4.2 Format &amp; région</h3>
+  <table>
+    <tr><th>Paramètre</th><th>Valeurs</th><th>Défaut</th></tr>
+    <tr>
+      <td><code>format</code></td>
+      <td><code>6v6</code>, <code>Highlander</code></td>
+      <td><code>6v6</code> — <em>excepté</em> <code>/matches</code> où l'omission = <strong>non filtré</strong></td>
+    </tr>
+    <tr>
+      <td><code>region</code></td>
+      <td><code>North America</code>, <code>Europe</code>, <code>Oceania</code>, <code>Asia</code>, <code>South America</code><br>ou <strong>nom de ligue</strong> : <code>RGL</code>, <code>ETF2L</code>, <code>ozfortress</code>, <code>Matcha</code>…</td>
+      <td>— (monde, rangs mondiaux)</td>
+    </tr>
+  </table>
+  <p class="muted">
+    Le « region » interne d'une équipe est un <strong>nom de ligue</strong> (« ETF2L », « ozfortress »), pas une zone
+    géographique. Le filtrage géographique <code>region=Europe</code> est acccepté sur <code>/rankings</code> et
+    <code>/leaderboard</code> et renvoie alors les équipes/joueurs dont la ligue est européenne.
+  </p>
+
+  <h3>4.3 Date &amp; heures</h3>
+  <ul>
+    <li>Dates de matchs / snapshots : <code>YYYY-MM-DD</code>.</li>
+    <li>Horodatages : ISO 8601 avec <code>Z</code>, parfois avec millisecondes (<code>2026-09-11T15:00:09.387Z</code>).</li>
+    <li><code>country</code> est normalisé sans espace : <code>SouthKorea</code>, <code>UnitedStates</code>.</li>
+  </ul>
+
+  <h3>4.4 Typage « mou » (à gérer côté client)</h3>
+  <p>L'API est pour le moins incohérente sur les types — important pour l'import :</p>
+  <ul>
+    <li>La plupart des nombres (points, kills, counts, ratios, scores) sont renvoyés comme <strong>chaînes décimales</strong> :
+      <code>"1914.82"</code>, <code>"917"</code>. Exceptions réelles : <code>page</code>/<code>limit</code>/<code>total</code>,
+      rangs (<code>world_rank</code>…), <code>matches_counted</code>, <code>best_of</code>, scores de match, <code>longest_killstreak</code>,
+      <code>dpm</code>/<code>kills</code>… de <code>recent</code>, <code>winner_team_id</code> → vrais entiers.</li>
+    <li>Les <strong>ID</strong> sont des <strong>chaînes</strong> (<code>"12628"</code>) dans la plupart des payloads mais des
+      <strong>entiers</strong> dans <code>/teams/{id}/matches</code> (<code>team_id</code>) ou <code>winner_team_id</code>.
+      Toujours caster/str-caster avant comparaison.</li>
+    <li>Valeurs <code>null</code> omniprésentes : <code>team_id</code>/<code>team_name</code>/<code>region</code> pour les
+      joueurs sans équipe, scores des matchs non joués, <code>quickfix_ubers</code>/<code>vaccinator_ubers</code> si jamais joués.</li>
+    <li>Le paramètre <code>format</code> n'est pas validé côté serveur : <code>format=Bogus</code> redonne silencieusement le derivé <code>6v6</code>. Ne pas compter sur une erreur 400.</li>
+  </ul>
+
+  <h3>4.5 Rate limiting</h3>
+  <p>
+    La limite est de <strong>60 requêtes / minute / clé</strong> (champ <code>rate_limit_per_min</code> exposé par
+    <code>GET /api/v1</code>). Le dépassement → <code>429</code>. Comme aucun header de quota/remise à zéro n'est renvoyé en
+    dessous du seuil, garder un intervalle d'au moins ~1 s entre les appels et mettre en cache agressivement.
+  </p>
+</section>
+
+<!-- ============ ERREURS ============ -->
+<section id="erreurs">
+  <h2>5. Codes HTTP &amp; erreurs <a class="anchor" href="#erreurs">#</a></h2>
+  <table class="resp-codes">
+    <tr><th>Code</th><th>Description</th><th>Corps observé</th></tr>
+    <tr><td class="c-2xx">200</td><td>Succès (y compris liste vide : <code>rankings: []</code>, <code>matches: []</code>…)</td><td>JSON métier</td></tr>
+    <tr><td>400</td><td>Paramètre invalide (rare ; l'API est permissive)</td><td>—</td></tr>
+    <tr><td>401</td><td>Clé manquante, invalide, révoquée ou expirée</td><td><code>{"error":"unauthorized","message":"API key required. Send it as…"}</code></td></tr>
+    <tr><td>403</td><td>Clé valide, scope insuffisant</td><td>—</td></tr>
+    <tr><td>404</td><td>Ressource introuvable</td><td><code>{"error":"not_found","message":"Team not found."}</code><br><code>{"error":"not_found","message":"No tracked stats for this player."}</code></td></tr>
+    <tr><td>429</td><td>Rate limite (60/min/clé) dépassée</td><td>—</td></tr>
+  </table>
+  <p class="muted">
+    Format d'erreur uniforme : <code>{"error": "&lt;code&gt;", "message": "&lt;texte&gt;"}</code>, accompagné d'un statut HTTP adéquat.
+  </p>
+</section>
+
+<!-- ============ EXEMPLES ============ -->
+<section id="exemples">
+  <h2>6. Exemples de code <a class="anchor" href="#exemples">#</a></h2>
+
+  <h3>6.1 cURL</h3>
+  <pre><code># Header X-API-Key
+curl -H "X-API-Key: votre_cle_ici" \
+     "https://tf2esports.com/api/v1/rankings?format=Highlander&amp;region=Europe&amp;limit=100"
+
+# Bearer token
+curl -H "Authorization: Bearer votre_cle_ici" \
+     "https://tf2esports.com/api/v1/players/8658/stats"</code></pre>
+
+  <h3>6.2 JavaScript (fetch)</h3>
+  <pre><code>const API_KEY = "votre_cle_ici";
+const res = await fetch("https://tf2esports.com/api/v1/matches?team=12628&limit=50", {
+  headers: { "X-API-Key": API_KEY },
+});
+if (!res.ok) {
+  const err = await res.json();
+  throw new Error(`${res.status}: ${err.message}`);
+}
+const data = await res.json();</code></pre>
+
+  <h3>6.3 PHP 8+ (client natif)</h3>
+  <pre><code>$key   = 'votre_cle_ici';
+$query = http_build_query(['team' => 12628, 'status' => 'Completed', 'limit' => 100]);
+
+$ctx = stream_context_create([
+  'http' => ['ignore_errors' => true, 'header' => "X-API-Key: {$key}\r\n"],
+]);
+
+$body = file_get_contents("https://tf2esports.com/api/v1/matches?{$query}", false, $ctx);
+$data = json_decode($body, true, 512, JSON_THROW_ON_ERROR);</code></pre>
+  <div class="callout warn">
+    Pensé pour la suite : les volumes (~178k matchs) interdisent un pull complet en une page. Idéalement, itérer
+    <code>page</code> avec <code>since</code> + <code>status=Completed</code>, mettre en cache les résultats sous
+    <code>hlfr_data_path()</code>, et relancer de manière différentielle au lieu de tout rapatrier.
+  </div>
+</section>
+
+<!-- ============ META ============ -->
+<h2>7. Meta <a class="anchor" href="#meta">#</a></h2>
+<p class="muted">Accessibles avec n'importe quelle clé valide.</p>
+
+<section class="endpoint" id="get-api-v1">
+  <div class="endpoint-head">
+    <span class="method">GET</span>
+    <span class="path">/api/v1</span>
+    <span class="scope-chip">Clé valide</span>
+  </div>
+  <div class="endpoint-body">
+    <p class="summary">Décrit la clé : scopes accordés, quota, et index exhaustif des routes.</p>
+    <h4>Paramètres</h4>
+    <p class="muted">Aucun.</p>
+    <h4>Réponse 200 (schéma observé)</h4>
+    <table>
+      <tr><th>Champ</th><th>Type</th><th>Description</th></tr>
+      <tr><td><code>name</code></td><td class="t-str">string</td><td>Nom de l'API : <code>tf2esports analysis API</code>.</td></tr>
+      <tr><td><code>version</code></td><td class="t-str">string</td><td><code>"1"</code>.</td></tr>
+      <tr><td><code>your_scopes</code></td><td class="t-num">string[]</td><td>Scopes de la clé : p. ex. <code>["rankings","players","matches","maps"]</code>.</td></tr>
+      <tr><td><code>rate_limit_per_min</code></td><td class="t-num">int</td><td>Quota : <code>60</code>.</td></tr>
+      <tr><td><code>docs</code></td><td class="t-str">string</td><td><code>"/api/v1/docs"</code>.</td></tr>
+      <tr><td><code>endpoints</code></td><td class="t-str">objet</td><td>Index des routes groupées par ressource (rankings, teams, players, matches, maps, meta).</td></tr>
+    </table>
+    <details>
+      <summary>Exemple réel (capture)</summary>
+      <pre><code>{
+  "name": "tf2esports analysis API",
+  "version": "1",
+  "your_scopes": ["rankings", "players", "matches", "maps"],
+  "rate_limit_per_min": 60,
+  "docs": "/api/v1/docs",
+  "endpoints": {
+    "rankings": ["GET /api/v1/rankings", "GET /api/v1/rankings/history?date=YYYY-MM-DD"],
+    "teams": ["GET /api/v1/teams/:id", "GET /api/v1/teams/:id/matches", "GET /api/v1/teams/:id/ranking-history"],
+    "players": ["GET /api/v1/players/:id/stats", "GET /api/v1/leaderboard"],
+    "matches": ["GET /api/v1/matches", "GET /api/v1/stats/head-to-head?team_a=&team_b="],
+    "maps": ["GET /api/v1/stats/maps"],
+    "meta": ["GET /api/v1/stats/meta"]
+  }
+}</code></pre>
+    </details>
+  </div>
+</section>
+
+<section class="endpoint" id="get-meta">
+  <div class="endpoint-head">
+    <span class="method">GET</span>
+    <span class="path">/api/v1/stats/meta</span>
+    <span class="scope-chip">Clé valide</span>
+  </div>
+  <div class="endpoint-body">
+    <p class="summary">Vue d'ensemble du dataset : compteurs et date de dernière mise à jour des rankings.</p>
+    <p>À utiliser pour <strong>décider si une recalcul/refetch locale est nécessaire</strong> : comparer
+    <code>counts.rankings_updated_at</code> (recalcul hebdo) avec la fraîcheur de son cache.</p>
+    <h4>Paramètres</h4>
+    <p class="muted">Aucun.</p>
+    <h4>Réponse 200 (schéma observé)</h4>
+    <table>
+      <tr><th>Champ</th><th>Type</th><th>Description</th></tr>
+      <tr><td><code>counts.teams</code></td><td class="t-str">string</td><td>Nb d'équipes (~35k).</td></tr>
+      <tr><td><code>counts.players</code></td><td class="t-str">string</td><td>Nb de joueurs (~108k).</td></tr>
+      <tr><td><code>counts.completed_matches</code></td><td class="t-str">string</td><td>Nb de matchs terminés (~178k).</td></tr>
+      <tr><td><code>counts.events</code></td><td class="t-str">string</td><td>Nb d'évènements/saisons (~1 290).</td></tr>
+      <tr><td><code>counts.player_map_stats</code></td><td class="t-str">string</td><td>Nb de lignes stats joueur/carte (~930k).</td></tr>
+      <tr><td><code>counts.rankings_updated_at</code></td><td class="t-str">string</td><td>Dernier recalcul des rankings (ISO 8601, hebdo).</td></tr>
+      <tr><td><code>generated_at</code></td><td class="t-str">string</td><td>Moment de génération de cette réponse.</td></tr>
+    </table>
+    <details>
+      <summary>Exemple réel (capture)</summary>
+      <pre><code>{
+  "counts": {
+    "teams": "35059",
+    "players": "108283",
+    "completed_matches": "177932",
+    "events": "1290",
+    "player_map_stats": "930195",
+    "rankings_updated_at": "2026-09-11T15:00:09.401Z"
+  },
+  "generated_at": "2026-09-15T12:24:58.814Z"
+}</code></pre>
+    </details>
+  </div>
+</section>
+
+<!-- ============ RANKINGS ============ -->
+<h2>8. Rankings <a class="anchor" href="#rang">#</a></h2>
+<p class="muted">Classements des équipes, recalculés chaque semaine (snapshots historiques conservés).</p>
+
+<section class="endpoint" id="get-rankings">
+  <div class="endpoint-head">
+    <span class="method">GET</span>
+    <span class="path">/api/v1/rankings</span>
+    <span class="scope-chip">Scope : rankings</span>
+  </div>
+  <div class="endpoint-body">
+    <p class="summary">Classement actuel des équipes par format, région et page.</p>
+    <p>Les équipes <strong>exclues</strong> du classement sont <strong>omises</strong>. Le <code>world_rank</code> est toujours
+    global, même en ciblant une région (le <code>region_rank</code> est alors le rang local).</p>
+    <h4>Paramètres</h4>
+    <table>
+      <tr><th>Param</th><th>Type</th><th>Obl.</th><th>Défaut</th><th>Description</th></tr>
+      <tr><td><code>format</code></td><td>string</td><td class="opt">opt.</td><td><code>6v6</code></td><td><span class="enum">6v6</span> | <span class="enum">Highlander</span>. <strong>Non validé</strong> (valeur inconnue → 6v6).</td></tr>
+      <tr><td><code>region</code></td><td>string</td><td class="opt">opt.</td><td>— (monde)</td><td><span class="enum">North America</span>, <span class="enum">Europe</span>, <span class="enum">Oceania</span>, <span class="enum">Asia</span>, <span class="enum">South America</span>. Omit = monde.</td></tr>
+      <tr><td><code>page</code></td><td>integer</td><td class="opt">opt.</td><td><code>1</code></td><td><code>≥ 1</code> ; au-delà de la fin → <code>rankings: []</code>.</td></tr>
+      <tr><td><code>limit</code></td><td>integer</td><td class="opt">opt.</td><td><code>50</code></td><td><code>1–100</code>.</td></tr>
+    </table>
+    <h4>Réponse 200 (schéma observé)</h4>
+    <p class="muted">Racine : <code>format</code>, <code>region</code> (null si monde), <code>page</code>, <code>limit</code>, <code>total</code> (int), <code>rankings[]</code>.</p>
+    <table>
+      <tr><th>Champ (rankings[])</th><th>Type</th><th>Description</th></tr>
+      <tr><td><code>team_id</code></td><td class="t-str">string</td><td>Id de l'équipe (chaîne !).</td></tr>
+      <tr><td><code>team_name</code></td><td class="t-str">string</td><td>Nom de l'équipe.</td></tr>
+      <tr><td><code>short_name</code></td><td class="t-str">string</td><td>Tag abrégé (p. ex. <code>PLUCK</code>).</td></tr>
+      <tr><td><code>region</code></td><td class="t-str">string</td><td>Ligue de l'équipe (<code>ETF2L</code>, <code>ozfortress</code>…).</td></tr>
+      <tr><td><code>country</code></td><td class="t-str">string</td><td>Pays normalisé sans espace.</td></tr>
+      <tr><td><code>points</code></td><td class="t-str">string</td><td>Points (décimal en chaîne, p. ex. <code>"1914.82"</code>).</td></tr>
+      <tr><td><code>matches_counted</code></td><td class="t-num">int</td><td>Nombre de matchs pris en compte pour le score.</td></tr>
+      <tr><td><code>format</code></td><td class="t-str">string</td><td>6v6 ou Highlander.</td></tr>
+      <tr><td><code>world_rank</code></td><td class="t-num">int</td><td>Rang mondial.</td></tr>
+      <tr><td><code>region_rank</code></td><td class="t-num">int</td><td>Rang régional (région demandée, sinon == mondial).</td></tr>
+      <tr><td><code>last_calculated_at</code></td><td class="t-str">string</td><td>Horodatage du recalcul (ISO 8601, ms).</td></tr>
+    </table>
+    <details>
+      <summary>Exemple réel (capture, format Highlander région Europe)</summary>
+      <pre><code>{
+  "format": "Highlander",
+  "region": "Europe",
+  "page": 1,
+  "limit": 3,
+  "total": 61,
+  "rankings": [
+    {
+      "world_rank": 5, "region_rank": 1,
+      "team_id": "43966", "team_name": "TWICE", "short_name": "ONCE",
+      "region": "ETF2L", "country": "SouthKorea", "points": "1652.52",
+      "matches_counted": 18, "format": "Highlander",
+      "last_calculated_at": "2026-09-11T15:00:09.401Z"
+    }
+  ]
+}</code></pre>
+    </details>
+  </div>
+</section>
+
+<section class="endpoint" id="get-rankings-history">
+  <div class="endpoint-head">
+    <span class="method">GET</span>
+    <span class="path">/api/v1/rankings/history</span>
+    <span class="scope-chip">Scope : rankings</span>
+  </div>
+  <div class="endpoint-body">
+    <p class="summary">Snapshot historique du classement à une date précise.</p>
+    <p>
+      Les snapshots sont pris à <strong>chaque recalcul hebdomadaire</strong>. Comportement réel : une date sans snapshot
+      renvoie <code>200</code> avec <code>rankings: []</code> (aucune erreur) — la spec listait un 400 qui n'apparaît pas en pratique.
+      Pour connaître les dates de snapshots : <code>GET /api/v1/stats/meta → counts.rankings_updated_at</code>, ou
+      <code>GET /api/v1/teams/{id}/ranking-history</code> qui liste les <code>snapshot_date</code>.
+    </p>
+    <h4>Paramètres</h4>
+    <table>
+      <tr><th>Param</th><th>Type</th><th>Obl.</th><th>Défaut</th><th>Description</th></tr>
+      <tr><td><code>date</code></td><td>string (date)</td><td class="req">req.</td><td>—</td><td><code>YYYY-MM-DD</code>. Sans snapshot → liste vide.</td></tr>
+      <tr><td><code>format</code></td><td>string</td><td class="opt">opt.</td><td><code>6v6</code></td><td><span class="enum">6v6</span> | <span class="enum">Highlander</span>.</td></tr>
+      <tr><td><code>region</code></td><td>string</td><td class="opt">opt.</td><td>— (monde)</td><td>Enums géographiques.</td></tr>
+      <tr><td><code>page</code></td><td>integer</td><td class="opt">opt.</td><td><code>1</code></td><td><code>≥ 1</code>.</td></tr>
+      <tr><td><code>limit</code></td><td>integer</td><td class="opt">opt.</td><td><code>50</code></td><td><code>1–100</code>.</td></tr>
+    </table>
+    <h4>Réponse 200 (schéma observé)</h4>
+    <p class="muted">Racine : <code>date</code>, <code>format</code>, <code>region</code>, <code>page</code>, <code>limit</code>, <code>rankings[]</code>. Champ <code>snapshot_date</code> en plus d'un item de <code>/rankings</code> ; pas de <code>total</code>.</p>
+    <table>
+      <tr><th>Champ (rankings[])</th><th>Type</th><th>Description</th></tr>
+      <tr><td><code>snapshot_date</code></td><td class="t-str">string</td><td>Date du snapshot (<code>YYYY-MM-DD</code>).</td></tr>
+      <tr><td><code>team_id</code>, <code>team_name</code>, <code>short_name</code>, <code>region</code>, <code>country</code></td><td class="t-str">string</td><td>Identité de l'équipe (region = ligue).</td></tr>
+      <tr><td><code>points</code></td><td class="t-str">string</td><td>Points au snapshot.</td></tr>
+      <tr><td><code>world_rank</code>, <code>region_rank</code></td><td class="t-num">int</td><td>Rangs au snapshot.</td></tr>
+    </table>
+    <details>
+      <summary>Exemple réel (capture, date sans snapshot)</summary>
+      <pre><code>{
+  "date": "2020-01-01",
+  "format": "6v6",
+  "region": null,
+  "page": 1,
+  "limit": 2,
+  "rankings": []
+}</code></pre>
+    </details>
+  </div>
+</section>
+
+<!-- ============ TEAMS ============ -->
+<h2>9. Teams <a class="anchor" href="#teams">#</a></h2>
+<p class="muted"><code>{id}</code> = identifiant numérique de l'équipe (accepté aussi en chaîne).</p>
+
+<section class="endpoint" id="get-team">
+  <div class="endpoint-head">
+    <span class="method">GET</span>
+    <span class="path">/api/v1/teams/{id}</span>
+    <span class="scope-chip">Scope : matches</span>
+  </div>
+  <div class="endpoint-body">
+    <p class="summary">Profil complet d'une équipe + classements actuels + infos compétition.</p>
+    <h4>Paramètres</h4>
+    <table>
+      <tr><th>Param</th><th>Type</th><th>Obl.</th><th>Description</th></tr>
+      <tr><td><code>id</code></td><td>integer (path)</td><td class="req">req.</td><td>Id de l'équipe. Id inconnu → <code>404</code>.</td></tr>
+    </table>
+    <h4>Réponse 200 (schéma observé)</h4>
+    <table>
+      <tr><th>Champ</th><th>Type</th><th>Description</th></tr>
+      <tr><td><code>team.id</code>, <code>team.name</code>, <code>team.short_name</code></td><td class="t-str">string</td><td>Identité de l'équipe.</td></tr>
+      <tr><td><code>team.region</code></td><td class="t-str">string</td><td>Ligue (ETF2L…).</td></tr>
+      <tr><td><code>team.country</code></td><td class="t-str">string</td><td>Pays sans espace.</td></tr>
+      <tr><td><code>team.logo</code></td><td class="t-str">string</td><td>URL relative du logo (<code>/uploads/teams/xxx.jpg</code>) — à préfixer par <code>https://tf2esports.com</code>.</td></tr>
+      <tr><td><code>rankings[]</code></td><td class="t-num">array</td><td>Une entrée par format : <code>{ format, world_rank, region_rank, points (str), matches_counted, is_excluded }</code>.</td></tr>
+      <tr><td><code>rankings[].is_excluded</code></td><td class="t-num">bool</td><td>Équipe exclue du classement ou non.</td></tr>
+      <tr><td><code>competition.formats</code></td><td class="t-num">string[]</td><td>Formats pratiqués (<code>["6v6"]</code>, <code>["6v6","Highlander"]</code>…).</td></tr>
+      <tr><td><code>competition.divisions</code></td><td class="t-num">string[]</td><td>Divisions déclarées (noms libres : « Premiership », « Top Division »…).</td></tr>
+      <tr><td><code>competition.last_played</code></td><td class="t-str">string</td><td>Date du dernier match (<code>YYYY-MM-DD</code>).</td></tr>
+    </table>
+    <details>
+      <summary>Exemple réel (capture)</summary>
+      <pre><code>{
+  "team": {
+    "id": "12628", "name": "The Plucky Luckers", "short_name": "PLUCK",
+    "region": "ETF2L", "country": "Ireland",
+    "logo": "/uploads/teams/1782869741032-6a1df8e34839d.jpg"
+  },
+  "rankings": [
+    { "format": "6v6", "world_rank": 1, "region_rank": 1,
+      "points": "1914.82", "matches_counted": 24, "is_excluded": false }
+  ],
+  "competition": {
+    "formats": ["6v6"],
+    "divisions": ["Main Event", "Premiership", "Top Division"],
+    "last_played": "2026-08-20"
+  }
+}</code></pre>
+    </details>
+  </div>
+</section>
+
+<section class="endpoint" id="get-team-matches">
+  <div class="endpoint-head">
+    <span class="method">GET</span>
+    <span class="path">/api/v1/teams/{id}/matches</span>
+    <span class="scope-chip">Scope : matches</span>
+  </div>
+  <div class="endpoint-body">
+    <p class="summary">Historique des matchs d'une équipe (plus récent d'abord).</p>
+    <p>Comportements observés : équipe inexistante → <code>200</code> avec <code>matches: []</code> (pas de 404, contrairement au profil) ;
+    sur <code>/matches</code> global les items portent un champ <code>format</code> en plus, absent ici.</p>
+    <h4>Paramètres</h4>
+    <table>
+      <tr><th>Param</th><th>Type</th><th>Obl.</th><th>Défaut</th><th>Description</th></tr>
+      <tr><td><code>id</code></td><td>integer (path)</td><td class="req">req.</td><td>—</td><td>Id de l'équipe.</td></tr>
+      <tr><td><code>page</code></td><td>integer</td><td class="opt">opt.</td><td><code>1</code></td><td><code>≥ 1</code>.</td></tr>
+      <tr><td><code>limit</code></td><td>integer</td><td class="opt">opt.</td><td><code>50</code></td><td><code>1–100</code>.</td></tr>
+    </table>
+    <h4>Réponse 200 (schéma observé)</h4>
+    <p class="muted">Racine : <code>team_id</code> (<strong>int</strong> ici !), <code>page</code>, <code>limit</code>, <code>matches[]</code> (objet <em>Match</em> — voir <a href="#get-matches">/matches</a> pour la table des champs, moins <code>format</code>).</p>
+    <details>
+      <summary>Exemple réel (capture)</summary>
+      <pre><code>{
+  "team_id": 12628,
+  "page": 1,
+  "limit": 3,
+  "matches": [
+    {
+      "id": "238420", "date": "2026-08-20", "status": "Completed", "best_of": 3,
+      "event_id": "1311", "event_name": "ETF2L 6v6 Season 52 (Summer 2026)",
+      "team1_id": "12628", "team1_name": "The Plucky Luckers",
+      "team2_id": "12726", "team2_name": ".ALPHAGLΩCK.",
+      "team1_score": 2, "team2_score": 0,
+      "league_match_url": "https://etf2l.org/matches/92873/"
+    }
+  ]
+}</code></pre>
+    </details>
+  </div>
+</section>
+
+<section class="endpoint" id="get-team-ranking-history">
+  <div class="endpoint-head">
+    <span class="method">GET</span>
+    <span class="path">/api/v1/teams/{id}/ranking-history</span>
+    <span class="scope-chip">Scope : rankings</span>
+  </div>
+  <div class="endpoint-body">
+    <p class="summary">Historique rang/points d'une équipe sur les <strong>104 dernières semaines de snapshots</strong>, du plus récent au plus ancien.</p>
+    <p>≈ 2 ans de données. Idéal pour tracer l'évolution d'une équipe (et, combiné à <code>/rankings/history</code>, reconstruire un board historique complet).</p>
+    <h4>Paramètres</h4>
+    <table>
+      <tr><th>Param</th><th>Type</th><th>Obl.</th><th>Défaut</th><th>Description</th></tr>
+      <tr><td><code>id</code></td><td>integer (path)</td><td class="req">req.</td><td>—</td><td>Id de l'équipe.</td></tr>
+      <tr><td><code>format</code></td><td>string</td><td class="opt">opt.</td><td><code>6v6</code></td><td><span class="enum">6v6</span> | <span class="enum">Highlander</span>.</td></tr>
+    </table>
+    <h4>Réponse 200 (schéma observé)</h4>
+    <p class="muted">Racine : <code>team_id</code> (int), <code>format</code>, <code>history[]</code>.</p>
+    <table>
+      <tr><th>Champ (history[])</th><th>Type</th><th>Description</th></tr>
+      <tr><td><code>snapshot_date</code></td><td class="t-str">string</td><td>Date du snapshot.</td></tr>
+      <tr><td><code>points</code></td><td class="t-str">string</td><td>Points.</td></tr>
+      <tr><td><code>world_rank</code>, <code>region_rank</code></td><td class="t-num">int</td><td>Rangs.</td></tr>
+    </table>
+    <details>
+      <summary>Exemple réel (capture, extrait)</summary>
+      <pre><code>{
+  "team_id": 12628,
+  "format": "6v6",
+  "history": [
+    { "snapshot_date": "2026-09-11", "points": "1914.82", "world_rank": 1, "region_rank": 1 },
+    { "snapshot_date": "2026-09-04", "points": "1916.37", "world_rank": 1, "region_rank": 1 },
+    ...
+    { "snapshot_date": "2026-06-29", "points": "1500.43", "world_rank": 13, "region_rank": 4 }
+  ]
+}</code></pre>
+    </details>
+  </div>
+</section>
+
+<!-- ============ PLAYERS ============ -->
+<h2>10. Players <a class="anchor" href="#players">#</a></h2>
+
+<section class="endpoint" id="get-player-stats">
+  <div class="endpoint-head">
+    <span class="method">GET</span>
+    <span class="path">/api/v1/players/{id}/stats</span>
+    <span class="scope-chip">Scope : players</span>
+  </div>
+  <div class="endpoint-body">
+    <p class="summary">Statistiques agrégées d'un joueur + ses <strong>20 dernières cartes</strong> (<code>recent</code>).</p>
+    <p>Endpoint très riche (~55 champs d'agrégats). En code <code>403</code>/<code>404</code> si la clé n'a pas le scope ou si le joueur n'a aucune statistique trackée.</p>
+    <h4>Paramètres</h4>
+    <table>
+      <tr><th>Param</th><th>Type</th><th>Obl.</th><th>Description</th></tr>
+      <tr><td><code>id</code></td><td>integer (path)</td><td class="req">req.</td><td>Id du joueur.</td></tr>
+    </table>
+    <h4>Réponse 200 — <code>totals</code> (schéma observé)</h4>
+    <table>
+      <tr><th>Champ</th><th>Type</th><th>Description</th></tr>
+      <tr><td><code>player_id</code>, <code>player_name</code></td><td class="t-str">string</td><td>Identité.</td></tr>
+      <tr><td><code>player_avatar</code></td><td class="t-str">string</td><td>URL avatar Steam ou relatif (<code>/uploads/…</code>).</td></tr>
+      <tr><td><code>team_id</code>, <code>team_name</code></td><td class="t-str">string/.null</td><td>Équipe actuelle (null si sans équipe).</td></tr>
+      <tr><td><code>maps_played</code></td><td class="t-str">string</td><td>Nb de maps jouées.</td></tr>
+      <tr><td><code>kills</code>, <code>deaths</code>, <code>assists</code></td><td class="t-str">string</td><td>Totaux KDA cumulés.</td></tr>
+      <tr><td><code>damage</code>, <code>damage_real</code></td><td class="t-str">string</td><td>Dégâts infligés (total et hors « overheal/robots »).</td></tr>
+      <tr><td><code>damage_taken</code>, <code>damage_taken_real</code></td><td class="t-str">string</td><td>Dégâts subis.</td></tr>
+      <tr><td><code>healing</code></td><td class="t-str">string</td><td>Soins émis (joueur ou medic).</td></tr>
+      <tr><td><code>ubers</code></td><td class="t-str">string</td><td>Total ubers (medigun).</td></tr>
+      <tr><td><code>medigun_ubers</code>, <code>kritz_ubers</code>, <code>quickfix_ubers</code>, <code>vaccinator_ubers</code></td><td class="t-str">string/.null</td><td>Détail par charge ; null si jamais utilisé.</td></tr>
+      <tr><td><code>avg_uber_length</code></td><td class="t-str">string</td><td>Durée moyenne d'uber.</td></tr>
+      <tr><td><code>avg_dpm</code>, <code>avg_dtm</code></td><td class="t-str">string</td><td>Dégâts par minute moyennés.</td></tr>
+      <tr><td><code>kd</code>, <code>kad</code></td><td class="t-str">string</td><td>Ratios K/D et K+A/D.</td></tr>
+      <tr><td><code>accuracy</code></td><td class="t-str">string</td><td>Précision de tir (%) .</td></tr>
+      <tr><td><code>winrate</code></td><td class="t-str">string</td><td>% victoires.</td></tr>
+      <tr><td><code>wins</code>, <code>losses</code>, <code>ties</code>, <code>decided_maps</code></td><td class="t-str">string</td><td>Bilan W/L/T et maps « décisives ».</td></tr>
+      <tr><td><code>headshots</code>, <code>backstabs</code>, <code>airshots</code></td><td class="t-str">string</td><td>Spéciales.</td></tr>
+      <tr><td><code>medic_kills</code>, <code>dominations</code>, <code>captures_blocked</code></td><td class="t-str">string</td><td>Médics tués, dominations, caps bloquées.</td></tr>
+      <tr><td><code>sentries</code>, <code>buildings_built</code>, <code>buildings_destroyed</code>, <code>medkits_hp</code></td><td class="t-str">string</td><td>Engineer / support.</td></tr>
+      <tr><td><code>drops</code>, <code>ic</code>, <code>extinguishes</code>, <code>advantages_lost</code>, <code>avg_time_before_healing</code></td><td class="t-str">string</td><td>Sous-détails (intel, drops d'uber…).</td></tr>
+      <tr><td><code>league_maps</code></td><td class="t-str">string</td><td>Maps jouées en ligue ($_league_maps).</td></tr>
+      <tr><td><code>main_class</code></td><td class="t-str">string</td><td>Classe principale (scout…spy).</td></tr>
+      <tr><td><code>last_played</code></td><td class="t-str">string</td><td>Dernier match (ISO 8601, avec ms).</td></tr>
+    </table>
+    <h4>Réponse 200 — <code>recent</code> (schéma observé, 20 items)</h4>
+    <table>
+      <tr><th>Champ</th><th>Type</th><th>Description</th></tr>
+      <tr><td><code>match_id</code></td><td class="t-str">string</td><td>Id du match (joignable à <code>/matches</code>).</td></tr>
+      <tr><td><code>class_primary</code></td><td class="t-str">string</td><td>Classe jouée sur la map.</td></tr>
+      <tr><td><code>kills</code>, <code>deaths</code>, <code>assists</code></td><td class="t-num">int</td><td>KDA de la map.</td></tr>
+      <tr><td><code>damage</code>, <code>dpm</code>, <code>healing</code>, <code>ubers</code></td><td class="t-num">int</td><td>Statistiques per-map.</td></tr>
+      <tr><td><code>played_at</code></td><td class="t-str">string</td><td>Horodatage (ISO 8601, ms).</td></tr>
+      <tr><td><code>logs_id</code></td><td class="t-str">string</td><td>Id de la page logs.tf correspondante.</td></tr>
+    </table>
+    <details>
+      <summary>Exemple réel (capture, extrait)</summary>
+      <pre><code>{
+  "totals": {
+    "player_id": "8658", "player_name": "teejay",
+    "player_avatar": "https://avatars.steamstatic.com/..._full.jpg",
+    "team_id": "12894", "team_name": "LA Lakers",
+    "maps_played": "377", "kills": "8217", "deaths": "4036", "assists": "4129",
+    "damage": "2536205", "healing": "393285", "ubers": "139",
+    "avg_dpm": "299", "kd": "2.04", "kad": "3.06", "main_class": "scout",
+    "last_played": "2026-07-25T14:30:10.000Z", "wins": "243", "winrate": "64.8",
+    "medigun_ubers": "133", "kritz_ubers": "6", "advantages_lost": "18",
+    "quickfix_ubers": null, "vaccinator_ubers": null
+  },
+  "recent": [
+    {
+      "match_id": "228329", "class_primary": "demoman",
+      "kills": 11, "deaths": 4, "assists": 7,
+      "damage": 4534, "dpm": 361, "healing": 0, "ubers": 0,
+      "played_at": "2026-07-25T14:30:10.000Z", "logs_id": "4092546"
+    }
+  ]
+}</code></pre>
+    </details>
+  </div>
+</section>
+
+<section class="endpoint" id="get-leaderboard">
+  <div class="endpoint-head">
+    <span class="method">GET</span>
+    <span class="path">/api/v1/leaderboard</span>
+    <span class="scope-chip">Scope : players</span>
+  </div>
+  <div class="endpoint-body">
+    <p class="summary">Leaderboard joueurs pondéré par division.</p>
+    <p class="muted">
+      Les <strong>métriques de taux</strong> (K/D, précision, winrate…) sont <strong>rétrécies vers la moyenne de la population</strong>
+      en fonction des maps jouées (shrinkage) : les petits échantillons ne dominent pas le tableau. Le tri s'effectue sur
+      <code>rank_score</code>, le score pondéré par <code>div_weight</code>.
+    </p>
+    <h4>Paramètres</h4>
+    <table>
+      <tr><th>Param</th><th>Type</th><th>Obl.</th><th>Défaut</th><th>Description</th></tr>
+      <tr>
+        <td><code>metric</code></td><td>string</td><td class="opt">opt.</td><td><code>kd</code></td>
+        <td>
+          18 valeurs : <span class="enum">kd</span>, <span class="enum">kad</span>, <span class="enum">avg_dpm</span>,
+          <span class="enum">kills</span>, <span class="enum">assists</span>, <span class="enum">damage</span>,
+          <span class="enum">healing</span>, <span class="enum">ubers</span>, <span class="enum">accuracy</span>,
+          <span class="enum">airshots</span>, <span class="enum">headshots</span>, <span class="enum">backstabs</span>,
+          <span class="enum">winrate</span>, <span class="enum">damage_taken</span>, <span class="enum">caps</span>,
+          <span class="enum">medic_kills</span>, <span class="enum">dominations</span>, <span class="enum">longest_killstreak</span>.
+        </td>
+      </tr>
+      <tr><td><code>format</code></td><td>string</td><td class="opt">opt.</td><td><code>6v6</code></td><td><span class="enum">6v6</span> | <span class="enum">Highlander</span>.</td></tr>
+      <tr><td><code>region</code></td><td>string</td><td class="opt">opt.</td><td>—</td><td>Région géographique <strong>ou nom de ligue</strong> (<code>RGL</code>, <code>ETF2L</code>, <code>Matcha</code>…).</td></tr>
+      <tr><td><code>class</code></td><td>string</td><td class="opt">opt.</td><td>—</td><td><span class="enum">scout</span>, <span class="enum">soldier</span>, <span class="enum">pyro</span>, <span class="enum">demoman</span>, <span class="enum">heavy</span>, <span class="enum">engineer</span>, <span class="enum">medic</span>, <span class="enum">sniper</span>, <span class="enum">spy</span>.</td></tr>
+      <tr><td><code>division</code></td><td>string</td><td class="opt">opt.</td><td>—</td><td><span class="enum">premier</span>, <span class="enum">div1</span>, <span class="enum">div2</span>, <span class="enum">div3</span>, <span class="enum">div4</span>, <span class="enum">open</span>.</td></tr>
+      <tr><td><code>minMaps</code></td><td>integer</td><td class="opt">opt.</td><td><code>1</code></td><td>Maps minimales pour apparaître. <code>1–100</code>.</td></tr>
+      <tr><td><code>limit</code></td><td>integer</td><td class="opt">opt.</td><td><code>50</code></td><td><code>1–100</code>. <strong>Pas de <code>page</code></strong> : tout est renvoyé d'un coup.</td></tr>
+    </table>
+    <h4>Réponse 200 (schéma observé)</h4>
+    <p class="muted">Racine : <code>metric</code>, <code>rows[]</code> (triés par <code>rank_score</code> décroissant).</p>
+    <table>
+      <tr><th>Champ (rows[])</th><th>Type</th><th>Description</th></tr>
+      <tr><td><code>player_id</code>, <code>player_name</code>, <code>player_avatar</code>, <code>player_headshot</code></td><td class="t-str">string/.null</td><td>Identité, avatar (Steam ou relatif), headshot (relatif ou null).</td></tr>
+      <tr><td><code>team_id</code>, <code>team_name</code>, <code>region</code></td><td class="t-str">string/.null</td><td>Ligue du joueur (<code>RGL</code>…) ; null si sans équipe.</td></tr>
+      <tr><td><code>maps_played</code>, <code>kills</code>, <code>deaths</code>, <code>assists</code>, <code>damage</code>, <code>healing</code>, <code>ubers</code>, <code>avg_dpm</code>, <code>kd</code>, <code>kad</code>, <code>airshots</code>, <code>headshots</code>, <code>backstabs</code>, <code>damage_taken</code>, <code>caps</code>, <code>medic_kills</code>, <code>dominations</code>, <code>accuracy</code>, <code>winrate</code></td><td class="t-str">string</td><td>Stats agrégées (chaînes).</td></tr>
+      <tr><td><code>longest_killstreak</code></td><td class="t-num">int</td><td>Plus longue killstreak (seul vrai int ici).</td></tr>
+      <tr><td><code>main_class</code></td><td class="t-str">string</td><td>Classe principale.</td></tr>
+      <tr><td><code>main_division</code></td><td class="t-str">string</td><td>Division principale (premier…open).</td></tr>
+      <tr><td><code>div_weight</code></td><td class="t-str">string</td><td>Poids de division (0–1).</td></tr>
+      <tr><td><code>rank_score</code></td><td class="t-str">string</td><td>Score final pondéré — celui qui trie les rows.</td></tr>
+    </table>
+    <details>
+      <summary>Exemple réel (capture, metric=winrate class=medic)</summary>
+      <pre><code>{
+  "metric": "winrate",
+  "rows": [
+    {
+      "player_id": "1658", "player_name": "blake",
+      "player_avatar": "https://avatars.steamstatic.com/..._full.jpg",
+      "player_headshot": null, "team_id": "2771", "team_name": "Team Fun",
+      "region": "RGL", "maps_played": "188",
+      "kills": "225", "deaths": "1633", "assists": "3997",
+      "damage": "98499", "healing": "8043393", "ubers": "3034",
+      "avg_dpm": "18", "kd": "0.14", "kad": "2.59",
+      "airshots": "9", "headshots": "0", "backstabs": "0",
+      "damage_taken": "689883", "caps": "343", "medic_kills": "37",
+      "dominations": "57", "longest_killstreak": 3,
+      "accuracy": "55.6", "winrate": "78.7",
+      "main_class": "medic", "main_division": "premier",
+      "div_weight": "0.96", "rank_score": "72.0227"
+    }
+  ]
+}</code></pre>
+    </details>
+  </div>
+</section>
+
+<!-- ============ MATCHES ============ -->
+<h2>11. Matches <a class="anchor" href="#matches">#</a></h2>
+
+<section class="endpoint" id="get-matches">
+  <div class="endpoint-head">
+    <span class="method">GET</span>
+    <span class="path">/api/v1/matches</span>
+    <span class="scope-chip">Scope : matches</span>
+  </div>
+  <div class="endpoint-body">
+    <p class="summary">Recherche de matchs, du plus récent au plus ancien, avec filtres.</p>
+    <p>
+      Quand <code>format</code> est omis, le résultat est <strong>non filtré</strong> (les deux formats, à distinguer via le
+      champ <code>format</code> de chaque item). Les matchs à venir (<code>status=Upcoming</code>) sont inclus avec des scores
+      <code>null</code> et des dates futures. <strong>Pas de champ <code>total</code></strong> : itérer <code>page</code>
+      jusqu'à obtenir une liste vide.
+    </p>
+    <h4>Paramètres</h4>
+    <table>
+      <tr><th>Param</th><th>Type</th><th>Obl.</th><th>Défaut</th><th>Description</th></tr>
+      <tr><td><code>team</code></td><td>integer</td><td class="opt">opt.</td><td>—</td><td>Id d'une équipe impliquée.</td></tr>
+      <tr><td><code>event</code></td><td>integer</td><td class="opt">opt.</td><td>—</td><td>Id d'un évènement/saison.</td></tr>
+      <tr><td><code>status</code></td><td>string</td><td class="opt">opt.</td><td>—</td><td><span class="enum">Upcoming</span>, <span class="enum">Live</span>, <span class="enum">Completed</span>, <span class="enum">Cancelled</span>.</td></tr>
+      <tr><td><code>since</code></td><td>string (date)</td><td class="opt">opt.</td><td>—</td><td>Matchs le <code>YYYY-MM-DD</code> demandé ou après.</td></tr>
+      <tr><td><code>format</code></td><td>string</td><td class="opt">opt.</td><td>— (non filtré)</td><td><span class="enum">6v6</span> | <span class="enum">Highlander</span>. Pas de défaut 6v6 ici.</td></tr>
+      <tr><td><code>page</code></td><td>integer</td><td class="opt">opt.</td><td><code>1</code></td><td><code>≥ 1</code>.</td></tr>
+      <tr><td><code>limit</code></td><td>integer</td><td class="opt">opt.</td><td><code>50</code></td><td><code>1–100</code>.</td></tr>
+    </table>
+    <h4>Réponse 200 — objet <em>Match</em> (schéma observé)</h4>
+    <table>
+      <tr><th>Champ</th><th>Type</th><th>Description</th></tr>
+      <tr><td><code>id</code></td><td class="t-str">string</td><td>Id du match.</td></tr>
+      <tr><td><code>date</code></td><td class="t-str">string</td><td><code>YYYY-MM-DD</code>.</td></tr>
+      <tr><td><code>status</code></td><td class="t-str">string</td><td>Upcoming / Live / Completed / Cancelled.</td></tr>
+      <tr><td><code>best_of</code></td><td class="t-num">int</td><td>BO du match (1, 3, 5…).</td></tr>
+      <tr><td><code>event_id</code></td><td class="t-str">string</td><td>Id de l'évènement (joignable via param <code>event</code>).</td></tr>
+      <tr><td><code>event_name</code></td><td class="t-str">string</td><td>Nom de la saison (ex. « ETF2L 6v6 Season 52 »).</td></tr>
+      <tr><td><code>format</code></td><td class="t-str">string</td><td>6v6 / Highlander — <strong>présent seulement sur <code>/matches</code></strong>.</td></tr>
+      <tr><td><code>team1_id</code>, <code>team1_name</code>, <code>team2_id</code>, <code>team2_name</code></td><td class="t-str">string</td><td>Équipes (ids en chaîne).</td></tr>
+      <tr><td><code>team1_score</code>, <code>team2_score</code></td><td class="t-num">int/.null</td><td>Scores ; <strong>null</strong> si non joué.</td></tr>
+      <tr><td><code>league_match_url</code></td><td class="t-str">string</td><td>Lien vers la page du match sur la ligue (ETF2L, RGL…).</td></tr>
+    </table>
+    <details>
+      <summary>Exemple réel (capture, filtres team + Completed)</summary>
+      <pre><code>{
+  "page": 1,
+  "limit": 2,
+  "matches": [
+    {
+      "id": "238420", "date": "2026-08-20", "status": "Completed", "best_of": 3,
+      "event_id": "1311", "event_name": "ETF2L 6v6 Season 52 (Summer 2026)",
+      "format": "6v6",
+      "team1_id": "12628", "team1_name": "The Plucky Luckers",
+      "team2_id": "12726", "team2_name": ".ALPHAGLΩCK.",
+      "team1_score": 2, "team2_score": 0,
+      "league_match_url": "https://etf2l.org/matches/92873/"
+    }
+  ]
+}</code></pre>
+    </details>
+  </div>
+</section>
+
+<section class="endpoint" id="get-head-to-head">
+  <div class="endpoint-head">
+    <span class="method">GET</span>
+    <span class="path">/api/v1/stats/head-to-head</span>
+    <span class="scope-chip">Scope : matches</span>
+  </div>
+  <div class="endpoint-body">
+    <p class="summary">Face-à-face entre deux équipes (matchs <strong>terminés uniquement</strong>, jusqu'à <strong>500</strong> confrontations).</p>
+    <p>
+      Les paramètres <code>limit</code>/<code>page</code> ne sont pas définis pour cet endpoint et sont ignorés : toute
+      l'historique est retournée (plafonnée à 500). <code>team_a</code> décrit « l'équipe A » dans les réponses ; les équipes
+      inconnues → <code>404 not_found</code>.
+    </p>
+    <h4>Paramètres</h4>
+    <table>
+      <tr><th>Param</th><th>Type</th><th>Obl.</th><th>Description</th></tr>
+      <tr><td><code>team_a</code></td><td>integer (query)</td><td class="req">req.</td><td>Id équipe A.</td></tr>
+      <tr><td><code>team_b</code></td><td>integer (query)</td><td class="req">req.</td><td>Id équipe B.</td></tr>
+    </table>
+    <h4>Réponse 200 (schéma observé)</h4>
+    <table>
+      <tr><th>Champ</th><th>Type</th><th>Description</th></tr>
+      <tr><td><code>team_a</code>, <code>team_b</code></td><td class="t-str">objet</td><td><code>{ id (str), name, short_name }</code>.</td></tr>
+      <tr><td><code>summary.matches_played</code></td><td class="t-num">int</td><td>Nb de confrontations.</td></tr>
+      <tr><td><code>summary.team_a_wins</code>, <code>summary.team_b_wins</code>, <code>summary.draws</code></td><td class="t-num">int</td><td>Bilan.</td></tr>
+      <tr><td><code>matches[]</code></td><td class="t-num">array</td><td>Détail (voir ci-dessous).</td></tr>
+    </table>
+    <table>
+      <tr><th>Champ (matches[])</th><th>Type</th><th>Description</th></tr>
+      <tr><td><code>id</code></td><td class="t-str">string</td><td>Id du match.</td></tr>
+      <tr><td><code>date</code></td><td class="t-str">string</td><td><code>YYYY-MM-DD</code>.</td></tr>
+      <tr><td><code>event_name</code></td><td class="t-str">string</td><td>Nom de l'évènement.</td></tr>
+      <tr><td><code>a_score</code>, <code>b_score</code></td><td class="t-num">int</td><td>Scores (A = team_a).</td></tr>
+      <tr><td><code>winner_team_id</code></td><td class="t-num">int</td><td>Id du vainqueur (== team_a.id s'il est égal au vainqueur).</td></tr>
+    </table>
+    <details>
+      <summary>Exemple réel (capture, équipes s'étant affrontées)</summary>
+      <pre><code>{
+  "team_a": { "id": "12628", "name": "The Plucky Luckers", "short_name": "PLUCK" },
+  "team_b": { "id": "12726", "name": ".ALPHAGLΩCK.", "short_name": "GLΩCK" },
+  "summary": { "matches_played": 2, "team_a_wins": 2, "team_b_wins": 0, "draws": 0 },
+  "matches": [
+    {
+      "id": "238420", "date": "2026-08-20",
+      "event_name": "ETF2L 6v6 Season 52 (Summer 2026)",
+      "a_score": 2, "b_score": 0, "winner_team_id": 12628
+    },
+    {
+      "id": "160139", "date": "2026-07-02",
+      "event_name": "ETF2L 6v6 Season 52 (Summer 2026)",
+      "a_score": 2, "b_score": 0, "winner_team_id": 12628
+    }
+  ]
+}</code></pre>
+    </details>
+  </div>
+</section>
+
+<!-- ============ MAPS ============ -->
+<h2>12. Maps <a class="anchor" href="#maps">#</a></h2>
+
+<section class="endpoint" id="get-maps">
+  <div class="endpoint-head">
+    <span class="method">GET</span>
+    <span class="path">/api/v1/stats/maps</span>
+    <span class="scope-chip">Scope : maps</span>
+  </div>
+  <div class="endpoint-body">
+    <p class="summary">Fréquence de jeu des cartes (meilleure pour déceler pic/ban et meta). Matchs terminés uniquement.</p>
+    <p>
+      Listé par <code>times_played</code> décroissant, <strong>toutes les cartes en une réponse</strong> (pas de pagination).
+      Le paramètre <code>region</code> filtre par <strong>ligue</strong> du home team (<code>ozfortress</code>, <code>ETF2L</code>,
+      <code>RGL</code>…) ; omission = toutes ligues.
+    </p>
+    <h4>Paramètres</h4>
+    <table>
+      <tr><th>Param</th><th>Type</th><th>Obl.</th><th>Défaut</th><th>Description</th></tr>
+      <tr><td><code>format</code></td><td>string</td><td class="opt">opt.</td><td><code>6v6</code></td><td><span class="enum">6v6</span> | <span class="enum">Highlander</span>.</td></tr>
+      <tr><td><code>region</code></td><td>string</td><td class="opt">opt.</td><td>— (toutes)</td><td>Nom de ligue : <code>ozfortress</code>, <code>ETF2L</code>, <code>RGL</code>…</td></tr>
+    </table>
+    <h4>Réponse 200 (schéma observé)</h4>
+    <p class="muted">Racine : <code>maps[]</code> (tri desc par <code>times_played</code>).</p>
+    <table>
+      <tr><th>Champ</th><th>Type</th><th>Description</th></tr>
+      <tr><td><code>map_id</code></td><td class="t-str">string</td><td>Id de la carte.</td></tr>
+      <tr><td><code>map_name</code></td><td class="t-str">string</td><td>Nom commun (Process, Product, Ashville…).</td></tr>
+      <tr><td><code>map_type</code></td><td class="t-str">string</td><td><code>control_point</code>, <code>king_of_the_hill</code>, <code>payload</code>, <code>capture_the_flag</code>…</td></tr>
+      <tr><td><code>times_played</code></td><td class="t-str">string</td><td>Nb de play count (chaîne !).</td></tr>
+      <tr><td><code>matches</code></td><td class="t-str">string</td><td>Redondant avec <code>times_played</code> (même valeur sur la capture).</td></tr>
+    </table>
+    <details>
+      <summary>Exemple réel (capture, 6v6 toutes ligues — extrait)</summary>
+      <pre><code>{
+  "maps": [
+    { "map_id": "3", "map_name": "Gullywash", "map_type": "control_point",
+      "times_played": "16132", "matches": "16132" },
+    { "map_id": "2", "map_name": "Process", "map_type": "control_point",
+      "times_played": "14695", "matches": "14695" },
+    { "map_id": "5", "map_name": "Product", "map_type": "king_of_the_hill",
+      "times_played": "7941", "matches": "7941" }
+  ]
+}</code></pre>
+    </details>
+  </div>
+</section>
+
+<footer>
+  Documentation non officielle, construite le 15/09/2026 à partir de la spec OpenAPI <code>/api/v1/docs/</code> et de captures
+  réelles (13 requêtes) avec une clé valide sur les 12 endpoints + cas limites (dates sans snapshot, pages vides, 404, format invalide).
+  Ne pas committer de clé API dans le dépôt. Chemin : <code>docs/tf2esports-api.html</code>.
+</footer>
+
+</main>
+</div>
+
+<script>
+  const filter = document.getElementById('filter');
+  if (filter) {
+    filter.addEventListener('input', () => {
+      const q = filter.value.toLowerCase();
+      document.querySelectorAll('.endpoint').forEach(ep => {
+        const hay = (ep.querySelector('.path')?.textContent || '') + ' ' +
+                    (ep.querySelector('.summary')?.textContent || '');
+        ep.style.display = hay.toLowerCase().includes(q) ? '' : 'none';
+      });
+    });
+  }
+</script>
+</body>
+</html>

@@ -213,4 +213,20 @@ class PlayerStatsServiceTest extends TestCase
             ->assertSee('Ratio K/D')
             ->assertSee('Winrate');
     }
+
+    public function test_la_page_stats_affiche_les_deux_onglets(): void
+    {
+        $this->withSession(['steamid' => '76561198012345678', 'is_admin' => true])
+            ->get('/admin/stats-joueur')
+            ->assertOk()
+            ->assertSee('Joueur')
+            ->assertSee('Équipe');
+    }
+
+    public function test_le_status_repond_404_sans_job(): void
+    {
+        $this->withSession(['steamid' => '76561198012345678', 'is_admin' => true])
+            ->get('/admin/stats-joueur/status/aaaaaaaaaaaaaaaa')
+            ->assertNotFound();
+    }
 }

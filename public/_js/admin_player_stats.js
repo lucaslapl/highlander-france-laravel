@@ -1,17 +1,17 @@
-/* Outil admin « Stats joueur » (/admin/stats-joueur) : saisie d'un joueur +
-   de logs logs.tf, lancement du calcul en arrière-plan et suivi par polling.
-   Aucun framework : fetch vanilla + DOM. */
+/* Outil admin « Stats joueur / Équipe » (/admin/stats-joueur) :
+   - onglet Joueur : saisie d'un joueur + logs logs.tf, calcul en arrière-plan ;
+   - onglet Équipe : sélection d'une équipe ETF2L → préparation synchrone
+     (roster + compétitions + logs découverts) → calcul asynchrone par mode.
+   Suivi par polling. Aucun framework : fetch vanilla + DOM. */
 
 (function () {
     'use strict';
 
     var POLL_INTERVAL_MS = 1500;
-    var POLL_TIMEOUT_MS = 120000;
+    var POLL_TIMEOUT_MS = 180000;
 
-    var form = document.getElementById('ps-form');
-    var steamInput = document.getElementById('ps-steam');
-    var logsList = document.getElementById('ps-logs-list');
-    var submitBtn = document.getElementById('ps-submit');
+    /* ─── Éléments partagés ────────────────────────────────────────────── */
+    var tabsEl = document.getElementById('ps-tabs');
     var errorBox = document.getElementById('ps-error');
     var progressCard = document.getElementById('ps-progress-card');
     var progressFill = document.getElementById('ps-progress-fill');
@@ -25,13 +25,50 @@
     var timerInterval = null;
     var timerStartAt = 0;
 
+    /* ─── Éléments onglet Joueur ───────────────────────────────────────── */
+    var form = document.getElementById('ps-form');
+    var steamInput = document.getElementById('ps-steam');
+    var logsList = document.getElementById('ps-logs-list');
+    var submitBtn = document.getElementById('ps-submit');
+
+    /* ─── Éléments onglet Équipe ───────────────────────────────────────── */
+    var teamForm = document.getElementById('ps-team-form');
+    var teamInput = document.getElementById('ps-team-input');
+    var teamIdInput = document.getElementById('ps-team-id');
+    var teamLoadBtn = document.getElementById('ps-team-load');
+    var teamLoading = document.getElementById('ps-team-loading');
+    var teamError = document.getElementById('ps-team-error');
+    var teamPanels = document.getElementById('ps-team-panels');
+    var teamSubmitBtn = document.getElementById('ps-team-submit');
+
+    var selectedTeam = null;          // suggestion autocomplete résolue
+    var teamSuggestions = [];
+    var teamData = null;              // réponse de prepareTeam
+    var compsByMode = { '9v9': [], '6s': [] };
+
     /* ─── Token CSRF ────────────────────────────────────────────────────── */
     function csrfToken() {
         var meta = document.querySelector('meta[name="csrf-token"]');
         return meta ? meta.getAttribute('content') : '';
     }
 
-    /* ─── Lignes de logs dynamiques ─────────────────────────────────────── */
+    /* ─── Onglets ───────────────────────────────────────────────────────── */
+    if (tabsEl) {
+        tabsEl.addEventListener('click', function (e) {
+            var btn = e.target.closest('.ps-tab');
+            if (!btn) { return; }
+            var target = btn.getAttribute('data-panel-target');
+            Array.prototype.forEach.call(tabsEl.querySelectorAll('.ps-tab'), function (t) {
+                t.classList.toggle('is-active', t === btn);
+            });
+            ['player', 'team'].forEach(function (p) {
+                var panel = document.getElementById('ps-panel-' + p);
+                if (panel) { panel.hidden = (p !== target); panel.classList.toggle('is-active', p === target); }
+            });
+        });
+    }
+
+    /* ─── Lignes de logs dynamiques (Joueur) ────────────────────────────── */
     function addLogRow(value) {
         var row = document.createElement('div');
         row.className = 'ps-log-row';
@@ -72,7 +109,7 @@
     addBtn.className = 'ps-log-add';
     addBtn.innerHTML = '<i class="fa-solid fa-plus"></i> Ajouter un log';
     addBtn.addEventListener('click', function () { addLogRow(''); });
-    logsList.after(addBtn);
+    if (logsList) { logsList.after(addBtn); }
 
     /* ─── Helpers d'affichage ───────────────────────────────────────────── */
     function showError(msg) {
@@ -138,10 +175,10 @@
                 label = 'Récupération…';
             } else if (status === 'found') {
                 icon = '<i class="fa-solid fa-circle-check ps-detail-icon" style="color:#5cb85c;"></i>';
-                label = 'Joueur trouvé';
+                label = 'Joueur(s) trouvé(s)';
             } else if (status === 'absent') {
                 icon = '<i class="fa-solid fa-circle-minus ps-detail-icon" style="color:#999;"></i>';
-                label = 'Joueur absent';
+                label = 'Aucun joueur du roster';
             } else if (status === 'error') {
                 icon = '<i class="fa-solid fa-circle-xmark ps-detail-icon" style="color:#f35f5f;"></i>';
                 label = 'Erreur';
@@ -172,6 +209,16 @@
         return Number(value).toLocaleString('fr-FR');
     }
 
+    function fmtDate(sec) {
+        if (!sec) { return '—'; }
+        var d = new Date(sec * 1000);
+        return d.toLocaleDateString('fr-FR');
+    }
+
+    function modeLabel(mode) {
+        return mode === '6s' ? '6s (6v6)' : '9v9 (Highlander)';
+    }
+
     /* ─── Requêtes ──────────────────────────────────────────────────────── */
     function postJson(url, fd) {
         return fetch(url, {
@@ -198,42 +245,257 @@
         });
     }
 
-    /* ─── Lancement du calcul ───────────────────────────────────────────── */
-    form.addEventListener('submit', function (e) {
-        e.preventDefault();
-        clearError();
+    /* ─── Lancement du calcul (Joueur) ──────────────────────────────────── */
+    if (form) {
+        form.addEventListener('submit', function (e) {
+            e.preventDefault();
+            clearError();
 
-        var rows = Array.prototype.slice.call(logsList.querySelectorAll('input[name="logs[]"]'));
-        var filled = rows.filter(function (r) { return r.value.trim() !== ''; });
+            var rows = Array.prototype.slice.call(logsList.querySelectorAll('input[name="logs[]"]'));
+            var filled = rows.filter(function (r) { return r.value.trim() !== ''; });
 
-        if (!steamInput.value.trim()) { showError('Renseignez le SteamID du joueur.'); return; }
-        if (filled.length === 0) { showError('Saisissez au moins un log logs.tf.'); return; }
-        if (!form.querySelector('input[name="stats[]"]:checked')) { showError('Cochez au moins une statistique à calculer.'); return; }
+            if (!steamInput.value.trim()) { showError('Renseignez le SteamID du joueur.'); return; }
+            if (filled.length === 0) { showError('Saisissez au moins un log logs.tf.'); return; }
+            if (!form.querySelector('input[name="stats[]"]:checked')) { showError('Cochez au moins une statistique à calculer.'); return; }
 
-        var fd = new FormData();
-        fd.append('steam', steamInput.value.trim());
-        filled.forEach(function (r) { fd.append('logs[]', r.value.trim()); });
-        Array.prototype.forEach.call(form.querySelectorAll('input[name="stats[]"]:checked'), function (c) {
-            fd.append('stats[]', c.value);
+            var fd = new FormData();
+            fd.append('steam', steamInput.value.trim());
+            filled.forEach(function (r) { fd.append('logs[]', r.value.trim()); });
+            Array.prototype.forEach.call(form.querySelectorAll('input[name="stats[]"]:checked'), function (c) {
+                fd.append('stats[]', c.value);
+            });
+
+            submitBtn.disabled = true;
+
+            postJson('/admin/stats-joueur/start', fd).then(function (data) {
+                submitBtn.disabled = false;
+                if (!data || !data.ok || !data.token) {
+                    showError((data && data.message) || 'Impossible de lancer le calcul.');
+                    return;
+                }
+                pollStartedAt = Date.now();
+                startTimer();
+                showProgress(data.log_count, 0, 'Lancement du calcul…', []);
+                poll(data.token);
+            }).catch(function () {
+                submitBtn.disabled = false;
+                showError('Erreur réseau pendant le lancement du calcul.');
+            });
         });
+    }
 
-        submitBtn.disabled = true;
+    /* ─── Onglet Équipe : autocomplete ──────────────────────────────────── */
+    if (teamInput) {
+        teamInput.addEventListener('input', function () {
+            selectedTeam = null;
+            teamErrorMessage('');
 
-        postJson('/admin/stats-joueur/start', fd).then(function (data) {
-            submitBtn.disabled = false;
-            if (!data || !data.ok || !data.token) {
-                showError((data && data.message) || 'Impossible de lancer le calcul.');
+            var q = teamInput.value.trim();
+            if (q.length < 2) { teamSuggestions = []; return; }
+
+            window.clearTimeout(teamInput._debounce);
+            teamInput._debounce = window.setTimeout(function () {
+                getJson('/admin/stats-joueur/teams/search?q=' + encodeURIComponent(q)).then(function (rows) {
+                    if (!Array.isArray(rows)) { return; }
+                    teamSuggestions = rows;
+                    var list = document.getElementById('ps-team-list');
+                    if (list) {
+                        list.innerHTML = rows.map(function (r) {
+                            return '<option value="' + esc(r.name) + '">' + esc((r.tag ? '[' + r.tag + '] ' : '') + r.name) + '</option>';
+                        }).join('');
+                    }
+                    // Résolution directe si la saisie correspond exactement à une suggestion.
+                    rows.forEach(function (r) {
+                        if (r.name.toLowerCase() === q.toLowerCase()) { selectedTeam = r; }
+                    });
+                });
+            }, 250);
+        });
+    }
+
+    function teamErrorMessage(msg) {
+        if (!teamError) { return; }
+        teamError.hidden = !msg;
+        teamError.textContent = msg;
+    }
+
+    function resolveTeamId() {
+        if (selectedTeam) { return selectedTeam.id; }
+        var id = parseInt(teamIdInput ? teamIdInput.value : '', 10);
+        return (id && id > 0) ? id : null;
+    }
+
+    /* ─── Onglet Équipe : préparation synchrone ─────────────────────────── */
+    if (teamForm) {
+        teamForm.addEventListener('submit', function (e) {
+            e.preventDefault();
+            teamErrorMessage('');
+
+            var teamId = resolveTeamId();
+            if (!teamId) {
+                teamErrorMessage('Saisissez un nom d\'équipe reconnu ou un ID ETF2L numérique.');
                 return;
             }
-            pollStartedAt = Date.now();
-            startTimer();
-            showProgress(data.log_count, 0, 'Lancement du calcul…', []);
-            poll(data.token);
-        }).catch(function () {
-            submitBtn.disabled = false;
-            showError('Erreur réseau pendant le lancement du calcul.');
+
+            teamLoadBtn.disabled = true;
+            teamLoading.hidden = false;
+
+            var fd = new FormData();
+            fd.append('team', String(teamId));
+
+            postJson('/admin/stats-joueur/equipe/prepare', fd).then(function (data) {
+                teamLoadBtn.disabled = false;
+                teamLoading.hidden = true;
+
+                if (!data || !data.ok || !data.team) {
+                    teamErrorMessage((data && data.message) || 'Impossible de charger l\'équipe.');
+                    return;
+                }
+
+                teamData = data;
+                teamInput.value = data.team.name;
+                if (teamIdInput) { teamIdInput.value = data.team.id; }
+                selectedTeam = { id: data.team.id, name: data.team.name };
+                renderTeamPanels(data);
+            }).catch(function () {
+                teamLoadBtn.disabled = false;
+                teamLoading.hidden = true;
+                teamErrorMessage('Erreur réseau pendant le chargement de l\'équipe.');
+            });
         });
-    });
+    }
+
+    function checkedValues(selector, mode) {
+        var nodes = Array.prototype.slice.call(document.querySelectorAll(selector));
+        return nodes.filter(function (el) { return el.dataset.mode === mode && el.checked; })
+            .map(function (el) { return el.value; });
+    }
+
+    /* Construit les sections par mode (compétition + stats + logs). */
+    function renderTeamPanels(data) {
+        compsByMode = { '9v9': [], '6s': [] };
+        var hasAny = false;
+        var html = '';
+        var modes = ['9v9', '6s'];
+
+        modes.forEach(function (mode) {
+            var comps = (data.competitions && data.competitions[mode]) || [];
+            var logs = data.logs.filter(function (l) { return l.mode === mode; });
+            if (comps.length === 0 && logs.length === 0) { return; }
+            compsByMode[mode] = comps;
+            hasAny = true;
+
+            html += '<div class="admin-card ps-team-mode">';
+            html += '<h4 class="ps-team-mode__title"><i class="fa-solid ' + (mode === '6s' ? 'fa-bolt' : 'fa-shield-halved') + '"></i> ' + esc(modeLabel(mode)) + '</h4>';
+
+            if (comps.length) {
+                html += '<div class="form-group">';
+                html += '<label class="admin-form-label" for="ps-comp-' + mode + '">Compétition (winrate officiel)</label>';
+                html += '<select id="ps-comp-' + mode + '" class="form-control">';
+                html += '<option value="0">— Choisir une compétition (facultatif) —</option>';
+                comps.forEach(function (c) {
+                    html += '<option value="' + c.id + '">' + esc(c.name)
+                        + ' — ' + c.wins + 'V / ' + c.losses + 'D'
+                        + (c.winrate !== null ? ' (' + c.winrate + ' %)' : '')
+                        + '</option>';
+                });
+                html += '</select></div>';
+            }
+
+            html += statsChecksBlock(mode);
+            html += logsChecksBlock(mode, logs);
+
+            html += '</div>';
+        });
+
+        teamPanels.innerHTML = hasAny ? html : '<p class="ps-warn">Aucun résultat ni log découvert pour cette équipe (roster vide ou équipe absente des compétitions ETF2L).</p>';
+        teamSubmitBtn.hidden = !hasAny;
+    }
+
+    function statsChecksBlock(mode) {
+        var labels = window.PS_STAT_LABELS || {};
+        var html = '<div class="form-group"><span class="admin-form-label">Stats à calculer</span><div class="ps-checks">';
+        Object.keys(labels).forEach(function (key) {
+            html += '<label class="ps-check"><input type="checkbox" class="ps-team-stat" data-mode="' + mode + '" value="' + esc(key) + '" checked><span>' + esc(labels[key]) + '</span></label>';
+        });
+        html += '</div></div>';
+        return html;
+    }
+
+    function logsChecksBlock(mode, logs) {
+        if (logs.length === 0) {
+            return '<p class="ps-warn"><i class="fa-solid fa-triangle-exclamation"></i> Aucun log découvert pour le mode '
+                + esc(modeLabel(mode)) + ' (décochez/limitez si faux positifs).</p>';
+        }
+
+        var html = '<div class="form-group"><span class="admin-form-label">Logs logs.tf découverts (' + logs.length + ')</span>';
+        html += '<div class="ps-team-logs">';
+        logs.forEach(function (l) {
+            html += '<label class="ps-team-log">'
+                + '<input type="checkbox" class="ps-team-log-check" data-mode="' + mode + '" value="' + (l.id | 0) + '" checked>'
+                + '<a href="https://logs.tf/' + (l.id | 0) + '" target="_blank" rel="noopener">#' + (l.id | 0) + '</a>'
+                + '<span class="ps-team-log__title">' + esc(l.title) + '</span>'
+                + '<span class="ps-team-log__meta">' + esc(l.map) + ' · ' + fmtDate(l.date) + ' · ' + (l.players | 0) + ' joueurs</span>'
+                + '</label>';
+        });
+        html += '</div></div>';
+        return html;
+    }
+
+    /* ─── Onglet Équipe : lancement du calcul ───────────────────────────── */
+    if (teamSubmitBtn) {
+        teamSubmitBtn.addEventListener('click', function () {
+            if (!teamData) { teamErrorMessage('Chargez d\'abord l\'équipe.'); return; }
+
+            var modes = {};
+            ['9v9', '6s'].forEach(function (mode) {
+                var sel = document.getElementById('ps-comp-' + mode);
+                var selectedId = sel ? sel.value : '0';
+                var comp = null;
+                (compsByMode[mode] || []).forEach(function (c) {
+                    if (String(c.id) === String(selectedId)) { comp = c; }
+                });
+                var logs = checkedValues('.ps-team-log-check', mode).map(function (v) { return parseInt(v, 10); });
+                var stats = checkedValues('.ps-team-stat', mode);
+                if (comp || logs.length) { modes[mode] = { competition: comp, logs: logs, stats: stats }; }
+            });
+
+            var fd = new FormData();
+            fd.append('team[id]', String(teamData.team.id));
+            fd.append('team[name]', teamData.team.name);
+            teamData.team.players.forEach(function (p, i) {
+                fd.append('players[' + i + '][steamid64]', p.steamid64);
+            });
+            Object.keys(modes).forEach(function (mode) {
+                var m = modes[mode];
+                if (m.competition) { fd.append('modes[' + mode + '][competition][id]', String(m.competition.id)); }
+                m.logs.forEach(function (id) { fd.append('modes[' + mode + '][logs][]', String(id)); });
+                m.stats.forEach(function (s) { fd.append('modes[' + mode + '][stats][]', s); });
+            });
+
+            if (Object.keys(modes).length === 0) {
+                teamErrorMessage('Cochez au moins un log ou une compétition pour lancer le calcul.');
+                return;
+            }
+
+            teamSubmitBtn.disabled = true;
+
+            postJson('/admin/stats-joueur/equipe/start', fd).then(function (data) {
+                teamSubmitBtn.disabled = false;
+                if (!data || !data.ok || !data.token) {
+                    teamErrorMessage((data && data.message) || 'Impossible de lancer le calcul.');
+                    return;
+                }
+                pollStartedAt = Date.now();
+                startTimer();
+                showProgress(data.log_count, 0, 'Lancement du calcul…', []);
+                poll(data.token);
+            }).catch(function () {
+                teamSubmitBtn.disabled = false;
+                teamErrorMessage('Erreur réseau pendant le lancement du calcul.');
+            });
+        });
+    }
 
     /* ─── Polling du statut ─────────────────────────────────────────────── */
     function poll(token) {
@@ -256,13 +518,13 @@
 
             if (status === 'done') {
                 stopTimer();
-                renderResult(data.result || {}, null);
+                renderGenericResult(data.result || {});
                 return;
             }
 
             if (status === 'error') {
                 stopTimer();
-                renderResult(data.result || {}, data.error || 'Le calcul a échoué.');
+                renderGenericResult(data.result || {}, data.error || 'Le calcul a échoué.');
                 return;
             }
 
@@ -273,7 +535,6 @@
                 return;
             }
 
-            // Job introuvable (purge ou serveur relancé) : on attend un peu.
             if (Date.now() - pollStartedAt > 10000) {
                 stopTimer();
                 progressCard.hidden = true;
@@ -292,12 +553,21 @@
         });
     }
 
-    /* ─── Rendu du résultat ─────────────────────────────────────────────── */
-    function renderResult(result, errorMessage) {
+    /* ─── Rendu du résultat (détecte joueur vs équipe) ──────────────────── */
+    function renderGenericResult(result, errorMessage) {
         progressCard.hidden = true;
         resultWrap.hidden = false;
         if (logsDetailEl) { logsDetailEl.innerHTML = ''; }
 
+        if (result && result.modes) {
+            renderTeamResult(result, errorMessage);
+        } else {
+            renderPlayerResult(result || {}, errorMessage);
+        }
+    }
+
+    /* ─── Résultat joueur ───────────────────────────────────────────────── */
+    function renderPlayerResult(result, errorMessage) {
         var logs = result.logs || [];
         var stats = result.stats || {};
         var player = result.player || {};
@@ -310,7 +580,7 @@
         }
 
         html += '<div class="admin-card">';
-        html += '<h3 class="admin-card__title"><i class="fa-solid fa-user-chart"></i> Résultat</h3>';
+        html += '<h3 class="admin-card__title"><i class="fa-solid fa-user-chart"></i> Résultat joueur</h3>';
         html += '<div class="ps-result-header">';
         html += '<span class="ps-player">Joueur : <code>' + esc(player.steamid || '') + '</code></span>';
         html += '<span class="ps-player">' + (result.logs_usable || 0) + '/' + (result.logs_total || 0)
@@ -405,6 +675,117 @@
     function wonLabel(won) {
         if (won === null || won === undefined) { return '—'; }
         return won === 1 ? 'Victoire' : 'Défaite';
+    }
+
+    /* ─── Résultat équipe (winrate officiel affiché en fin + grille par mode) ── */
+    function renderTeamResult(result, errorMessage) {
+        var team = result.team || {};
+        var modes = result.modes || {};
+
+        var html = '';
+
+        if (errorMessage) {
+            html += '<div class="admin-alert admin-alert--error"><i class="fa-solid fa-circle-xmark"></i> '
+                + esc(errorMessage) + '</div>';
+        }
+
+        html += '<div class="admin-card">';
+        html += '<h3 class="admin-card__title"><i class="fa-solid fa-users"></i> Résultat équipe</h3>';
+        html += '<div class="ps-result-header">';
+        html += '<span class="ps-player">Équipe : <code>' + esc(team.name || '') + '</code></span>';
+        html += '<span class="ps-player">' + (team.id ? '(ETF2L #' + team.id + ')' : '') + '</span>';
+        html += '</div>';
+
+        var modeOrder = (Object.prototype.hasOwnProperty.call(modes, '9v9') ? ['9v9'] : []).concat(
+            Object.prototype.hasOwnProperty.call(modes, '6s') ? ['6s'] : []
+        );
+
+        if (modeOrder.length === 0) {
+            html += '<p class="ps-warn"><i class="fa-solid fa-triangle-exclamation"></i> Aucune donnée à afficher pour ce mode sélectionné.</p>';
+        }
+
+        modeOrder.forEach(function (mode) {
+            html += buildTeamModeSection(mode, modes[mode]);
+        });
+
+        html += '</div>';
+
+        resultWrap.innerHTML = html;
+    }
+
+    function buildTeamModeSection(mode, m) {
+        var comp = m.competition || null;
+        var players = m.players || [];
+        var totals = m.totals || {};
+        var logs = m.logs || [];
+
+        var html = '<div class="ps-team-result">';
+        html += '<h4 class="ps-team-mode__title"><i class="fa-solid ' + (mode === '6s' ? 'fa-bolt' : 'fa-shield-halved') + '"></i> '
+            + esc(modeLabel(mode)) + '</h4>';
+
+        /* Winrate officiel (compétition sélectionnée). */
+        if (comp) {
+            html += '<div class="ps-result-grid">';
+            html += card('Winrate officiel', comp.winrate !== null ? comp.winrate + ' %' : '—');
+            html += card('Bilan', comp.wins + 'V / ' + comp.losses + 'D' + (comp.draws ? ' / ' + comp.draws + 'N' : ''), comp.name);
+            html += card('Matchs (officiels)', comp.total);
+            html += card('Joueurs pris en compte', players.length);
+            html += '</div>';
+        } else {
+            html += '<p class="ps-warn"><i class="fa-solid fa-circle-info"></i> Aucune compétition officielle sélectionnée pour le winrate.</p>';
+        }
+
+        /* Totaux d'équipe. */
+        html += '<div class="ps-totals">'
+            + '<span>K/D équipe : <b>' + fmt(totals.kd) + '</b></span>'
+            + '<span>Éliminations : <b>' + fmt(totals.kills) + '</b></span>'
+            + '<span>Décès : <b>' + fmt(totals.deaths) + '</b></span>'
+            + '<span>Dégâts : <b>' + fmt(totals.dmg) + '</b></span>'
+            + '</div>';
+
+        /* Grille joueurs. */
+        if (players.length) {
+            var rows = players.map(function (p) {
+                return '<tr>'
+                    + '<td>' + esc(p.name) + '</td>'
+                    + '<td>' + esc(p.role) + '</td>'
+                    + '<td>' + (p.matches | 0) + '</td>'
+                    + '<td>' + fmt(p.kd) + '</td>'
+                    + '<td>' + (p.dpm !== null ? fmt(p.dpm) : '—') + '</td>'
+                    + '<td>' + fmt(p.dmg) + '</td>'
+                    + '<td>' + fmt(p.heal) + '</td>'
+                    + '</tr>';
+            });
+            html += '<div class="admin-table-scroll"><table class="admin-table">'
+                + '<thead><tr><th>Joueur</th><th>Rôle</th><th>Matchs</th><th>K/D</th><th>DPM</th><th>Dégâts</th><th>Soins</th></tr></thead>'
+                + '<tbody>' + rows.join('') + '</tbody></table></div>';
+        } else {
+            html += '<p class="ps-warn">Aucun joueur trouvé dans les logs sélectionnés pour ce mode.</p>';
+        }
+
+        /* Détail par log. */
+        if (logs.length) {
+            html += buildTeamLogsList(logs);
+        }
+
+        html += '</div>';
+
+        return html;
+    }
+
+    function buildTeamLogsList(logs) {
+        var items = logs.map(function (log) {
+            var n = log.present | 0;
+            var badge = !log.found
+                ? '<span style="color:#f35f5f;">Erreur</span>'
+                : (n > 0 ? '<span style="color:#5cb85c;">' + n + ' joueur(s)</span>' : '<span style="color:#f39c12;">Aucun</span>');
+            return '<div class="ps-detail-row">'
+                + '<a href="https://logs.tf/' + (log.log_id | 0) + '" target="_blank" rel="noopener">#' + (log.log_id | 0) + '</a>'
+                + '<span class="ps-detail-state">' + badge + '</span>'
+                + '</div>';
+        });
+
+        return '<div class="ps-logs-detail"><div class="ps-detail-header">Détail par log</div>' + items.join('') + '</div>';
     }
 
     /* ─── Initialisation ────────────────────────────────────────────────── */

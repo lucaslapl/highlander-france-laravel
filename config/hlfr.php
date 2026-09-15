@@ -18,6 +18,10 @@ return [
     // env() ne retourne plus rien depuis le code applicatif.
     'steam_api_key' => env('STEAM_API_KEY', ''),
 
+    // Clé API tf2esports (https://tf2esports.com) — analyses & classements TF2.
+    // Lecture seule, rate-limit 60 req/min. Envoyée en header X-API-Key.
+    'tf2esports_api_key' => env('TF2ESPORTS_API_KEY', ''),
+
     // Durée minimale d'un log (secondes) : en dessous, blacklist automatique.
     'min_match_length' => (int) env('MIN_MATCH_LENGTH', 300),
 
