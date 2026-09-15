@@ -8,7 +8,10 @@ use App\Http\Controllers\Admin\AdminController;
 use App\Http\Controllers\Admin\AdminCronController;
 use App\Http\Controllers\Admin\AdminMapController;
 use App\Http\Controllers\Admin\AdminGuideController;
+<<<<<<< HEAD
 use App\Http\Controllers\Admin\AdminPlayerStatsController;
+=======
+>>>>>>> 31cbb2b891e422e71db95cb8a9309feebd97628d
 use App\Http\Controllers\ApiController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\GuideController;
@@ -94,9 +97,12 @@ Route::middleware('admin')->prefix('admin')->group(function (): void {
     Route::post('/faq/{id}/update', [AdminGuideController::class, 'faqUpdate'])->whereNumber('id');
     Route::post('/faq/{id}/delete', [AdminGuideController::class, 'faqDelete'])->whereNumber('id');
     Route::post('/faq/{id}/toggle', [AdminGuideController::class, 'faqToggle'])->whereNumber('id');
+<<<<<<< HEAD
     Route::get('/stats-joueur', [AdminPlayerStatsController::class, 'index'])->name('admin.stats-joueur');
     Route::post('/stats-joueur/start', [AdminPlayerStatsController::class, 'start']);
     Route::get('/stats-joueur/status/{token}', [AdminPlayerStatsController::class, 'status'])->where('token', '[a-z0-9]{16}');
+=======
+>>>>>>> 31cbb2b891e422e71db95cb8a9309feebd97628d
     Route::get('/api-test', [AdminApiTestController::class, 'page']);
     Route::post('/api-test/live/start', [AdminApiTestController::class, 'liveStart']);
     Route::post('/api-test/live/heartbeat', [AdminApiTestController::class, 'liveHeartbeat']);

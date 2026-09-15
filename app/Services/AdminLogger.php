@@ -70,6 +70,7 @@ final class AdminLogger
         $ids = DB::table('admin_logs')
             ->selectRaw('MAX(id) as id')
             ->whereIn('status', ['success', 'failed', 'ignored'])
+            ->where('script', '!=', 'sync_twitch.php')
             ->groupBy('script')
             ->pluck('id');
 

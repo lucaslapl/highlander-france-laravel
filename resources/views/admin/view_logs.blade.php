@@ -4,7 +4,6 @@
 @section('description', $description)
 
 @section('content')
-@include('admin.partials.alerts')
 
 <div class="admin-back">
     <a href="/admin/dashboard">

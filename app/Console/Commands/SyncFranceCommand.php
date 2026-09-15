@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Console\Commands;
 
+use App\Services\AdminLogger;
 use App\Services\Crons\SyncFranceService;
 use Illuminate\Console\Command;
 
@@ -16,7 +17,17 @@ final class SyncFranceCommand extends Command
     public function handle(): int
     {
         set_time_limit(120);
-        $this->info((new SyncFranceService)->run());
+
+        try {
+            $output = (new SyncFranceService)->run();
+        } catch (\Throwable $e) {
+            AdminLogger::log('sync_france.php', null, 'FAILED (' . $e->getMessage() . ')');
+            $this->error('Erreur lors de la synchronisation des rosters : ' . $e->getMessage());
+
+            return self::FAILURE;
+        }
+
+        $this->info($output);
 
         return self::SUCCESS;
     }

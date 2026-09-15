@@ -16,7 +16,14 @@ final class SyncTwitchCommand extends Command
     public function handle(): int
     {
         set_time_limit(60);
-        $this->info(TwitchLive::refresh());
+
+        $result = TwitchLive::refresh();
+
+        if (str_starts_with($result, 'SUCCESS')) {
+            $this->info($result);
+        } else {
+            $this->warn($result);
+        }
 
         return self::SUCCESS;
     }

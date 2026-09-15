@@ -4,7 +4,6 @@
 @section('description', $description)
 
 @section('content')
-@include('admin.partials.alerts')
 <div class="admin-header" style="--accent:#fbb7fb;">
     <h2><i class="fa-solid fa-book-open"></i> Guides & FAQ</h2>
     <p>Contenus Markdown étendus : tableaux, blocs <code>:::info|conseil|danger|combo|flank</code> et couleurs <code>&lt;span class="hl-blue|hl-red|hl-green|hl-gold"&gt;</code>.</p>
