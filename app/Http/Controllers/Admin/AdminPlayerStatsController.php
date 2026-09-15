@@ -164,8 +164,13 @@ final class AdminPlayerStatsController extends Controller
     }
 
     /**
-     * Chemin d'un binaire PHP CLI exécutable (PHP_BINARY pointe sur php-fpm
-     * sous FastCGI, qui ne peut pas lancer artisan) ou null si introuvable.
+     * Chemin d'un binaire PHP CLI exécutable ou null si introuvable.
+     *
+     * Sous FastCGI, PHP_BINARY pointe sur php-fpm (qui ne peut pas lancer
+     * artisan) ; on privilégie donc PHP_BINDIR/php (le binaire CLI, ex.
+     * /opt/plesk/php/8.4/bin/php). Les appels is_file/is_executable sont
+     * silencieux : sur certains hébergements (open_basedir), interroger un
+     * chemin hors des zones autorisées déclencherait sinon une exception.
      */
     private function cliBinary(): ?string
     {
@@ -173,18 +178,21 @@ final class AdminPlayerStatsController extends Controller
             return PHP_BINARY;
         }
 
-        foreach ([
-            PHP_BINARY,
-            defined('PHP_BINDIR') ? PHP_BINDIR.DIRECTORY_SEPARATOR.'php' : '',
-            dirname((string) PHP_BINARY).DIRECTORY_SEPARATOR.'php',
-        ] as $candidate) {
-            if ($candidate !== ''
-                && is_string($candidate)
-                && is_file($candidate)
-                && is_executable($candidate)
-                && stripos(basename($candidate), 'fpm') === false) {
-                return $candidate;
+        try {
+            foreach ([
+                defined('PHP_BINDIR') ? PHP_BINDIR.DIRECTORY_SEPARATOR.'php' : '',
+                dirname((string) PHP_BINARY).DIRECTORY_SEPARATOR.'php',
+                PHP_BINARY,
+            ] as $candidate) {
+                if ($candidate !== ''
+                    && stripos(basename($candidate), 'fpm') === false
+                    && @is_file($candidate)
+                    && @is_executable($candidate)) {
+                    return $candidate;
+                }
             }
+        } catch (\Throwable) {
+            return null;
         }
 
         return null;
