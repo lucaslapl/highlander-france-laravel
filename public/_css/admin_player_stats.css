@@ -1,0 +1,189 @@
+/* Page Stats joueur (/admin/stats-joueur). */
+
+body #main .ps-log-row {
+  display: flex;
+  gap: 8px;
+  align-items: stretch;
+  margin-bottom: 8px;
+}
+
+body #main .ps-log-row .form-control {
+  flex: 1;
+  background: #222;
+  border: 1px solid #444;
+  color: #fff;
+  padding: 11px 13px;
+  border-radius: 4px;
+  font-size: 14px;
+  font-family: inherit;
+  line-height: 1.5;
+}
+
+body #main .ps-log-row .form-control:focus {
+  border-color: var(--accent, #ff6b9d);
+  outline: none;
+}
+
+body #main .ps-log-row .ps-log-remove {
+  background: none;
+  border: 1px solid #444;
+  color: #f35f5f;
+  border-radius: 4px;
+  cursor: pointer;
+  padding: 0 12px;
+  transition: background 0.2s, border-color 0.2s;
+}
+
+body #main .ps-log-row .ps-log-remove:hover {
+  background: #381e1e;
+  border-color: #f35f5f;
+}
+
+body #main .ps-log-add {
+  background: none;
+  border: 1px dashed #555;
+  color: #ccc;
+  border-radius: 4px;
+  padding: 8px 14px;
+  cursor: pointer;
+  font-size: 13px;
+  transition: border-color 0.2s, color 0.2s;
+}
+
+body #main .ps-log-add:hover {
+  border-color: var(--accent, #ff6b9d);
+  color: #fff;
+}
+
+body #main .ps-checks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 18px;
+}
+
+body #main .ps-check {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #ddd;
+  cursor: pointer;
+  font-size: 14px;
+}
+
+body #main .ps-check input {
+  accent-color: var(--accent, #ff6b9d);
+  width: 16px;
+  height: 16px;
+}
+
+body #main .ps-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+/* Progression */
+body #main .ps-progress {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+body #main .ps-progress__bar {
+  height: 12px;
+  background: #2b2b2b;
+  border: 1px solid #444;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+body #main .ps-progress__fill {
+  height: 100%;
+  width: 0;
+  background: var(--accent, #ff6b9d);
+  border-radius: 8px;
+  transition: width 0.4s ease;
+}
+
+body #main .ps-progress__text {
+  color: #ccc;
+  font-size: 13px;
+}
+
+body #main .ps-spin {
+  animation: ps-spin 1.2s linear infinite;
+}
+
+@keyframes ps-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Résultat */
+body #main .ps-result-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: 14px;
+  margin-bottom: 20px;
+}
+
+body #main .ps-result-card {
+  background: #1e1e24;
+  border: 1px solid #2d2d35;
+  border-radius: 6px;
+  padding: 16px;
+  text-align: center;
+}
+
+body #main .ps-result-card__label {
+  color: #aaa;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 8px;
+}
+
+body #main .ps-result-card__value {
+  color: #fff;
+  font-size: 24px;
+  font-weight: bold;
+}
+
+body #main .ps-result-card__sub {
+  color: #888;
+  font-size: 13px;
+  margin-top: 6px;
+}
+
+body #main .ps-result-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+body #main .ps-result-header .ps-player {
+  color: #fff;
+  font-size: 15px;
+}
+
+body #main .ps-result-header .ps-player code {
+  background: #1a1a1a;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: #fbb7fb;
+  padding: 1px 5px;
+  border-radius: 3px;
+}
+
+body #main .ps-log-muted {
+  opacity: 0.55;
+}
+
+body #main .ps-warn {
+  color: #f39c12;
+  font-size: 13px;
+  margin: 4px 0;
+}

@@ -142,9 +142,9 @@ window.__dashboardData = {!! json_encode($dashboardData, JSON_UNESCAPED_UNICODE 
             </div>
 
             <div class="admin-action-card" style="--accent: #2ec4b6;">
-                <h4 class="admin-action-card__title"><i class="fa-solid fa-shuffle"></i> Stats équipes</h4>
-                <p class="admin-action-card__desc">Stats officielles de deux équipes ETF2L sur leurs 3 dernières saisons : récupération des logs.tf, calcul des winrates et perfs joueurs (futur backend des overlays).</p>
-                <a href="/admin/stats-duel" class="admin-link-btn">Préparer un match (2 équipes)</a>
+                <h4 class="admin-action-card__title"><i class="fa-solid fa-user-chart"></i> Stats joueur</h4>
+                <p class="admin-action-card__desc">Calcul de stats (K/D, DPM, dégâts, soins, winrate) d'un joueur à partir de logs logs.tf saisis manuellement, pour les présentations sur les streams.</p>
+                <a href="/admin/stats-joueur" class="admin-link-btn">Calculer des stats joueur</a>
             </div>
 
         </div>
