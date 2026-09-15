@@ -122,33 +122,37 @@ final class AdminPlayerStatsController extends Controller
     }
 
     /**
-     * Lance la commande de calcul en arrière-plan ; en dernier recours (spawn
-     * impossible : exec/popen désactivés) exécution synchrone dans la requête.
+     * Lance la commande de calcul en arrière-plan ; si le shell n'est pas
+     * disponible (exec/popen désactivés sur le serveur), bascule sur une
+     * exécution synchrone dans la requête plutôt que de bloquer le job.
      */
     private function spawn(string $token): void
     {
-        $logFile = hlfr_data_path('player_stats_job_'.$token.'.log');
-        $cmd = escapeshellarg(PHP_BINARY)
-            .' '.escapeshellarg(base_path('artisan'))
-            .' app:compute-player-stats '.escapeshellarg($token);
-
         $spawned = false;
-        if (DIRECTORY_SEPARATOR === '\\') {
-            // Windows (WAMP) : lancement détaché via le shell.
-            $proc = @popen('start /B '.$cmd.' > '.$logFile.' 2>&1', 'r');
-            if (is_resource($proc)) {
-                @pclose($proc);
-                $spawned = true;
+
+        $binary = $this->cliBinary();
+        if ($binary !== null) {
+            $logFile = hlfr_data_path('player_stats_job_'.$token.'.log');
+            $cmd = escapeshellarg($binary)
+                .' '.escapeshellarg(base_path('artisan'))
+                .' app:compute-player-stats '.escapeshellarg($token);
+
+            if (DIRECTORY_SEPARATOR === '\\' && function_exists('popen')) {
+                // Windows (WAMP) : lancement détaché via le shell.
+                $proc = @popen('start /B '.$cmd.' > '.$logFile.' 2>&1', 'r');
+                if (is_resource($proc)) {
+                    @pclose($proc);
+                    $spawned = true;
+                }
+            } elseif (DIRECTORY_SEPARATOR !== '\\' && function_exists('exec')) {
+                // Linux / WSL : processus détaché avec nohup.
+                @exec('nohup '.$cmd.' > '.$logFile.' 2>&1 &');
+                $spawned = is_file($logFile);
             }
-        } else {
-            // Linux / WSL : processus détaché avec nohup.
-            @exec('nohup '.$cmd.' > '.$logFile.' 2>&1 &');
-            $spawned = is_file($logFile);
         }
 
-        // Le fichier de log n'a pas pu être créé : exec/popen indisponibles.
-        // On exécute le calcul de façon synchrone plutôt que de laisser le
-        // job bloqué à l'état « running ».
+        // Spawn impossible (exec/popen désactivés) : on exécute le calcul de
+        // façon synchrone plutôt que de laisser le job bloqué en « running ».
         if (! $spawned) {
             try {
                 Artisan::call('app:compute-player-stats', ['token' => $token]);
@@ -157,6 +161,33 @@ final class AdminPlayerStatsController extends Controller
                 $this->writeStatus($token, ['status' => 'error', 'error' => 'Impossible de lancer le calcul de stats.']);
             }
         }
+    }
+
+    /**
+     * Chemin d'un binaire PHP CLI exécutable (PHP_BINARY pointe sur php-fpm
+     * sous FastCGI, qui ne peut pas lancer artisan) ou null si introuvable.
+     */
+    private function cliBinary(): ?string
+    {
+        if (PHP_SAPI === 'cli') {
+            return PHP_BINARY;
+        }
+
+        foreach ([
+            PHP_BINARY,
+            defined('PHP_BINDIR') ? PHP_BINDIR.DIRECTORY_SEPARATOR.'php' : '',
+            dirname((string) PHP_BINARY).DIRECTORY_SEPARATOR.'php',
+        ] as $candidate) {
+            if ($candidate !== ''
+                && is_string($candidate)
+                && is_file($candidate)
+                && is_executable($candidate)
+                && stripos(basename($candidate), 'fpm') === false) {
+                return $candidate;
+            }
+        }
+
+        return null;
     }
 
     /**
