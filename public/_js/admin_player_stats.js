@@ -16,10 +16,14 @@
     var progressCard = document.getElementById('ps-progress-card');
     var progressFill = document.getElementById('ps-progress-fill');
     var progressText = document.getElementById('ps-progress-text');
+    var progressTimer = document.getElementById('ps-progress-timer');
+    var logsDetailEl = document.getElementById('ps-logs-detail');
     var resultWrap = document.getElementById('ps-result');
 
     var pollTimer = null;
     var pollStartedAt = 0;
+    var timerInterval = null;
+    var timerStartAt = 0;
 
     /* ─── Token CSRF ────────────────────────────────────────────────────── */
     function csrfToken() {
@@ -81,13 +85,79 @@
         errorBox.textContent = '';
     }
 
-    function showProgress(total, done, message) {
+    function showProgress(total, done, message, logsDetail) {
         progressCard.hidden = false;
         resultWrap.hidden = true;
 
         var pct = total > 0 ? Math.min(100, Math.round((done / total) * 100)) : 0;
         progressFill.style.width = pct + '%';
         progressText.textContent = (total > 0 ? done + '/' + total + ' log(s) — ' : '') + message;
+        renderLogsDetail(logsDetail);
+    }
+
+    /* Formatte le temps écoulé en français (ex : 1 min 12 s). */
+    function fmtElapsed(sec) {
+        if (sec < 60) { return sec + ' s'; }
+        var m = Math.floor(sec / 60);
+        var s = sec % 60;
+        return m + ' min ' + (s < 10 ? '0' : '') + s + ' s';
+    }
+
+    function startTimer() {
+        stopTimer();
+        timerStartAt = Date.now();
+        timerInterval = setInterval(function () {
+            if (progressTimer) {
+                progressTimer.textContent = 'Temps écoulé : ' + fmtElapsed(Math.floor((Date.now() - timerStartAt) / 1000));
+            }
+        }, 1000);
+    }
+
+    function stopTimer() {
+        if (timerInterval) {
+            clearInterval(timerInterval);
+            timerInterval = null;
+        }
+        if (progressTimer) { progressTimer.textContent = ''; }
+    }
+
+    /* Rendu de la liste détaillée par log (statut en direct). */
+    function renderLogsDetail(logsDetail) {
+        if (!logsDetailEl || !Array.isArray(logsDetail) || logsDetail.length === 0) {
+            if (logsDetailEl) { logsDetailEl.innerHTML = ''; }
+            return;
+        }
+
+        var items = logsDetail.map(function (entry) {
+            var status = entry.log_status || 'pending';
+            var icon = '';
+            var label = '';
+
+            if (status === 'fetching') {
+                icon = '<i class="fa-solid fa-spinner ps-spin ps-detail-icon" style="color:#ffb14d;"></i>';
+                label = 'Récupération…';
+            } else if (status === 'found') {
+                icon = '<i class="fa-solid fa-circle-check ps-detail-icon" style="color:#5cb85c;"></i>';
+                label = 'Joueur trouvé';
+            } else if (status === 'absent') {
+                icon = '<i class="fa-solid fa-circle-minus ps-detail-icon" style="color:#999;"></i>';
+                label = 'Joueur absent';
+            } else if (status === 'error') {
+                icon = '<i class="fa-solid fa-circle-xmark ps-detail-icon" style="color:#f35f5f;"></i>';
+                label = 'Erreur';
+            } else {
+                icon = '<i class="fa-regular fa-circle ps-detail-icon" style="color:#555;"></i>';
+                label = 'En attente';
+            }
+
+            return '<div class="ps-detail-row">'
+                + '<a href="https://logs.tf/' + (entry.log_id | 0) + '" target="_blank" rel="noopener">'
+                + '#' + (entry.log_id | 0) + '</a>'
+                + '<span class="ps-detail-state">' + icon + ' ' + esc(label) + '</span>'
+                + '</div>';
+        });
+
+        logsDetailEl.innerHTML = '<div class="ps-detail-header">Détail par log</div>' + items.join('');
     }
 
     function esc(value) {
@@ -121,6 +191,9 @@
             credentials: 'same-origin',
         }).then(function (res) {
             if (res.status === 404) { return { status: 'notfound' }; }
+            if (res.status === 401 || res.status === 403) {
+                return { status: 'forbidden' };
+            }
             return res.json().catch(function () { return { status: 'notfound' }; });
         });
     }
@@ -153,7 +226,8 @@
                 return;
             }
             pollStartedAt = Date.now();
-            showProgress(data.log_count, 0, 'Lancement du calcul…');
+            startTimer();
+            showProgress(data.log_count, 0, 'Lancement du calcul…', []);
             poll(data.token);
         }).catch(function () {
             submitBtn.disabled = false;
@@ -169,10 +243,11 @@
             var status = data ? data.status : 'notfound';
 
             if (status === 'running') {
-                showProgress(data.logs_total || 0, data.logs_done || 0, data.message || 'Calcul en cours…');
+                showProgress(data.logs_total || 0, data.logs_done || 0, data.message || 'Calcul en cours…', data.logs_detail);
                 if (Date.now() - pollStartedAt > POLL_TIMEOUT_MS) {
                     progressFill.style.width = '100%';
                     progressText.textContent = 'Le calcul semble bloqué. Relancez le calcul.';
+                    stopTimer();
                     return;
                 }
                 pollTimer = setTimeout(function () { poll(token); }, POLL_INTERVAL_MS);
@@ -180,17 +255,27 @@
             }
 
             if (status === 'done') {
+                stopTimer();
                 renderResult(data.result || {}, null);
                 return;
             }
 
             if (status === 'error') {
+                stopTimer();
                 renderResult(data.result || {}, data.error || 'Le calcul a échoué.');
+                return;
+            }
+
+            if (status === 'forbidden') {
+                stopTimer();
+                progressCard.hidden = true;
+                showError('Session expirée ou accès refusé. Rafraîchissez la page et reconnectez-vous au panel admin.');
                 return;
             }
 
             // Job introuvable (purge ou serveur relancé) : on attend un peu.
             if (Date.now() - pollStartedAt > 10000) {
+                stopTimer();
                 progressCard.hidden = true;
                 showError('Job introuvable. Relancez le calcul.');
                 return;
@@ -198,8 +283,9 @@
             pollTimer = setTimeout(function () { poll(token); }, POLL_INTERVAL_MS);
         }).catch(function () {
             if (Date.now() - pollStartedAt > 20000) {
+                stopTimer();
                 progressCard.hidden = true;
-                showError('Plus de réponse du serveur. Relancez le calcul.');
+                showError('Erreur réseau ou serveur injoignable. Vérifiez votre connexion puis relancez le calcul.');
                 return;
             }
             pollTimer = setTimeout(function () { poll(token); }, POLL_INTERVAL_MS);
@@ -210,6 +296,7 @@
     function renderResult(result, errorMessage) {
         progressCard.hidden = true;
         resultWrap.hidden = false;
+        if (logsDetailEl) { logsDetailEl.innerHTML = ''; }
 
         var logs = result.logs || [];
         var stats = result.stats || {};

@@ -99,7 +99,13 @@ final class AdminPlayerStatsController extends Controller
             'message' => 'Lancement du calcul…',
         ]);
 
-        $this->spawn($token);
+        // Le spawn est délégué au callback « terminating » de Laravel, qui
+        // s'exécute APRÈS l'envoi de la réponse HTTP au navigateur. Ainsi le
+        // navigateur reçoit le token et démarre le polling immédiatement, même
+        // si le calcul tourne en synchrone (exec/popen indisponible).
+        app()->terminating(function () use ($token): void {
+            $this->spawn($token);
+        });
 
         return response()->json(['ok' => true, 'token' => $token, 'log_count' => count($logIds)]);
     }

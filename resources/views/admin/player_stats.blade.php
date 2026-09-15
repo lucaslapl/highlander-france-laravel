@@ -75,6 +75,7 @@
 <div id="ps-progress-card" class="admin-card" hidden>
     <h3 class="admin-card__title">
         <i class="fa-solid fa-spinner ps-spin"></i> Calcul en cours
+        <span id="ps-progress-timer" class="ps-timer"></span>
     </h3>
     <div class="ps-progress">
         <div class="ps-progress__bar">
@@ -82,6 +83,7 @@
         </div>
         <div class="ps-progress__text" id="ps-progress-text">Démarrage…</div>
     </div>
+    <div id="ps-logs-detail" class="ps-logs-detail"></div>
 </div>
 
 {{-- Résultat (rempli en JS) --}}

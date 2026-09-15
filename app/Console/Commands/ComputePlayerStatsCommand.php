@@ -75,14 +75,29 @@ final class ComputePlayerStatsCommand extends Command
             'logs_total' => count($logIds),
             'logs_done' => 0,
             'message' => 'Démarrage de la récupération…',
+            'logs_detail' => array_map(static fn (int $id): array => ['log_id' => $id, 'log_status' => 'pending'], $logIds),
         ]);
 
-        $result = $service->compute($steamId3, $logIds, $selected, function (int $done, int $total, string $message) use ($token): void {
+        $logsDetail = array_map(static fn (int $id): array => ['log_id' => $id, 'log_status' => 'pending'], $logIds);
+
+        $result = $service->compute($steamId3, $logIds, $selected, function (int $done, int $total, string $message, ?array $logInfo = null) use ($token, &$logsDetail): void {
+            if (is_array($logInfo)) {
+                foreach ($logsDetail as &$entry) {
+                    if ($entry['log_id'] === $logInfo['log_id']) {
+                        $entry['log_status'] = $logInfo['log_status'];
+
+                        break;
+                    }
+                }
+                unset($entry);
+            }
+
             $this->writeResult($token, [
                 'status' => 'running',
                 'logs_total' => $total,
                 'logs_done' => $done,
                 'message' => $message,
+                'logs_detail' => $logsDetail,
             ]);
         });
 
@@ -91,6 +106,7 @@ final class ComputePlayerStatsCommand extends Command
                 'status' => 'error',
                 'error' => 'Aucun log exploitable pour ce joueur (vérifiez les IDs logs.tf et le SteamID saisi).',
                 'result' => $result,
+                'logs_detail' => $this->finalLogsDetail($result),
             ]);
 
             return self::FAILURE;
@@ -102,9 +118,27 @@ final class ComputePlayerStatsCommand extends Command
             'logs_done' => $result['logs_total'],
             'message' => 'Calcul terminé.',
             'result' => $result,
+            'logs_detail' => $this->finalLogsDetail($result),
         ]);
 
         return self::SUCCESS;
+    }
+
+    /**
+     * Reconstitue le détail marginal d'un log à partir du résultat final.
+     *
+     * @param  array<string, mixed>  $result
+     * @return array<int, array{log_id: int, log_status: string}>
+     */
+    private function finalLogsDetail(array $result): array
+    {
+        $detail = [];
+        foreach (($result['logs'] ?? []) as $log) {
+            $status = $log['player_present'] ?? false ? 'found' : ($log['found'] ?? false ? 'absent' : 'error');
+            $detail[] = ['log_id' => (int) ($log['log_id'] ?? 0), 'log_status' => $status];
+        }
+
+        return $detail;
     }
 
     /**

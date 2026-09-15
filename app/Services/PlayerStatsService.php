@@ -91,6 +91,12 @@ final class PlayerStatsService
     /**
      * Récupère et agrège les stats d'un joueur sur une liste de logs.
      *
+     * Le callback $progress est appelé avec :
+     *   (int $done, int $total, string $message, ?array $logInfo)
+     *
+     * $logInfo contient ['log_id' => int, 'log_status' => 'fetching'|'found'|'absent'|'error']
+     * quand applicable (null pour les messages « agrégation » de fin).
+     *
      * @param  int[]  $logIds
      * @param  string[]  $stats
      * @return array<string, mixed>
@@ -107,8 +113,9 @@ final class PlayerStatsService
         $usable = 0;
 
         foreach ($logIds as $i => $logId) {
+            $num = $i + 1;
             if ($progress !== null) {
-                $progress($i, $total, 'Récupération du log '.$logId.'…');
+                $progress($i, $total, 'Récupération du log '.$num.'/'.$total.' (ID: '.$logId.')…', ['log_id' => $logId, 'log_status' => 'fetching']);
             }
 
             $this->throttle();
@@ -168,8 +175,14 @@ final class PlayerStatsService
             $logs[] = $entry;
 
             if ($progress !== null) {
-                $progress($i + 1, $total, 'Log '.$logId.' traité.');
+                $status = $entry['player_present'] ? 'found' : ($entry['found'] ? 'absent' : 'error');
+                $detail = $status === 'found' ? 'Joueur trouvé' : ($status === 'absent' ? 'Joueur absent' : 'Erreur');
+                $progress($i + 1, $total, 'Log '.$num.'/'.$total.' (ID: '.$logId.') — '.$detail, ['log_id' => $logId, 'log_status' => $status]);
             }
+        }
+
+        if ($progress !== null) {
+            $progress($total, $total, 'Agrégation des statistiques…');
         }
 
         $kd = $acc['deaths'] > 0

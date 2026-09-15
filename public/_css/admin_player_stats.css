@@ -110,6 +110,14 @@ body #main .ps-progress__text {
   font-size: 13px;
 }
 
+body #main .ps-timer {
+  float: right;
+  color: #888;
+  font-size: 12px;
+  font-weight: normal;
+  line-height: 22px;
+}
+
 body #main .ps-spin {
   animation: ps-spin 1.2s linear infinite;
 }
@@ -118,6 +126,56 @@ body #main .ps-spin {
   to {
     transform: rotate(360deg);
   }
+}
+
+/* Liste détaillée par log pendant le calcul */
+body #main .ps-logs-detail {
+  margin-top: 16px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  padding-top: 12px;
+}
+
+body #main .ps-detail-header {
+  color: #aaa;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 8px;
+}
+
+body #main .ps-detail-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 6px 2px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  font-size: 13px;
+}
+
+body #main .ps-detail-row a {
+  color: #b8d4f5;
+  text-decoration: none;
+  font-family: "Consolas", "Menlo", monospace;
+  font-size: 12px;
+}
+
+body #main .ps-detail-row a:hover {
+  text-decoration: underline;
+  color: #fff;
+}
+
+body #main .ps-detail-state {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  color: #ddd;
+  font-size: 12px;
+}
+
+body #main .ps-detail-icon {
+  width: 14px;
+  text-align: center;
 }
 
 /* Résultat */
