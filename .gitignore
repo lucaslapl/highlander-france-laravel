@@ -28,6 +28,8 @@
 /storage/pail
 /storage/app/hlfr
 /vendor
+/.docker/mysql/init/*
+!/.docker/mysql/init/.gitkeep
 _ide_helper.php
 Homestead.json
 Homestead.yaml
