@@ -404,6 +404,7 @@
 
             html += statsChecksBlock(mode);
             html += logsChecksBlock(mode, logs);
+            html += manualLogsBlock(mode);
 
             html += '</div>';
         });
@@ -431,15 +432,41 @@
         var html = '<div class="form-group"><span class="admin-form-label">Logs logs.tf découverts (' + logs.length + ')</span>';
         html += '<div class="ps-team-logs">';
         logs.forEach(function (l) {
+            var src = l.source === 'tf2esports'
+                ? ' <span class="ps-source-tag">tf2esports</span>'
+                : '';
             html += '<label class="ps-team-log">'
                 + '<input type="checkbox" class="ps-team-log-check" data-mode="' + mode + '" value="' + (l.id | 0) + '" checked>'
                 + '<a href="https://logs.tf/' + (l.id | 0) + '" target="_blank" rel="noopener">#' + (l.id | 0) + '</a>'
-                + '<span class="ps-team-log__title">' + esc(l.title) + '</span>'
+                + '<span class="ps-team-log__title">' + esc(l.title) + src + '</span>'
                 + '<span class="ps-team-log__meta">' + esc(l.map) + ' · ' + fmtDate(l.date) + ' · ' + (l.players | 0) + ' joueurs</span>'
                 + '</label>';
         });
         html += '</div></div>';
         return html;
+    }
+
+    /* Champ de saisie manuelle d'IDs/URLs logs.tf, pour ce mode. */
+    function manualLogsBlock(mode) {
+        return '<div class="form-group">'
+            + '<label class="admin-form-label" for="ps-team-manual-' + mode + '">IDs/URLs logs.tf à ajouter (facultatif)</label>'
+            + '<textarea id="ps-team-manual-' + mode + '" class="ps-team-manual form-control" rows="2" data-mode="' + mode + '" '
+            + 'placeholder="Un log par ligne : https://logs.tf/12345678 ou 12345678"></textarea>'
+            + '</div>';
+    }
+
+    /* Extrait des IDs logs.tf depuis une saisie libre (IDs ou URLs, séparés). */
+    function parseLogIds(raw) {
+        var ids = [];
+        String(raw || '').split(/[\s,;]+/).forEach(function (token) {
+            if (!token) { return; }
+            var m = token.match(/^(?:https?:\/\/logs\.tf\/)?(\d{4,10})$/i);
+            if (m) {
+                var n = parseInt(m[1], 10);
+                if (ids.indexOf(n) === -1) { ids.push(n); }
+            }
+        });
+        return ids;
     }
 
     /* ─── Onglet Équipe : lancement du calcul ───────────────────────────── */
@@ -456,6 +483,10 @@
                     if (String(c.id) === String(selectedId)) { comp = c; }
                 });
                 var logs = checkedValues('.ps-team-log-check', mode).map(function (v) { return parseInt(v, 10); });
+                var manualEl = document.getElementById('ps-team-manual-' + mode);
+                parseLogIds(manualEl ? manualEl.value : '').forEach(function (id) {
+                    if (logs.indexOf(id) === -1) { logs.push(id); }
+                });
                 var stats = checkedValues('.ps-team-stat', mode);
                 if (comp || logs.length) { modes[mode] = { competition: comp, logs: logs, stats: stats }; }
             });

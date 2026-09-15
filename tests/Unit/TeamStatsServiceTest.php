@@ -144,8 +144,38 @@ class TeamStatsServiceTest extends TestCase
         $this->assertSame(100, $hl['winrate']);
     }
 
-    // ─── Détection du mode ────────────────────────────────────────────────
+    public function test_group_competitions_ignore_les_doublons_de_resultat(): void
+    {
+        // L'API team/{id}/results renvoie un enregistrement par joueur du roster
+        // pour chaque match : même `result` répété ~roster fois.
+        $teamId = 15176;
 
+        $win = [
+            'clan1' => ['id' => $teamId],
+            'clan2' => ['id' => 22, 'name' => 'B'],
+            'r1' => 2, 'r2' => 1,
+            'result' => 555,
+            'competition' => ['id' => 7, 'name' => 'Highlander Season 1', 'category' => 'Highlander Season', 'type' => 'highlander'],
+        ];
+        $loss = [
+            'clan1' => ['id' => $teamId],
+            'clan2' => ['id' => 23, 'name' => 'C'],
+            'r1' => 0, 'r2' => 2,
+            'result' => 556,
+            'competition' => ['id' => 7, 'name' => 'Highlander Season 1', 'category' => 'Highlander Season', 'type' => 'highlander'],
+        ];
+
+        $results = array_merge([$win], array_fill(0, 15, $win), [$loss, $loss]);
+
+        $hl = (new TeamStatsService)->groupCompetitions($teamId, $results)['9v9'][0];
+
+        $this->assertSame(2, $hl['total']);
+        $this->assertSame(1, $hl['wins']);
+        $this->assertSame(1, $hl['losses']);
+        $this->assertSame(50, $hl['winrate']);
+    }
+
+    // ─── Détection du mode ────────────────────────────────────────────────
     public function test_mode_detecte_competitions(): void
     {
         $map = TeamStatsService::class;

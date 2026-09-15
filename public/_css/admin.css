@@ -1266,3 +1266,24 @@ body #main .adm-maps-modal-close {
 body #main .adm-maps-modal-close:hover {
   color: #fff;
 }
+
+/* ─── Stats joueur / équipe ──────────────────────────────────────────── */
+body #main .admin-card .ps-team-manual {
+  resize: vertical;
+  min-height: 46px;
+  font-family: monospace;
+}
+
+body #main .ps-team-log__title .ps-source-tag {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 1px 6px;
+  border-radius: 3px;
+  background: rgba(255, 183, 77, 0.15);
+  border: 1px solid #ffb14d;
+  color: #ffb14d;
+  font-size: 11px;
+  font-weight: bold;
+  text-transform: uppercase;
+  vertical-align: middle;
+}

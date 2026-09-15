@@ -193,6 +193,10 @@ final class TeamStatsService
     {
         $byComp = [];
 
+        // Un même match ETF2L (clé `result`) est renvoyé une fois par joueur du
+        // roster par l'API team/{id}/results : ne le compter qu'une seule fois.
+        $seenResults = [];
+
         foreach ($results as $r) {
             $comp = $r['competition'] ?? null;
             if (! is_array($comp)) {
@@ -202,6 +206,14 @@ final class TeamStatsService
             $compId = (int) ($comp['id'] ?? 0);
             if ($compId <= 0) {
                 continue;
+            }
+
+            $resultId = (int) ($r['result'] ?? 0);
+            if ($resultId > 0) {
+                if (isset($seenResults[$resultId])) {
+                    continue;
+                }
+                $seenResults[$resultId] = true;
             }
 
             $compName = (string) ($comp['name'] ?? '');

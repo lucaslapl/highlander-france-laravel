@@ -8,6 +8,8 @@ use App\Http\Controllers\Controller;
 use App\Services\Auth;
 use App\Services\PlayerStatsService;
 use App\Services\TeamStatsService;
+use App\Services\Tf2EsportsApi;
+use App\Services\Tf2EsportsDiscovery;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -137,12 +139,58 @@ final class AdminPlayerStatsController extends Controller
         $steamid64s = array_column($roster['players'], 'steamid64');
         $logs = $service->discoverLogs($steamid64s);
 
+        // Enrichissement best-effort depuis tf2esports (logs logs.tf liés aux
+        // matchs officiels de l'équipe). Ignoré si la clé n'est pas configurée
+        // ou si l'équipe n'est pas trackée — aucun impact sur la découverte
+        // logs.tf existante.
+        $logs = $this->mergeTf2esportsLogs($logs, $roster, $results);
+
         return response()->json([
             'ok' => true,
             'team' => $roster,
             'competitions' => $competitions,
             'logs' => $logs,
         ]);
+    }
+
+    /**
+     * Fusionne les logs découverts via tf2esports dans la liste des logs
+     * logs.tf déjà trouvés (dédupliqués par ID de log).
+     *
+     * @param  array<int, array<string, mixed>>  $logs
+     * @param  array<string, mixed>  $roster
+     * @param  array<int, array<string, mixed>>  $results
+     * @return array<int, array<string, mixed>>
+     */
+    private function mergeTf2esportsLogs(array $logs, array $roster, array $results): array
+    {
+        if (config('hlfr.tf2esports_api_key') === '') {
+            return $logs;
+        }
+
+        try {
+            $extra = (new Tf2EsportsDiscovery(new Tf2EsportsApi))
+                ->discoverLogs((string) ($roster['name'] ?? ''), $results, $roster['players'] ?? []);
+        } catch (\Throwable) {
+            return $logs;
+        }
+
+        if ($extra === []) {
+            return $logs;
+        }
+
+        $idSet = array_fill_keys(array_column($logs, 'id'), true);
+        foreach ($extra as $log) {
+            if ($idSet[$log['id']] ?? false) {
+                continue;
+            }
+            $idSet[$log['id']] = true;
+            $logs[] = $log;
+        }
+
+        usort($logs, static fn (array $a, array $b): int => ($b['date'] ?? 0) <=> ($a['date'] ?? 0));
+
+        return $logs;
     }
 
     /**
