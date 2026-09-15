@@ -140,15 +140,11 @@ window.__dashboardData = {!! json_encode($dashboardData, JSON_UNESCAPED_UNICODE 
                 <a href="/admin/guides" class="admin-link-btn">Gérer les guides</a>
             </div>
 
-<<<<<<< HEAD
             <div class="admin-action-card" style="--accent: #2ec4b6;">
                 <h4 class="admin-action-card__title"><i class="fa-solid fa-user-chart"></i> Stats joueur</h4>
                 <p class="admin-action-card__desc">Calcul de stats (K/D, DPM, dégâts, soins, winrate) d'un joueur à partir de logs logs.tf saisis manuellement, pour les présentations sur les streams.</p>
                 <a href="/admin/stats-joueur" class="admin-link-btn">Calculer des stats joueur</a>
             </div>
-
-=======
->>>>>>> 31cbb2b891e422e71db95cb8a9309feebd97628d
         </div>
 
         <h3 class="admin-section-title">Gestion interne du site (dangereux !)</h3>
