@@ -460,11 +460,20 @@ final class ComputePlayerPalmaresService
             ->query('SELECT steamid FROM players_info WHERE created_at IS NOT NULL ORDER BY steamid')
             ->fetchAll(\PDO::FETCH_COLUMN);
 
+        $total = count($registered);
         $computed = 0;
         $failed = 0;
+        $skipped = 0;
         $errors = [];
+        $startTime = microtime(true);
 
-        foreach ($registered as $steamid3) {
+        foreach ($registered as $idx => $steamid3) {
+            if (microtime(true) - $startTime > 1500) {
+                $skipped = $total - $idx;
+
+                break;
+            }
+
             try {
                 $this->computePlayer((string) $steamid3);
                 $computed++;
@@ -475,8 +484,10 @@ final class ComputePlayerPalmaresService
             }
         }
 
-        $statusMsg = 'SUCCESS ('.count($registered).' joueur(s) traité(s)'
-            .($failed > 0 ? ', '.$failed.' en échec' : '').')';
+        $elapsed = round(microtime(true) - $startTime);
+        $statusMsg = 'SUCCESS ('.$computed.'/'.$total.' joueur(s) traité(s)'
+            .($failed > 0 ? ', '.$failed.' en échec' : '')
+            .($skipped > 0 ? ', '.$skipped.' reporté(s) (temps dépassé)' : '').')';
         AdminLogger::log(self::SCRIPT_NAME, $logToken, $statusMsg);
 
         $errorReport = '';
@@ -486,8 +497,10 @@ final class ComputePlayerPalmaresService
                 .($failed > 5 ? "\n… et ".($failed - 5).' autre(s) (voir log PHP)' : '');
         }
 
-        return 'Palmarès calculé pour '.$computed.' joueur(s) inscrit(s)'
-            .($failed > 0 ? ' — attention : '.$failed.' joueur(s) en échec' : '').'.'.$errorReport;
+        return 'Palmarès calculé pour '.$computed.'/'.$total.' joueur(s) inscrit(s)'
+            .($failed > 0 ? ' — '.$failed.' en échec' : '')
+            .($skipped > 0 ? ' — '.$skipped.' reporté(s) au prochain run' : '')
+            .' ('.$elapsed.'s).'.$errorReport;
     }
 
     public function computeForPlayer(string $steamid3): void
@@ -507,8 +520,6 @@ final class ComputePlayerPalmaresService
 
         $results = $this->fetchResults($steamid64);
         if ($results === []) {
-            $this->db->prepare('DELETE FROM player_palmares WHERE steamid = ?')->execute([$steamid3]);
-
             return;
         }
 
@@ -615,41 +626,43 @@ final class ComputePlayerPalmaresService
         $entries = $this->deduplicateBySeason($entries);
 
         // 5. UPSERT dans la table.
-        $deleteStmt = $this->db->prepare('DELETE FROM player_palmares WHERE steamid = ?');
-        $insertStmt = $this->db->prepare(
-            'REPLACE INTO player_palmares
-                (steamid, competition_id, game_mode, competition_name, team_name, team_id,
-                 division_name, tier, placement, playoff_round, won_playoff, season_time, computed_at)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
-        );
+        if ($entries !== []) {
+            $deleteStmt = $this->db->prepare('DELETE FROM player_palmares WHERE steamid = ?');
+            $insertStmt = $this->db->prepare(
+                'REPLACE INTO player_palmares
+                    (steamid, competition_id, game_mode, competition_name, team_name, team_id,
+                     division_name, tier, placement, playoff_round, won_playoff, season_time, computed_at)
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
+            );
 
-        $this->db->beginTransaction();
+            $this->db->beginTransaction();
 
-        try {
-            $deleteStmt->execute([$steamid3]);
+            try {
+                $deleteStmt->execute([$steamid3]);
 
-            foreach ($entries as $e) {
-                $insertStmt->execute([
-                    $e['steamid'],
-                    $e['competition_id'],
-                    $e['game_mode'],
-                    $e['competition_name'],
-                    $e['team_name'],
-                    $e['team_id'],
-                    $e['division_name'],
-                    $e['tier'],
-                    $e['placement'],
-                    $e['playoff_round'],
-                    $e['won_playoff'],
-                    $e['season_time'],
-                    $e['computed_at'],
-                ]);
+                foreach ($entries as $e) {
+                    $insertStmt->execute([
+                        $e['steamid'],
+                        $e['competition_id'],
+                        $e['game_mode'],
+                        $e['competition_name'],
+                        $e['team_name'],
+                        $e['team_id'],
+                        $e['division_name'],
+                        $e['tier'],
+                        $e['placement'],
+                        $e['playoff_round'],
+                        $e['won_playoff'],
+                        $e['season_time'],
+                        $e['computed_at'],
+                    ]);
+                }
+
+                $this->db->commit();
+            } catch (\Throwable $e) {
+                $this->db->rollBack();
+                throw $e;
             }
-
-            $this->db->commit();
-        } catch (\Throwable $e) {
-            $this->db->rollBack();
-            throw $e;
         }
     }
 

@@ -140,6 +140,7 @@ final class AdminCronController extends Controller
             'etf2l_matches' => \App\Services\Crons\SyncEtf2lService::class,
             'etf2l_backfill' => \App\Services\Crons\BackfillEtf2lHistoryService::class,
             'compute_player_levels' => \App\Services\Crons\ComputePlayerLevelsService::class,
+            'compute_player_palmares' => \App\Services\Crons\ComputePlayerPalmaresService::class,
             'index_stats' => \App\Services\Crons\UpdateIndexStatsService::class,
             'match_stats' => \App\Services\Crons\UpdateStatsService::class,
             'sync_with_steam' => \App\Services\Crons\SyncSteamService::class,

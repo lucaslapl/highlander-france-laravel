@@ -15,7 +15,7 @@ final class ComputePlayerPalmaresCommand extends Command
 
     public function handle(): int
     {
-        set_time_limit(600);
+        set_time_limit(1800);
         $this->info((new ComputePlayerPalmaresService())->run());
 
         return self::SUCCESS;
