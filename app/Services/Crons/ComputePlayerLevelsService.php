@@ -126,7 +126,7 @@ final class ComputePlayerLevelsService
 
         if (is_string($payload) && $payload !== '') {
             $decoded = json_decode($payload, true);
-            if (is_array($decoded)) {
+            if (is_array($decoded) && $this->isValidApiPayload($decoded)) {
                 return $decoded;
             }
         }
@@ -151,6 +151,21 @@ final class ComputePlayerLevelsService
         $this->db->prepare($sql)->execute([$url, json_encode($data, JSON_THROW_ON_ERROR), time()]);
 
         return $data;
+    }
+
+    /**
+     * Un payload API servi depuis le cache n'est exploitable que s'il contient
+     * un bloc status/data/tables. Une réponse de throttling (ex. le message
+     * "Too Many Attempts." sans clé status) ne doit jamais être servie : on la
+     * rejette pour forcer un re-fetch HTTP (le retry traite alors le 429).
+     */
+    private function isValidApiPayload(array $payload): bool
+    {
+        if ($payload === []) {
+            return true;
+        }
+
+        return isset($payload['status']) || isset($payload['data']) || isset($payload['tables']);
     }
 
     /**
@@ -186,12 +201,26 @@ final class ComputePlayerLevelsService
 
             $code = isset($meta['data']['status']['code']) ? (int) $meta['data']['status']['code'] : null;
 
-            if ($code === null || $code === 200) {
+            if ($code === 200) {
                 return $meta['data'];
             }
 
-            // Joueur absent de l'API (jamais inscrit ETF2L) : pas une erreur,
-            // simplement aucun résultat.
+            // Réponse sans bloc status (ex. "Too Many Attempts." du throttling
+            // Laravel) : on s'appuie sur le code HTTP réel pour décider si le
+            // corps est exploitable, sinon c'est une erreur transitoire et on
+            // retente (jamais de mise en cache d'une réponse throttlée).
+            if ($code === null) {
+                $httpCode = (int) ($meta['http_code'] ?? 0);
+
+                if ($httpCode >= 200 && $httpCode < 300) {
+                    return $meta['data'];
+                }
+
+                $lastError = 'HTTP '.$httpCode.' (réponse sans status)';
+
+                continue;
+            }
+
             if ($code === 404) {
                 return [];
             }
