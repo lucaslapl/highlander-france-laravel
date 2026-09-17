@@ -7,6 +7,11 @@
 <h1>Stats des Matchs</h1>
 <p>Consultez les logs détaillés des matchs de Highlander France.</p>
 
+<div class="source-note">
+    <i class="fa-solid fa-circle-info"></i>
+    <p>Les logs ci-dessous proviennent des <strong>mix</strong> (9v9 & 6v6) et des <strong>matchs amicaux</strong> organisés par la communauté Highlander France, parfois contre des équipes européennes. Ces matchs ne font <strong>pas partie d'une ligue officielle</strong>.</p>
+</div>
+
 <div id="filters">
     <input type="text" id="filter-date" placeholder="Rechercher par date (ex: 27/04)">
     <input type="text" id="filter-map" placeholder="Rechercher une map…">

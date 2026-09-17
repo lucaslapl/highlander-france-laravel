@@ -9,6 +9,11 @@
 <div class="player-stats">
     <h3 id="stats-title">Stats - Highlander</h3>
 
+    <div class="source-note">
+        <i class="fa-solid fa-circle-info"></i>
+        <p>Ces statistiques proviennent des <strong>mix</strong> et des <strong>matchs amicaux</strong> organisés par la communauté Highlander France, parfois contre des équipes européennes. Ce ne sont <strong>pas des matchs officiels de ligue</strong>.</p>
+    </div>
+
     <div class="stats-grid stats-key">
         <div class="box-stats matches-played">
             <p class="stat-label">Matchs joués</p>
