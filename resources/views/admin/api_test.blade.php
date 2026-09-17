@@ -224,7 +224,7 @@
 
     <div class="admin-card">
         <h3 class="admin-card__title"><i class="fa-brands fa-twitch"></i> Simuler une chaîne en direct</h3>
-        <p style="font-size: 13px; color: #aaa;">Écrit directement dans <code>cache_twitch_live.json</code>. L'association à un match ETF2L suit la même règle que le vrai service : titre contenant les deux noms d'équipes (association forte), sinon une seule correspondance ambiguïté exclue.</p>
+        <p style="font-size: 13px; color: #aaa;">Écrit directement dans <code>cache_twitch_live.json</code> et y est conservé (y compris au refresh du cron <code>app:sync-twitch</code>) jusqu'à la réinitialisation. L'association à un match ETF2L suit la même règle que le vrai service : titre contenant les deux noms d'équipes (association forte), sinon une seule correspondance ambiguïté exclue.</p>
         <form id="twitch-form" onsubmit="return false;">
             <div class="form-grid-2">
                 <div class="form-group">

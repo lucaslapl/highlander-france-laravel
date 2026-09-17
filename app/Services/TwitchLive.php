@@ -143,8 +143,13 @@ final class TwitchLive
 
         self::matchStreams($live);
 
+        // Conserve les chaînes simulées par le simulateur admin à travers les
+        // rafraîchissements réels : le cron n'écrase que les données Helix,
+        // les entrées simulées restent jusqu'au reset manuel du cache.
+        $previousChannels = is_array($cache['channels'] ?? null) ? $cache['channels'] : [];
+
         $cache['fetched_at'] = time();
-        $cache['channels'] = $live;
+        $cache['channels'] = self::mergeSimulated($previousChannels, $live);
         $cache['embed'] = in_array(self::EMBED_CHANNEL, $logins, true)
             ? self::resolveEmbed($live, $token, $cache)
             : null;
@@ -285,6 +290,48 @@ final class TwitchLive
             // (le JS affichera la bannière générique).
         }
         unset($channel);
+    }
+
+    /**
+     * Reconstruit la liste des chaînes à servir : les chaînes réellement en
+     * direct (Helix) plus les entrées marquées `simulated` par le simulateur
+     * admin encore présentes dans le cache précédent. Une chaîne réelle prime
+     * sur une simulée de même login (celle-ci est alors abandonnée).
+     *
+     * @param  array<int, array<string, mixed>>  $previous  Chaînes du cache précédent.
+     * @param  array<int, array<string, mixed>>  $live  Chaînes actuellement en direct (Helix).
+     * @return array<int, array<string, mixed>>
+     */
+    public static function mergeSimulated(array $previous, array $live): array
+    {
+        $simulated = array_values(array_filter(
+            $previous,
+            static fn (mixed $ch): bool => is_array($ch) && ($ch['simulated'] ?? false) === true
+        ));
+
+        if ($simulated === []) {
+            return $live;
+        }
+
+        $liveLogins = [];
+        foreach ($live as $channel) {
+            $login = (string) ($channel['login'] ?? '');
+            if ($login !== '') {
+                $liveLogins[$login] = true;
+            }
+        }
+
+        foreach ($simulated as $sim) {
+            $login = (string) ($sim['login'] ?? '');
+
+            if ($login !== '' && isset($liveLogins[$login])) {
+                continue;
+            }
+
+            $live[] = $sim;
+        }
+
+        return $live;
     }
 
     /**

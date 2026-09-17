@@ -17,8 +17,12 @@ const monitorState = {
     active: false,
     lastPollAt: null,
     lastPollOk: null,
+    lastPollStale: null,
     lastError: null,
     currentlyLive: false,
+    primed: false,
+    lastLiveSeenAt: null,
+    lastLiveTitle: null,
     lastAnnouncedTitle: null,
     lastAnnouncedAt: null,
 };
@@ -176,11 +180,13 @@ async function fetchLiveChannels() {
         const body = await response.json();
 
         monitorState.lastPollOk = true;
+        monitorState.lastPollStale = body?.data?.stale === true;
         monitorState.lastError = null;
 
         return body?.data?.channels ?? [];
     } catch (error) {
         monitorState.lastPollOk = false;
+        monitorState.lastPollStale = null;
         monitorState.lastError = error.message;
         console.error('[twitchMonitor] Erreur de poll :', error.message);
 
@@ -189,28 +195,62 @@ async function fetchLiveChannels() {
 }
 
 /**
+ * Verrou anti-chevauchée : un poll long (fetch jusqu'à 10 s) ne doit pas
+ * être doublé par le tick suivant, sinon deux annonces pourraient partir.
+ */
+let polling = false;
+
+/**
  * Récupère l'état des streams depuis l'API du site et détecte les transitions.
+ *
+ * Le premier poll (au démarrage) prime l'état courant SANS annoncer : un
+ * stream déjà en cours ne doit pas déclencher de notification.
  */
 async function poll(client) {
-    const channels = await fetchLiveChannels();
+    if (polling) {
+        console.warn('[twitchMonitor] Poll ignoré : une exécution précédente est toujours en cours.');
+        return;
+    }
 
-    const targetLive = channels.some(
-        (ch) => (ch.login ?? '').toLowerCase() === TARGET_LOGIN
-    );
+    polling = true;
 
-    const wasLive = monitorState.currentlyLive;
+    try {
+        const channels = await fetchLiveChannels();
 
-    if (targetLive && !wasLive) {
-        const stream = channels.find(
+        const targetLive = channels.some(
             (ch) => (ch.login ?? '').toLowerCase() === TARGET_LOGIN
         );
 
-        if (stream) {
+        const stream = targetLive
+            ? channels.find((ch) => (ch.login ?? '').toLowerCase() === TARGET_LOGIN)
+            : null;
+        const wasLive = monitorState.currentlyLive;
+
+        // Trace la dernière fois où le direct a été observé (annoncé ou non),
+        // pour diagnostiquer un stream manqué via /health.
+        if (targetLive) {
+            monitorState.lastLiveSeenAt = Date.now();
+            monitorState.lastLiveTitle = stream?.title ?? null;
+        }
+
+        if (!targetLive) {
+            if (!monitorState.primed) {
+                console.log('[twitchMonitor] Premier poll : état initial « hors ligne », annonce désactivée.');
+            } else if (wasLive) {
+                console.log('[twitchMonitor] Stream terminé : retour hors ligne.');
+            }
+        } else if (!monitorState.primed) {
+            console.log('[twitchMonitor] Premier poll : état initial « en direct », annonce désactivée (stream probablement commencé avant le démarrage du bot).');
+        } else if (!wasLive) {
             await sendAnnouncement(client, stream);
         }
-    }
+        // targetLive && wasLive : déjà annoncé au poll précédent, on ne réitère pas.
 
-    monitorState.currentlyLive = targetLive;
+        monitorState.primed = true;
+        monitorState.currentlyLive = targetLive;
+    } finally {
+        polling = false;
+    }
 }
 
 /**
