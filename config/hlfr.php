@@ -35,7 +35,8 @@ return [
     'discord_webhook_token' => env('DISCORD_WEBHOOK_TOKEN', ''),
 
     // API Twitch (https://dev.twitch.tv/console/apps, type Website, catégorie Other).
-    // Détection des chaînes en direct : badge "EN DIRECT" sur les matchs streamés.
+    // Détection des chaînes en direct : badge "EN DIRECT" sur les matchs streamés
+    // et lecteur intégré de l'accueil (chaîne highlanderfrance requise dedans).
     // twitch_channels : logins minuscules séparés par des virgules.
     'twitch_client_id' => env('TWITCH_CLIENT_ID', ''),
     'twitch_client_secret' => env('TWITCH_CLIENT_SECRET', ''),
@@ -43,6 +44,19 @@ return [
         static fn (string $c): string => mb_strtolower(trim($c)),
         explode(',', (string) env('TWITCH_CHANNELS', ''))
     ))),
+
+    // Streamers « HL France » mis en avant dans l'encadré sidebar (badge HL FR).
+    // Liste séparée de twitch_channels : ces logins sont seulement sondés en
+    // plus pour l'encadré, sans toucher aux badges ni au lecteur embed.
+    'twitch_hl_channels' => array_values(array_filter(array_map(
+        static fn (string $c): string => mb_strtolower(trim($c)),
+        explode(',', (string) env('TWITCH_HL_CHANNELS', ''))
+    ))),
+
+    // Encadré sidebar « Streamers en direct » : filtre par langue (code ISO
+    // 639-1, ex. fr) et par jeu (ID Helix, TF2 = 33214) de /helix/streams.
+    'twitch_fr_language' => (string) env('TWITCH_FR_LANGUAGE', 'fr'),
+    'twitch_tf2_game_id' => (string) env('TWITCH_TF2_GAME_ID', '33214'),
 
     // ID du serveur Discord attendu (optionnel).
     'discord_guild_id' => env('DISCORD_GUILD_ID', ''),

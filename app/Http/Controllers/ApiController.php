@@ -47,6 +47,19 @@ final class ApiController extends Controller
     }
 
     /**
+     * Liste de l'encadré sidebar : streamers français actuellement en direct
+     * sur TF2 (HL France mis en avant), max 5. Lecture pure du cache alimenté
+     * par app:sync-twitch : aucun appel HTTP externe dans la requête.
+     * GET /api/twitch-sidebar
+     */
+    public function twitchSidebar(): JsonResponse
+    {
+        return response()
+            ->json(['data' => TwitchLive::status()['sidebar']])
+            ->header('Cache-Control', 'no-store');
+    }
+
+    /**
      * Statistiques globales de la page d'accueil.
      * Le compteur de membres Discord (cache_discord_stats.json) est fusionné
      * s'il existe ; sinon la clé members est absente et la vue garde son fallback.

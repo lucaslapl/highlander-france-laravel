@@ -43,6 +43,7 @@ Route::prefix('api')->group(function (): void {
     Route::get('/search-players', [ApiController::class, 'searchPlayers']);
     Route::get('/live-matches', [ApiController::class, 'liveMatches']);
     Route::get('/twitch-live', [ApiController::class, 'twitchLive']);
+    Route::get('/twitch-sidebar', [ApiController::class, 'twitchSidebar']);
     Route::get('/profile-stats', [ProfileController::class, 'profileStats']);
 
     // Endpoints admin (session + rôle admin requis).

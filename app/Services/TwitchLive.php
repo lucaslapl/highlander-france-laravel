@@ -29,6 +29,9 @@ final class TwitchLive
     /** Fenêtre horaire d'association stream <-> match (±4 h autour de maintenant). */
     private const TIME_WINDOW = 4 * 3600;
 
+    /** Nombre maximum de streamers affichés dans l'encadré sidebar. */
+    private const SIDEBAR_MAX = 5;
+
     private const OAUTH_URL = 'https://id.twitch.tv/oauth2/token';
 
     private const STREAMS_URL = 'https://api.twitch.tv/helix/streams';
@@ -41,26 +44,29 @@ final class TwitchLive
     private const EMBED_CHANNEL = 'highlanderfrance';
 
     /**
-     * État servi à l'API : chaînes en direct (+ matchs associés par titre)
-     * et état du lecteur intégré de l'accueil (live ou dernière VOD).
+     * État servi à l'API : chaînes en direct (+ matchs associés par titre),
+     * état du lecteur intégré de l'accueil (live ou dernière VOD) et liste de
+     * l'encadré sidebar (streamers FR TF2, HL France mis en avant).
      *
-     * @return array{channels: array<int, array<string, mixed>>, stale: bool, embed: array<string, mixed>|null}
+     * @return array{channels: array<int, array<string, mixed>>, stale: bool, sidebar: array<int, array<string, mixed>>, embed: array<string, mixed>|null}
      */
     public static function status(): array
     {
         $data = self::read();
         $channels = is_array($data['channels'] ?? null) ? array_values($data['channels']) : [];
+        $sidebar = is_array($data['sidebar'] ?? null) ? array_values($data['sidebar']) : [];
 
         if ($channels !== [] && (! isset($data['fetched_at']) || (int) $data['fetched_at'] < time() - self::STALE_MAX)) {
             // Cache trop ancien : on préfère masquer les badges plutôt que
             // d'afficher un direct probablement terminé. Le lecteur garde le
             // dernier état connu (l'embed canal se corrige de lui-même).
-            return ['channels' => [], 'stale' => true, 'embed' => is_array($data['embed'] ?? null) ? $data['embed'] : null];
+            return ['channels' => [], 'stale' => true, 'sidebar' => [], 'embed' => is_array($data['embed'] ?? null) ? $data['embed'] : null];
         }
 
         return [
             'channels' => $channels,
             'stale' => false,
+            'sidebar' => $sidebar,
             'embed' => is_array($data['embed'] ?? null) ? $data['embed'] : null,
         ];
     }
@@ -120,28 +126,15 @@ final class TwitchLive
             throw new \RuntimeException('Appel API Twitch impossible (HTTP '.$httpCode.')');
         }
 
-        $live = [];
-        foreach ($streams as $stream) {
-            $login = mb_strtolower((string) ($stream['user_login'] ?? ''));
-
-            // Garde-fou : ne servir que les logins réellement suivis.
-            if (! in_array($login, $logins, true)) {
-                continue;
-            }
-
-            $live[] = [
-                'login' => $login,
-                'display_name' => (string) ($stream['user_name'] ?? $stream['user_login'] ?? ''),
-                'title' => (string) ($stream['title'] ?? ''),
-                'viewers' => max(0, (int) ($stream['viewer_count'] ?? 0)),
-                'game_name' => (string) ($stream['game_name'] ?? ''),
-                'started_at' => (string) ($stream['started_at'] ?? ''),
-                'url' => 'https://www.twitch.tv/'.$login,
-                'matched_match_ids' => [],
-            ];
-        }
+        $live = self::normalizeLive($streams, $logins);
 
         self::matchStreams($live);
+
+        // Encadré sidebar : streams FR TF2 (échec de collecte non bloquant) et
+        // chaînes « HL France » de la liste dédiée (twitch_hl_channels), sondées
+        // en plus sans toucher aux badges ni au lecteur embed.
+        $french = self::fetchFrenchStreams($token);
+        $hlLive = self::fetchHlStreams($token);
 
         // Conserve les chaînes simulées par le simulateur admin à travers les
         // rafraîchissements réels : le cron n'écrase que les données Helix,
@@ -150,6 +143,7 @@ final class TwitchLive
 
         $cache['fetched_at'] = time();
         $cache['channels'] = self::mergeSimulated($previousChannels, $live);
+        $cache['sidebar'] = self::buildSidebar(self::mergeSimulated($previousChannels, $hlLive), $french);
         $cache['embed'] = in_array(self::EMBED_CHANNEL, $logins, true)
             ? self::resolveEmbed($live, $token, $cache)
             : null;
@@ -223,6 +217,189 @@ final class TwitchLive
         $streams = $meta['data']['data'] ?? [];
 
         return [is_array($streams) ? $streams : [], $meta['http_code']];
+    }
+
+    /**
+     * Normalise les flux Helix bruts en entrées de cache, en ne gardant que
+     * les logins réellement suivis (garde-fou anti-réponse inattendue).
+     *
+     * @param  array<int, mixed>  $streams  Flux bruts de /helix/streams.
+     * @param  array<int, string>  $logins  Logins autorisés.
+     * @return array<int, array<string, mixed>>
+     */
+    private static function normalizeLive(array $streams, array $logins): array
+    {
+        $live = [];
+
+        foreach ($streams as $stream) {
+            if (! is_array($stream)) {
+                continue;
+            }
+
+            $login = mb_strtolower((string) ($stream['user_login'] ?? ''));
+
+            if ($login === '' || ! in_array($login, $logins, true)) {
+                continue;
+            }
+
+            $live[] = [
+                'login' => $login,
+                'display_name' => (string) ($stream['user_name'] ?? $stream['user_login'] ?? ''),
+                'title' => (string) ($stream['title'] ?? ''),
+                'viewers' => max(0, (int) ($stream['viewer_count'] ?? 0)),
+                'game_name' => (string) ($stream['game_name'] ?? ''),
+                'started_at' => (string) ($stream['started_at'] ?? ''),
+                'url' => 'https://www.twitch.tv/'.$login,
+                'matched_match_ids' => [],
+            ];
+        }
+
+        return $live;
+    }
+
+    /**
+     * Chaînes « HL France » (liste dédiée twitch_hl_channels) actuellement en
+     * direct, pour la mise en avant de l'encadré sidebar. Un échec (HTTP !=
+     * 200) renvoie une liste vide, sans casser le reste du refresh.
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    private static function fetchHlStreams(string $token): array
+    {
+        $hlLogins = array_values((array) config('hlfr.twitch_hl_channels'));
+
+        if ($hlLogins === []) {
+            return [];
+        }
+
+        [$streams, $httpCode] = self::fetchStreams($hlLogins, $token);
+
+        if ($httpCode !== 200) {
+            return [];
+        }
+
+        return self::normalizeLive($streams, $hlLogins);
+    }
+
+    /**
+     * Chaînes francophones actuellement en direct sur le jeu cible (TF2) pour
+     * l'encadré sidebar : /helix/streams avec les filtres game_id + language.
+     * Un échec (HTTP != 200) renvoie une liste vide : la partie HL France
+     * reste exploitable.
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    private static function fetchFrenchStreams(string $token): array
+    {
+        $gameId = trim((string) config('hlfr.twitch_tf2_game_id'));
+        $language = trim((string) config('hlfr.twitch_fr_language'));
+
+        if ($gameId === '' || $language === '') {
+            return [];
+        }
+
+        $url = self::STREAMS_URL.'?game_id='.rawurlencode($gameId)
+            .'&language='.rawurlencode($language).'&first=100';
+
+        $headers = [
+            'Client-Id: '.(string) config('hlfr.twitch_client_id'),
+            'Authorization: Bearer '.$token,
+        ];
+
+        $meta = JsonClient::getWithMeta($url, 10, 'Highlander France Bot/1.0', $headers);
+        $streams = $meta['data']['data'] ?? [];
+
+        if ($meta['http_code'] !== 200 || ! is_array($streams)) {
+            return [];
+        }
+
+        $items = [];
+        foreach ($streams as $stream) {
+            $login = mb_strtolower((string) ($stream['user_login'] ?? ''));
+
+            if ($login === '') {
+                continue;
+            }
+
+            $items[] = [
+                'login' => $login,
+                'display_name' => (string) ($stream['user_name'] ?? $stream['user_login'] ?? ''),
+                'title' => (string) ($stream['title'] ?? ''),
+                'viewers' => max(0, (int) ($stream['viewer_count'] ?? 0)),
+                'game_name' => (string) ($stream['game_name'] ?? ''),
+                'url' => 'https://www.twitch.tv/'.$login,
+            ];
+        }
+
+        return $items;
+    }
+
+    /**
+     * Liste de l'encadré sidebar : les chaînes HL France (liste dédiée
+     * `twitch_hl_channels`, simulées comprises) sont mises en avant (hl=true),
+     * puis les autres streams FR TF2 (hl=false). Tri par viewers décroissant
+     * dans chaque groupe, dédoublonnage par login (HL France prioritaire) et
+     * plafond appliqué à l'ensemble.
+     *
+     * @param  array<int, array<string, mixed>>  $priority  Chaînes HL France (cache channels, filtrées twitch_hl_channels + simulées).
+     * @param  array<int, array<string, mixed>>  $french  Streams FR TF2 (Helix).
+     * @return array<int, array<string, mixed>>
+     */
+    public static function buildSidebar(array $priority, array $french, int $max = self::SIDEBAR_MAX): array
+    {
+        $toItem = static function (array $channel, bool $hl): ?array {
+            $login = mb_strtolower((string) ($channel['login'] ?? ''));
+
+            if ($login === '') {
+                return null;
+            }
+
+            return [
+                'login' => $login,
+                'display_name' => (string) ($channel['display_name'] ?? $login),
+                'title' => (string) ($channel['title'] ?? ''),
+                'viewers' => max(0, (int) ($channel['viewers'] ?? 0)),
+                'url' => (string) ($channel['url'] ?? 'https://www.twitch.tv/'.$login),
+                'game_name' => (string) ($channel['game_name'] ?? ''),
+                'hl' => $hl,
+            ];
+        };
+
+        $sortByViewersDesc = static function (array &$group): void {
+            usort($group, static fn (array $a, array $b): int => ($b['viewers'] ?? 0) <=> ($a['viewers'] ?? 0));
+        };
+
+        $priorityItems = [];
+        foreach ($priority as $channel) {
+            if (is_array($channel)) {
+                $item = $toItem($channel, true);
+                if ($item !== null) {
+                    $priorityItems[] = $item;
+                }
+            }
+        }
+        $sortByViewersDesc($priorityItems);
+
+        $seen = [];
+        foreach ($priorityItems as $item) {
+            $seen[$item['login']] = true;
+        }
+
+        $otherItems = [];
+        foreach ($french as $channel) {
+            if (! is_array($channel)) {
+                continue;
+            }
+            $item = $toItem($channel, false);
+            if ($item === null || isset($seen[$item['login']])) {
+                continue;
+            }
+            $seen[$item['login']] = true;
+            $otherItems[] = $item;
+        }
+        $sortByViewersDesc($otherItems);
+
+        return array_slice(array_merge($priorityItems, $otherItems), 0, max(0, $max));
     }
 
     /**
