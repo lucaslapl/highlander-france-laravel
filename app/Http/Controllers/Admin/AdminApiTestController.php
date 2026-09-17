@@ -308,6 +308,9 @@ final class AdminApiTestController extends Controller
             'started_at' => gmdate('Y-m-d\TH:i:s\Z', time() - 600),
             'url' => 'https://www.twitch.tv/'.$login,
             'matched_match_ids' => $matched,
+            // Marquée pour survivre aux refresh du cron (app:sync-twitch) :
+            // seule une réinitialisation via /admin/api-test/twitch/reset l'efface.
+            'simulated' => true,
         ];
 
         $cacheFile = hlfr_data_path(TwitchLive::FILE);
