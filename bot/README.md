@@ -33,10 +33,18 @@ Ajouter une feature = ajouter un fichier dans `events/` (ou un dossier
 ## Annonce automatique de stream
 
 Le bot interroge `/api/twitch-live` du site (cache alimenté par le cron
-`app:sync-twitch`) toutes les 60 s. Quand la chaîne `highlanderfrance` passe
-**hors ligne → en direct**, il envoie un message d'annonce dans le salon
-configuré. La fin du stream n'est pas annoncée. Le premier poll au démarrage
-marque l'état courant **sans** annoncer, pour éviter les fausses annonces.
+`app:sync-twitch`) toutes les 60 s. Quand une **nouvelle diffusion** est
+observée sur la chaîne `highlanderfrance`, il envoie un message d'annonce dans
+le salon configuré. La fin du stream n'est pas annoncée.
+
+La détection s'appuie sur le `started_at` de la diffusion : l'annonce part dès
+que ce dernier diffère de celui déjà annoncé. Elle est **auto-réparante** : un
+état temporairement bloqué (simulation du simulateur non réinitialisée,
+redémarrage du bot pendant un stream, erreur de poll passagère) déclenche
+quand même l'annonce, sans jamais doubler la même diffusion. Le premier poll au
+démarrage marque l'état courant **sans** annoncer, pour éviter les fausses
+annonces : seule une diffusion ultérieure, avec un `started_at` différent,
+déclenche une annonce.
 
 Configuration (`.env` ou UI Plesk) :
 
@@ -147,6 +155,20 @@ dès que personne ne visitait le domaine.
 7. Vérifier : `[bot] Connecté en tant que ...` dans `pm2:logs`, puis le statut
    en ligne du bot sur Discord — il doit **y rester** sans visite du domaine
 
+### Diagnostic et maintenance sans SSH
+
+Les scripts npm ci-dessous s'exécutent via le bouton **Run script** de l'UI
+Plesk (dans le dossier du sous-domaine), donc sans accès SSH :
+
+| Commande | Effet |
+|---|---|
+| `npm run pm2:status` | État des process PM2 (online, uptime, redémarrages) |
+| `npm run pm2:logsdump` | Dump des 200 dernières lignes de logs, **sans** rester en mode « follow » |
+| `npm run pm2:twitchlogs` | `pm2 logs` (5000 dernières lignes) filtré sur `[twitchMonitor]` : vide ⇒ filtre/démarrage à vérifier, voir `pm2:logsdump` |
+| `npm run pm2:health` | État live du bot via `http://127.0.0.1:3000/health` (probe `node:fetch`, fonctionne sans curl ni reverse proxy) |
+| `npm run pm2:restart` | Redémarre Octave (nécessaire après un déploiement de `bot/src/`) |
+| `npm run pm2:resurrect` | Restaure les process mémorisés par `pm2 save` (après reboot) |
+
 ### Garder la page d'administration accessible
 
 Passenger désactivé, le domaine ne répond plus par défaut. Pour conserver
@@ -180,6 +202,7 @@ Deux options :
 | `Used disallowed intents` | SERVER MEMBERS INTENT non activée dans le portail |
 | Push `HTTP 403` | `SITE_WEBHOOK_TOKEN` ≠ `DISCORD_WEBHOOK_TOKEN` côté site |
 | Push `HTTP 403` avec log `guild_id inattendu` | `DISCORD_GUILD_ID` du site ne correspond pas |
-| App hors ligne sur Discord | Process PM2 arrêté (`pm2 logs octave`, `npm run pm2:start`) |
+| App hors ligne sur Discord | Process PM2 arrêté (`npm run pm2:status` puis `npm run pm2:start`) |
+| Stream en direct, cache du site à jour, mais aucune annonce | État du moniteur bloqué ou nouvelle diffusion non détectée → `npm run pm2:logsdump` pour la cause, `npm run pm2:restart` pour repartir sur une base saine |
 | Page d'admin inaccessible | Reverse proxy nginx absent ou Passenger désactivé sans proxy (cf. §4) |
 | Bot hors ligne après un reboot | `pm2 resurrect` non lancé au boot (cf. §4) |

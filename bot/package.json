@@ -10,6 +10,11 @@
         "pm2:start": "pm2 start src/index.js --name octave",
         "pm2:save": "pm2 save",
         "pm2:logs": "pm2 logs octave",
+        "pm2:logsdump": "pm2 logs octave --nostream --lines 200",
+        "pm2:twitchlogs": "sh -c 'pm2 logs octave --nostream --lines 5000 2>/dev/null | grep \"twitchMonitor\" | tail -n 100; echo \"(fin du grep [twitchMonitor])\"'",
+        "pm2:health": "node -e \"fetch('http://127.0.0.1:3000/health').then(r=>r.text()).then(t=>console.log(t)).catch(e=>{console.error(e.message);process.exit(1)})\"",
+        "pm2:status": "pm2 list",
+        "pm2:restart": "pm2 restart octave",
         "pm2:resurrect": "pm2 resurrect"
     },
     "engines": {

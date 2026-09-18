@@ -21,6 +21,7 @@ const monitorState = {
     lastError: null,
     currentlyLive: false,
     primed: false,
+    announcedStartedAt: null,
     lastLiveSeenAt: null,
     lastLiveTitle: null,
     lastAnnouncedTitle: null,
@@ -203,6 +204,12 @@ let polling = false;
 /**
  * Récupère l'état des streams depuis l'API du site et détecte les transitions.
  *
+ * L'annonce part quand une NOUVELLE session de diffusion est observée : le
+ * `started_at` renvoyé par le site diffère de celui déjà annoncé (ou rien n'a
+ * encore été annoncé). Cette détection est auto-réparante : elle rattrape un
+ * état bloqué (simulation non réinitialisée, redémarrage du bot pendant un
+ * stream, erreur de poll transitoire) sans jamais redoubler la même diffusion.
+ *
  * Le premier poll (au démarrage) prime l'état courant SANS annoncer : un
  * stream déjà en cours ne doit pas déclencher de notification.
  */
@@ -224,6 +231,7 @@ async function poll(client) {
         const stream = targetLive
             ? channels.find((ch) => (ch.login ?? '').toLowerCase() === TARGET_LOGIN)
             : null;
+        const startedAt = stream?.started_at ?? null;
         const wasLive = monitorState.currentlyLive;
 
         // Trace la dernière fois où le direct a été observé (annoncé ou non),
@@ -239,12 +247,18 @@ async function poll(client) {
             } else if (wasLive) {
                 console.log('[twitchMonitor] Stream terminé : retour hors ligne.');
             }
+            monitorState.announcedStartedAt = null;
         } else if (!monitorState.primed) {
+            // Premier poll : échantillonne sans annoncer, et mémorise la session
+            // observée pour ne pas annoncer au poll suivant.
             console.log('[twitchMonitor] Premier poll : état initial « en direct », annonce désactivée (stream probablement commencé avant le démarrage du bot).');
-        } else if (!wasLive) {
+            monitorState.announcedStartedAt = startedAt;
+        } else if (startedAt !== monitorState.announcedStartedAt) {
+            // Nouvelle diffusion (démarrage hors ligne→live, reprise après un
+            // état bloqué ou un redémarrage) : on annonce une seule fois.
             await sendAnnouncement(client, stream);
         }
-        // targetLive && wasLive : déjà annoncé au poll précédent, on ne réitère pas.
+        // startedAt === announcedStartedAt : même diffusion déjà annoncée.
 
         monitorState.primed = true;
         monitorState.currentlyLive = targetLive;
