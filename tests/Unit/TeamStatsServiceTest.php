@@ -188,6 +188,26 @@ class TeamStatsServiceTest extends TestCase
         $this->assertNotNull($meta);
         $this->assertSame('France', $meta['name']);
         $this->assertSame('high', $meta['suggested_division']);
+        $this->assertSame('9v9', $meta['suggested_format']);
+    }
+
+    public function test_fetch_team_meta_suggere_le_format_6v6(): void
+    {
+        $payload = [
+            'status' => ['code' => 200],
+            'team' => [
+                'id' => 15176,
+                'name' => 'France',
+                'competitions' => [
+                    ['competition' => 'ETF2L 6v6 Season 52', 'category' => '6v6 Season', 'type' => '6v6', 'division' => ['name' => 'High', 'tier' => 3]],
+                ],
+            ],
+        ];
+
+        $meta = $this->service(['/team/15176' => $payload])->fetchTeamMeta(15176);
+
+        $this->assertNotNull($meta);
+        $this->assertSame('6v6', $meta['suggested_format']);
     }
 
     public function test_fetch_team_meta_ignore_les_divisions_inconnues(): void
@@ -207,6 +227,7 @@ class TeamStatsServiceTest extends TestCase
 
         $this->assertNotNull($meta);
         $this->assertNull($meta['suggested_division']);
+        $this->assertSame('9v9', $meta['suggested_format']);
     }
 
     // ─── Résultats + winrate par compétition ─────────────────────────────

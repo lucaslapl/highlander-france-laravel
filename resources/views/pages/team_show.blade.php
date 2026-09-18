@@ -36,6 +36,9 @@
                 @if (! empty($team['division_label']))
                     <span class="team-division">{{ e($team['division_label']) }}</span>
                 @endif
+                @if (! empty($team['format_label']))
+                    <span class="team-format">{{ e($team['format_label']) }}</span>
+                @endif
                 <span><i class="fa-solid fa-users"></i> {{ count($members) }} joueur{{ count($members) > 1 ? 's' : '' }}</span>
                 <a href="https://etf2l.org/teams/{{ (int) $team['etf2l_team_id'] }}/" target="_blank" rel="noopener">
                     <i class="fa-solid fa-arrow-up-right-from-square"></i> ETF2L

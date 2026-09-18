@@ -24,6 +24,9 @@
                             <span class="team-item-tag">{{ e($team['tag'] !== null && $team['tag'] !== '' ? $team['tag'] : mb_substr((string) $team['name'], 0, 3)) }}</span>
                         @endif
                         <span class="team-item-name">{{ e($team['name']) }}</span>
+                        @if (! empty($team['format_label']))
+                            <span class="team-item-format" title="Format de jeu">{{ e($team['format_label']) }}</span>
+                        @endif
                         @if (! empty($sidebarDivisions[$team['division'] ?? '']))
                             <span class="team-item-division">{{ e($sidebarDivisions[$team['division']]) }}</span>
                         @endif

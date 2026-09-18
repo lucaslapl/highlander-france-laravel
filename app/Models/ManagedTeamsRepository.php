@@ -39,10 +39,12 @@ final class ManagedTeamsRepository
             ->all();
 
         $counts = $this->memberCounts(array_column($teams, 'id'));
+        $formats = (array) config('hlfr.team_formats', []);
 
         foreach ($teams as &$team) {
             $team['member_count'] = $counts[(int) $team['id']] ?? 0;
             $team['logo_url'] = self::logoUrl($team['logo_path'] ?? null);
+            $team['format_label'] = $formats[$team['format'] ?? ''] ?? null;
         }
         unset($team);
 
@@ -189,6 +191,7 @@ final class ManagedTeamsRepository
                 't.tag',
                 't.country',
                 't.division',
+                't.format',
                 't.logo_path',
                 'm.class',
                 'm.status',
@@ -204,11 +207,13 @@ final class ManagedTeamsRepository
 
         $divisions = (array) config('hlfr.team_divisions', []);
         $classLabels = (array) config('hlfr.tf2_classes', []);
+        $formats = (array) config('hlfr.team_formats', []);
 
         foreach ($rows as &$row) {
             $row['team_url'] = '/equipes/'.$row['slug'];
             $row['logo_url'] = self::logoUrl($row['logo_path'] ?? null);
             $row['division_label'] = $divisions[$row['division'] ?? ''] ?? null;
+            $row['format_label'] = $formats[$row['format'] ?? ''] ?? null;
             $row['class_label'] = $classLabels[$row['class'] ?? ''] ?? null;
             $row['status_label'] = ($row['status'] ?? 'starter') === 'backup' ? 'Remplaçant' : 'Titulaire';
         }

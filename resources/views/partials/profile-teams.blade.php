@@ -33,6 +33,9 @@
                         @if (! empty($team['division_label']))
                             <span class="profile-team__division">{{ e($team['division_label']) }}</span>
                         @endif
+                        @if (! empty($team['format_label']))
+                            <span class="profile-team__format">{{ e($team['format_label']) }}</span>
+                        @endif
                         @if (! empty($team['class_label']))
                             <span class="profile-team__class">{{ e($team['class_label']) }}</span>
                         @endif

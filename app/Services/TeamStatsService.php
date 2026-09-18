@@ -260,7 +260,48 @@ final class TeamStatsService
             'country' => isset($team['country']) ? mb_strtolower((string) $team['country']) : null,
             'competitions' => (array) ($team['competitions'] ?? []),
             'suggested_division' => $this->suggestedDivision($team),
+            'suggested_format' => $this->suggestedFormat($team),
         ];
+    }
+
+    /**
+     * Format de jeu le plus probable d'une équipe (clé de `hlfr.team_formats` :
+     * 9v9 / 6v6), déduit de ses compétitions ETF2L. On garde la compétition la
+     * plus récente (saison la plus élevée), puis le tier le plus haut, dont le
+     * mode est détectable ; repli sur 9v9 (communauté du site centrée HL).
+     */
+    private function suggestedFormat(array $team): string
+    {
+        $bestSeason = -1;
+        $bestTier = PHP_INT_MAX;
+        $bestMode = self::MODE_MAP['highlander'];
+
+        foreach (($team['competitions'] ?? []) as $comp) {
+            $mode = self::gameModeFromCompetition(
+                (string) ($comp['type'] ?? ''),
+                (string) ($comp['category'] ?? ''),
+                (string) ($comp['competition'] ?? '')
+            );
+            if (! in_array($mode, self::MODE_MAP, true)) {
+                continue;
+            }
+
+            $season = $this->competitionSeason(
+                (string) ($comp['competition'] ?? ''),
+                (string) ($comp['category'] ?? '')
+            ) ?? -1;
+            $tier = is_array($comp['division'] ?? null) && isset($comp['division']['tier']) && $comp['division']['tier'] !== null
+                ? (int) $comp['division']['tier']
+                : PHP_INT_MAX;
+
+            if ($season > $bestSeason || ($season === $bestSeason && $tier < $bestTier)) {
+                $bestSeason = $season;
+                $bestTier = $tier;
+                $bestMode = $mode === '6s' ? '6v6' : $mode;
+            }
+        }
+
+        return $bestMode;
     }
 
     /**

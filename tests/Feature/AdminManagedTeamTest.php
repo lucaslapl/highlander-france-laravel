@@ -101,6 +101,32 @@ class AdminManagedTeamTest extends TestCase
         $this->assertSame(1, (int) $team->is_active);
     }
 
+    public function test_update_enregistre_le_format_de_jeu(): void
+    {
+        $teamId = $this->insertTeam();
+
+        $this->withSession($this->adminSession())
+            ->post('/admin/equipes/'.$teamId.'/update', [
+                'name' => 'France',
+                'format' => '6v6',
+            ])
+            ->assertRedirect();
+
+        $this->assertSame('6v6', DB::table('managed_teams')->where('id', $teamId)->value('format'));
+    }
+
+    public function test_update_rejette_un_format_inconnu(): void
+    {
+        $teamId = $this->insertTeam();
+
+        $this->withSession($this->adminSession())
+            ->postJson('/admin/equipes/'.$teamId.'/update', [
+                'name' => 'France',
+                'format' => '5cp',
+            ])
+            ->assertStatus(422);
+    }
+
     public function test_update_conserve_l_activation_si_absent_du_formulaire(): void
     {
         $teamId = $this->insertTeam(['is_active' => 1]);

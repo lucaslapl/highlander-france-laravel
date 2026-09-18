@@ -49,6 +49,7 @@ final class ManagedTeamImportService
             'country' => $ros['country'] !== null ? mb_substr((string) $ros['country'], 0, 64) : null,
             'etf2l_team_id' => $etf2lTeamId,
             'division' => $meta['suggested_division'] ?? null,
+            'format' => $meta['suggested_format'] ?? '9v9',
             'is_active' => 0,
             'created_at' => now(),
             'updated_at' => now(),

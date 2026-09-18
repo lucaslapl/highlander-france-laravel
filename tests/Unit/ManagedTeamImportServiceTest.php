@@ -72,6 +72,7 @@ class ManagedTeamImportServiceTest extends TestCase
         $this->assertSame('France', $team->name);
         $this->assertSame('FRANCE', $team->tag);
         $this->assertSame('high', $team->division);
+        $this->assertSame('9v9', $team->format);
         $this->assertSame(0, (int) $team->is_active);
 
         $members = DB::table('managed_team_members')->where('team_id', $team->id)->orderBy('id')->get();
@@ -80,6 +81,19 @@ class ManagedTeamImportServiceTest extends TestCase
         $this->assertSame(501, (int) $members[0]->etf2l_player_id);
         $this->assertSame('76561198084918608', $members[0]->steamid64);
         $this->assertSame('belgium', $members[1]->country);
+    }
+
+    public function test_import_suggere_le_format_6v6(): void
+    {
+        $payload = $this->teamPayload();
+        $payload['team']['competitions'] = [
+            ['competition' => 'ETF2L 6v6 Season 52', 'category' => '6v6 Season', 'type' => '6v6', 'division' => ['name' => 'High', 'tier' => 3]],
+        ];
+
+        $result = $this->importService(['/team/15176' => $payload])->import(15176);
+
+        $this->assertTrue($result['ok']);
+        $this->assertSame('6v6', DB::table('managed_teams')->where('etf2l_team_id', 15176)->value('format'));
     }
 
     public function test_import_refuse_une_equipe_deja_geree(): void

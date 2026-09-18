@@ -161,6 +161,13 @@ return [
         '' => 4,
     ],
 
+    // Formats de jeu des équipes FR (badge discret sur le site). Évolutif :
+    // ajouter une clé suffit pour un nouveau format possible.
+    'team_formats' => [
+        '9v9' => '9v9',
+        '6v6' => '6v6',
+    ],
+
     // Noms de division renvoyés par l'API ETF2L => divisions du site
     // (suggestion automatique à la création, validée ensuite par l'admin).
     'etf2l_division_map' => [

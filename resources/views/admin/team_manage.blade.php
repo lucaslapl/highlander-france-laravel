@@ -67,6 +67,15 @@
                 @endforeach
             </select>
         </div>
+        <div class="form-group">
+            <label class="admin-form-label">Format de jeu</label>
+            <select class="form-control" name="format">
+                <option value="">— Non défini —</option>
+                @foreach ($formats as $key => $label)
+                    <option value="{{ $key }}" @selected(old('format', $team['format'] ?? '') === $key)>{{ $label }}</option>
+                @endforeach
+            </select>
+        </div>
     </div>
     <div class="form-group">
         <label class="admin-form-label">Slogan (affiché sous le nom, max 160 caractères)</label>

@@ -44,6 +44,7 @@
                 <th>Tag</th>
                 <th>Pays</th>
                 <th>Division</th>
+                <th>Format</th>
                 <th>Roster</th>
                 <th>Leaders</th>
                 <th>Statut</th>
@@ -70,6 +71,7 @@
                     @endif
                 </td>
                 <td>{{ e($divisions[$team['division']] ?? '—') }}</td>
+                <td>{{ e(config('hlfr.team_formats')[$team['format'] ?? ''] ?? '—') }}</td>
                 <td>{{ (int) $team['member_count'] }}</td>
                 <td>{{ (int) $team['leader_count'] }}</td>
                 <td>

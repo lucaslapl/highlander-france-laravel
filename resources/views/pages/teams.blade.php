@@ -41,9 +41,12 @@
                                     @endif
                                 </span>
                                 <span class="team-card__meta">
-                                    @include('partials.flag', ['country' => $team['country'] ?? null, 'label' => (string) ($team['country'] ?? '')])
-                                    <span>{{ (int) $team['member_count'] }} joueur{{ (int) $team['member_count'] > 1 ? 's' : '' }}</span>
-                                </span>
+                                        @include('partials.flag', ['country' => $team['country'] ?? null, 'label' => (string) ($team['country'] ?? '')])
+                                        @if (! empty($team['format_label']))
+                                            <span class="team-format">{{ e($team['format_label']) }}</span>
+                                        @endif
+                                        <span>{{ (int) $team['member_count'] }} joueur{{ (int) $team['member_count'] > 1 ? 's' : '' }}</span>
+                                    </span>
                             </span>
                         </a>
                     @endforeach

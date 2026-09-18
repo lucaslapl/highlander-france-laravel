@@ -102,6 +102,9 @@ final class ManagedTeamService
         $divisions = (array) config('hlfr.team_divisions', []);
         $team['division_label'] = $divisions[$team['division'] ?? ''] ?? null;
 
+        $formats = (array) config('hlfr.team_formats', []);
+        $team['format_label'] = $formats[$team['format'] ?? ''] ?? null;
+
         return $team;
     }
 }

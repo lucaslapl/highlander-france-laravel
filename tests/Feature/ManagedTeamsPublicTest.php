@@ -73,6 +73,18 @@ class ManagedTeamsPublicTest extends TestCase
         $response->assertDontSee('Cachee');
     }
 
+    public function test_le_listing_affiche_le_badge_de_format(): void
+    {
+        $this->insertTeam(['slug' => 'sixes', 'name' => 'Sixes', 'format' => '6v6']);
+        $this->insertTeam(['slug' => 'hl', 'name' => 'Highlander', 'format' => '9v9']);
+
+        $response = $this->get('/equipes');
+
+        $response->assertOk();
+        $response->assertSee('team-format', false);
+        $response->assertSeeInOrder(['Sixes', '6v6', 'Highlander', '9v9'], false);
+    }
+
     // ─── Fiche équipe ────────────────────────────────────────────────────
 
     public function test_la_fiche_equipe_repond_404_pour_une_equipe_inconnue(): void
@@ -101,6 +113,14 @@ class ManagedTeamsPublicTest extends TestCase
         $response->assertOk();
         $response->assertSee('France');
         $response->assertSee('Joueur');
+    }
+
+    public function test_la_fiche_equipe_affiche_le_badge_de_format(): void
+    {
+        $this->bindEmptyStats();
+        $this->insertTeam(['format' => '6v6']);
+
+        $this->get('/equipes/france')->assertOk()->assertSee('6v6');
     }
 
     // ─── Permissions d'édition ────────────────────────────────────────────

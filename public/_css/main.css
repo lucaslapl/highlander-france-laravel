@@ -2937,6 +2937,19 @@ body #nav .nav-content .nav-live-badge[hidden] {
   padding: 1px 6px;
 }
 
+.team-item-format {
+  flex-shrink: 0;
+  font-size: 0.68em;
+  font-weight: bold;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: #7be9dc;
+  background: rgba(46, 196, 182, 0.1);
+  border: 1px solid rgba(46, 196, 182, 0.3);
+  border-radius: 4px;
+  padding: 1px 6px;
+}
+
 .teams-sidebar-more {
   display: block;
   margin-top: 10px;
@@ -3274,6 +3287,19 @@ body #nav .nav-content .nav-live-badge[hidden] {
   color: #fbb7fb;
   background: rgba(251, 183, 251, 0.14);
   border: 1px solid rgba(251, 183, 251, 0.3);
+}
+
+.team-format {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 5px;
+  font-size: 0.72em;
+  font-weight: bold;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: #7be9dc;
+  background: rgba(46, 196, 182, 0.12);
+  border: 1px solid rgba(46, 196, 182, 0.32);
 }
 
 .team-hero__slogan {

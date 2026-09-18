@@ -1070,6 +1070,9 @@ body #main #content .edit-card .btn-submit:hover {
 .profile-team__division {
   color: #ccc;
 }
+.profile-team__format {
+  color: #7be9dc;
+}
 .profile-team__class {
   color: #fbb7fb;
 }

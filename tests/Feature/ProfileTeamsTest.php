@@ -91,6 +91,18 @@ class ProfileTeamsTest extends TestCase
         $response->assertSee('Titulaire');
     }
 
+    public function test_le_profil_affiche_le_badge_de_format(): void
+    {
+        $this->insertPlayer();
+        $this->addMember($this->insertTeam(['format' => '6v6']));
+
+        $response = $this->get('/profile/'.self::PLAYER_STEAMID64);
+
+        $response->assertOk();
+        $response->assertSee('profile-team__format', false);
+        $response->assertSee('6v6');
+    }
+
     public function test_le_profil_marque_le_joueur_leader(): void
     {
         $this->insertPlayer();

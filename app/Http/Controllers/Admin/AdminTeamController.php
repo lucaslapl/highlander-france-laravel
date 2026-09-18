@@ -140,6 +140,7 @@ final class AdminTeamController extends Controller
             'team' => $team,
             'members' => $this->teams->members((int) $team['id']),
             'divisions' => config('hlfr.team_divisions', []),
+            'formats' => config('hlfr.team_formats', []),
             'classes' => config('hlfr.tf2_classes', []),
             'divisionLabels' => config('hlfr.team_divisions', []),
         ]);
@@ -162,6 +163,7 @@ final class AdminTeamController extends Controller
             'tag' => ['nullable', 'string', 'max:64'],
             'country' => ['nullable', 'string', 'max:64'],
             'division' => ['nullable', Rule::in(array_keys(config('hlfr.team_divisions', [])))],
+            'format' => ['nullable', Rule::in(array_keys(config('hlfr.team_formats', [])))],
             'slogan' => ['nullable', 'string', 'max:160'],
             'description' => ['nullable', 'string', 'max:20000'],
             'members.*.class' => ['nullable', Rule::in(array_keys(config('hlfr.tf2_classes', [])))],
@@ -174,6 +176,7 @@ final class AdminTeamController extends Controller
         $tag = $data['tag'] ?? null;
         $country = $data['country'] ?? null;
         $division = $data['division'] ?? null;
+        $format = $data['format'] ?? null;
         $slogan = $data['slogan'] ?? null;
         $description = $data['description'] ?? null;
 
@@ -182,6 +185,7 @@ final class AdminTeamController extends Controller
             'tag' => $tag !== null && (string) $tag !== '' ? mb_substr((string) $tag, 0, 64) : null,
             'country' => $country !== null && (string) $country !== '' ? mb_substr((string) $country, 0, 64) : null,
             'division' => $division !== null && (string) $division !== '' ? (string) $division : null,
+            'format' => $format !== null && (string) $format !== '' ? (string) $format : null,
             'slogan' => $slogan !== null && (string) $slogan !== '' ? mb_substr((string) $slogan, 0, 160) : null,
             'description' => $description !== null && (string) $description !== '' ? (string) $description : null,
             'updated_at' => now(),
