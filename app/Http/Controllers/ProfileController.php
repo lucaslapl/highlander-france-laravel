@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Controllers;
 
 use App\Models\Etf2lRepository;
+use App\Models\ManagedTeamsRepository;
 use App\Models\PlayerRepository;
 use App\Models\PlayerStatsRepository;
 use App\Services\Auth;
@@ -564,6 +565,7 @@ final class ProfileController extends Controller
             'etf2lLevels' => $this->etf2l->playerLevels($steamid3),
             'palmares' => $this->etf2l->playerPalmares($steamid3),
             'franceBadges' => FranceBadgeService::forSteamId3($steamid3),
+            'managedTeams' => (new ManagedTeamsRepository)->teamsForPlayer((string) $data['steamid64']),
             'profileLinks' => config('hlfr.profile_links'),
             'profileGear' => config('hlfr.profile_gear'),
             'age' => $age,

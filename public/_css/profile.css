@@ -987,4 +987,105 @@ body #main #content .edit-card .btn-submit:hover {
   margin: 2px 0;
 }
 
+/* --- Équipes FR actuelles sur le profil --- */
+.profile-teams {
+  margin: 15px 0;
+  padding: 0 5px;
+}
+.profile-teams h4 {
+  margin-bottom: 10px;
+}
+.profile-teams-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 10px;
+}
+.profile-team {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  background-color: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  text-decoration: none;
+  transition: background-color 0.15s ease-in-out, transform 0.15s ease-in-out;
+}
+.profile-team:hover {
+  background-color: rgba(255, 255, 255, 0.16);
+  transform: translateY(-1px);
+}
+.profile-team__logo {
+  flex-shrink: 0;
+  width: 38px;
+  height: 38px;
+  border-radius: 6px;
+  overflow: hidden;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.08);
+}
+.profile-team__logo img {
+  width: 38px;
+  height: 38px;
+  object-fit: contain;
+  display: block;
+}
+.profile-team__initials {
+  font-size: 0.8em;
+  font-weight: 800;
+  letter-spacing: 0.5px;
+  color: #fbb7fb;
+}
+.profile-team__body {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+.profile-team__name {
+  color: #e8e8e8;
+  font-weight: 600;
+  font-size: 0.95em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.profile-team__leader {
+  color: #fbb7fb;
+  font-size: 0.75em;
+}
+.profile-team__meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #9a9a9a;
+  font-size: 0.78em;
+  flex-wrap: wrap;
+}
+.profile-team__division {
+  color: #ccc;
+}
+.profile-team__class {
+  color: #fbb7fb;
+}
+.profile-team__status {
+  padding: 1px 6px;
+  border-radius: 4px;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+}
+.profile-team__status.status-backup {
+  color: #f0b95c;
+  border-color: rgba(240, 185, 92, 0.4);
+}
+@media all and (max-width: 720px) {
+  .profile-teams-list {
+    grid-template-columns: 1fr;
+  }
+}
+
 /*# sourceMappingURL=profile.css.map */

@@ -166,6 +166,70 @@ final class ManagedTeamsRepository
     }
 
     /**
+     * Équipes françaises actives auxquelles appartient un joueur (profil),
+     * dans l'ordre des divisions (Prem > High > Low > Open, puis alphabétique),
+     * enrichies (lien équipe, logo, libellés de division, classe et statut).
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    public function teamsForPlayer(string $steamid64): array
+    {
+        if (! preg_match('/^\d{17}$/', $steamid64)) {
+            return [];
+        }
+
+        $rows = DB::table('managed_team_members as m')
+            ->join('managed_teams as t', 't.id', '=', 'm.team_id')
+            ->where('m.steamid64', $steamid64)
+            ->where('t.is_active', 1)
+            ->select(
+                't.id',
+                't.slug',
+                't.name',
+                't.tag',
+                't.country',
+                't.division',
+                't.logo_path',
+                'm.class',
+                'm.status',
+                'm.is_leader'
+            )
+            ->get()
+            ->map(static fn ($row): array => (array) $row)
+            ->all();
+
+        if ($rows === []) {
+            return [];
+        }
+
+        $divisions = (array) config('hlfr.team_divisions', []);
+        $classLabels = (array) config('hlfr.tf2_classes', []);
+
+        foreach ($rows as &$row) {
+            $row['team_url'] = '/equipes/'.$row['slug'];
+            $row['logo_url'] = self::logoUrl($row['logo_path'] ?? null);
+            $row['division_label'] = $divisions[$row['division'] ?? ''] ?? null;
+            $row['class_label'] = $classLabels[$row['class'] ?? ''] ?? null;
+            $row['status_label'] = ($row['status'] ?? 'starter') === 'backup' ? 'Remplaçant' : 'Titulaire';
+        }
+        unset($row);
+
+        usort($rows, static function (array $a, array $b): int {
+            $order = (array) config('hlfr.team_division_order', []);
+            $oa = $order[$a['division'] ?? ''] ?? 99;
+            $ob = $order[$b['division'] ?? ''] ?? 99;
+
+            if ($oa !== $ob) {
+                return $oa <=> $ob;
+            }
+
+            return strcasecmp((string) ($a['name'] ?? ''), (string) ($b['name'] ?? ''));
+        });
+
+        return $rows;
+    }
+
+    /**
      * Membres d'une équipe, triés Leaders > Titulaires > Remplaçants puis
      * alphabétiquement, et enrichis (lien profil site, avatar, libellés).
      *

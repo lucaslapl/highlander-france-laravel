@@ -31,6 +31,8 @@
     @include('partials.profile-header')
 
     @include('partials.profile-about')
+
+    @include('partials.profile-teams')
 </div>
 
 <br>

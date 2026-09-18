@@ -28,6 +28,8 @@
 
     @include('partials.profile-about')
 
+    @include('partials.profile-teams')
+
     @include('partials.profile-palmares')
 
     <div class="dashboard-actions flex align-center gap-15">
