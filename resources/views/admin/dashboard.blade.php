@@ -141,6 +141,12 @@ window.__dashboardData = {!! json_encode($dashboardData, JSON_UNESCAPED_UNICODE 
             </div>
 
             <div class="admin-action-card" style="--accent: #2ec4b6;">
+                <h4 class="admin-action-card__title"><i class="fa-solid fa-users-between-lines"></i> Équipes FR</h4>
+                <p class="admin-action-card__desc">Import d'équipes ETF2L, roster, leaders, division et logo pour la sidebar d'accueil et les pages /equipes.</p>
+                <a href="/admin/equipes" class="admin-link-btn">Gérer les équipes</a>
+            </div>
+
+            <div class="admin-action-card" style="--accent: #2ec4b6;">
                 <h4 class="admin-action-card__title"><i class="fa-solid fa-user-chart"></i> Stats joueur</h4>
                 <p class="admin-action-card__desc">Calcul de stats (K/D, DPM, dégâts, soins, winrate) d'un joueur à partir de logs logs.tf saisis manuellement, pour les présentations sur les streams.</p>
                 <a href="/admin/stats-joueur" class="admin-link-btn">Calculer des stats joueur</a>

@@ -81,6 +81,99 @@ class TeamStatsServiceTest extends TestCase
         $this->assertNull($service->fetchRoster(9999));
     }
 
+    // ─── Derniers matchs (pages équipes) ──────────────────────────────────
+
+    public function test_fetch_recent_results_dedoublonne_et_normalise(): void
+    {
+        $teamId = 15176;
+
+        $win = [
+            'result' => 9001,
+            'time' => 1700000000,
+            'round' => 'Week 1',
+            'clan1' => ['id' => $teamId, 'name' => 'France', 'country' => 'France'],
+            'clan2' => ['id' => 42, 'name' => 'Germany', 'country' => 'Germany'],
+            'r1' => 2, 'r2' => 1,
+            'competition' => ['name' => 'Highlander Season 12', 'category' => 'Highlander Season'],
+        ];
+        $loss = [
+            'result' => 9002,
+            'time' => 1690000000,
+            'clan1' => ['id' => 42, 'name' => 'Germany'],
+            'clan2' => ['id' => $teamId, 'name' => 'France'],
+            'r1' => 3, 'r2' => 0,
+            'competition' => ['name' => 'Highlander Season 12', 'category' => 'Highlander Season'],
+        ];
+        // L'API renvoie une ligne par joueur : même `result` répété.
+        $data = ['data' => array_merge([$win], array_fill(0, 8, $win), [$loss])];
+
+        $recent = $this->service(['/team/15176/results' => $data])->fetchRecentResults($teamId, 5);
+
+        $this->assertCount(2, $recent);
+        $this->assertSame(9001, $recent[0]['match_id']);
+        $this->assertSame(2, $recent[0]['score_ours']);
+        $this->assertSame(1, $recent[0]['score_theirs']);
+        $this->assertTrue($recent[0]['won']);
+        $this->assertSame('Germany', $recent[0]['opponent']['name']);
+        $this->assertSame('Highlander Season 12', $recent[0]['competition_name']);
+
+        // Équipe en clan2 : score inversé et défaite 0-3.
+        $this->assertSame(9002, $recent[1]['match_id']);
+        $this->assertSame(0, $recent[1]['score_ours']);
+        $this->assertSame(3, $recent[1]['score_theirs']);
+        $this->assertFalse($recent[1]['won']);
+    }
+
+    public function test_fetch_recent_results_sans_donnee_retourne_vide(): void
+    {
+        $this->assertSame([], $this->service([])->fetchRecentResults(15176));
+    }
+
+    // ─── Méta équipe + division suggérée ─────────────────────────────────
+
+    public function test_fetch_team_meta_suggere_la_saison_recente_puis_le_tier_le_plus_haut(): void
+    {
+        $payload = [
+            'status' => ['code' => 200],
+            'team' => [
+                'id' => 15176,
+                'name' => 'France',
+                'tag' => 'FRANCE',
+                'country' => 'France',
+                'competitions' => [
+                    ['competition' => 'Highlander Season 10', 'category' => 'Highlander Season', 'division' => ['name' => 'Low', 'tier' => 4]],
+                    ['competition' => 'Highlander Season 12', 'category' => 'Highlander Season', 'division' => ['name' => 'Open', 'tier' => 5]],
+                    ['competition' => 'Highlander Season 12', 'category' => 'Highlander Season', 'division' => ['name' => 'High', 'tier' => 3]],
+                ],
+            ],
+        ];
+
+        $meta = $this->service(['/team/15176' => $payload])->fetchTeamMeta(15176);
+
+        $this->assertNotNull($meta);
+        $this->assertSame('France', $meta['name']);
+        $this->assertSame('high', $meta['suggested_division']);
+    }
+
+    public function test_fetch_team_meta_ignore_les_divisions_inconnues(): void
+    {
+        $payload = [
+            'status' => ['code' => 200],
+            'team' => [
+                'id' => 15176,
+                'name' => 'France',
+                'competitions' => [
+                    ['competition' => 'Bizarre Cup', 'category' => 'Fun', 'division' => ['name' => 'Platinum', 'tier' => 1]],
+                ],
+            ],
+        ];
+
+        $meta = $this->service(['/team/15176' => $payload])->fetchTeamMeta(15176);
+
+        $this->assertNotNull($meta);
+        $this->assertNull($meta['suggested_division']);
+    }
+
     // ─── Résultats + winrate par compétition ─────────────────────────────
 
     public function test_group_competitions_calcule_le_winrate_par_competition_et_mode(): void

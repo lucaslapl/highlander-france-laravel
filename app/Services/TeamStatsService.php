@@ -136,9 +136,11 @@ final class TeamStatsService
             }
 
             $players[] = [
+                'player_id' => isset($member['id']) ? (int) $member['id'] : null,
                 'steamid64' => (string) $steamid64,
                 'name' => (string) ($member['name'] ?? 'Joueur ETF2L'),
                 'role' => (string) ($member['role'] ?? 'Member'),
+                'country' => isset($member['country']) ? mb_strtolower((string) $member['country']) : null,
             ];
         }
 
@@ -182,6 +184,193 @@ final class TeamStatsService
         }
 
         return $results === [] ? [] : array_merge(...$results);
+    }
+
+    /**
+     * Derniers matchs d'une équipe ETF2L (première page uniquement, API
+     * renvoyant une ligne par joueur du roster : on déduplique par `result`).
+     *
+     * @return array<int, array<string, mixed>> matchs normalisés, du plus récent au plus ancien
+     */
+    public function fetchRecentResults(int $teamId, int $limit = 5): array
+    {
+        $desired = max(1, min(50, $limit));
+        $data = $this->fetchEtf2l(
+            'https://api-v2.etf2l.org/team/'.$teamId.'/results?limit='.$desired.'&page=1',
+            3600
+        );
+        if (! is_array($data)) {
+            return [];
+        }
+
+        $results = is_array($data['data'] ?? null) ? $data['data'] : [];
+
+        return $this->normalizeTeamMatches($results, $teamId);
+    }
+
+    /**
+     * Métadonnées d'une équipe ETF2L pour la création d'une page équipe :
+     * infos de base + division suggérée (compétition la plus récente dotée
+     * d'une division reconnue, sinon la plus haute remplie).
+     *
+     * @return array<string, mixed>|null null si l'équipe est introuvable
+     */
+    public function fetchTeamMeta(int $teamId): ?array
+    {
+        $data = $this->fetchEtf2l('https://api-v2.etf2l.org/team/'.$teamId, 7 * 86400);
+        if (! is_array($data)) {
+            return null;
+        }
+        if (! isset($data['status']['code']) || (int) $data['status']['code'] !== 200) {
+            return null;
+        }
+
+        $team = $data['team'] ?? null;
+        if (! is_array($team)) {
+            return null;
+        }
+
+        return [
+            'id' => $teamId,
+            'name' => (string) ($team['name'] ?? 'Inconnue'),
+            'tag' => isset($team['tag']) ? (string) $team['tag'] : null,
+            'country' => isset($team['country']) ? mb_strtolower((string) $team['country']) : null,
+            'competitions' => (array) ($team['competitions'] ?? []),
+            'suggested_division' => $this->suggestedDivision($team),
+        ];
+    }
+
+    /**
+     * Division la plus probable d'une équipe, d'après ses compétitions ETF2L.
+     * Priorité à la saison la plus récente (numéro le plus élevé dans le nom),
+     * puis au niveau le plus haut (tier le plus faible).
+     */
+    private function suggestedDivision(array $team): ?string
+    {
+        $map = (array) config('hlfr.etf2l_division_map', []);
+        $best = null;
+
+        foreach (($team['competitions'] ?? []) as $comp) {
+            $div = $comp['division'] ?? null;
+            $name = is_array($div) ? trim((string) ($div['name'] ?? '')) : '';
+            if ($name === '' || ! isset($map[strtolower($name)])) {
+                continue;
+            }
+
+            $season = $this->competitionSeason(
+                (string) ($comp['competition'] ?? ''),
+                (string) ($comp['category'] ?? '')
+            );
+            $tier = is_array($div) && isset($div['tier']) && $div['tier'] !== null ? (int) $div['tier'] : null;
+
+            $candidate = [
+                'has_season' => $season !== null ? 1 : 0,
+                'season' => $season ?? 0,
+                'tier' => $tier ?? 99,
+                'division' => (string) $map[strtolower($name)],
+            ];
+
+            if (self::betterDivision($candidate, $best)) {
+                $best = $candidate;
+            }
+        }
+
+        return $best['division'] ?? null;
+    }
+
+    /**
+     * Ordre de préférence entre deux candidats division (saison, puis tier).
+     *
+     * @param  array<string, mixed>  $a
+     * @param  array<string, mixed>|null  $b
+     */
+    private static function betterDivision(array $a, ?array $b): bool
+    {
+        if ($b === null) {
+            return true;
+        }
+
+        $ka = [$a['has_season'], (int) $a['season'], -((int) $a['tier'])];
+        $kb = [$b['has_season'], (int) $b['season'], -((int) $b['tier'])];
+
+        foreach ($ka as $i => $value) {
+            if ($value !== $kb[$i]) {
+                return $value > $kb[$i];
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * Numéro de saison extrait d'un nom/catégorie de compétition (ex. #9, Season 52).
+     */
+    private function competitionSeason(string $competition, string $category): ?int
+    {
+        foreach ([$competition, $category] as $label) {
+            if (preg_match('/(?:#|\b(?:Season|S))[^\d]*(\d+)/i', $label, $m) === 1) {
+                return (int) $m[1];
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Normalise les réponses brutes de team/{id}/results (une ligne par joueur)
+     * en matchs uniques, avec scores relatifs à l'équipe demandée.
+     *
+     * @param  array<int, array<string, mixed>>  $results
+     * @return array<int, array<string, mixed>>
+     */
+    private function normalizeTeamMatches(array $results, int $teamId): array
+    {
+        $seen = [];
+        $out = [];
+
+        foreach ($results as $r) {
+            $resultId = (int) ($r['result'] ?? 0);
+            if ($resultId <= 0 || isset($seen[$resultId])) {
+                continue;
+            }
+            $seen[$resultId] = true;
+
+            $clan1 = $r['clan1'] ?? null;
+            $clan2 = $r['clan2'] ?? null;
+            $same1 = is_array($clan1) && (int) ($clan1['id'] ?? 0) === $teamId;
+            $same2 = is_array($clan2) && (int) ($clan2['id'] ?? 0) === $teamId;
+            if (! $same1 && ! $same2) {
+                continue;
+            }
+
+            $r1 = isset($r['r1']) && $r['r1'] !== null ? (int) $r['r1'] : null;
+            $r2 = isset($r['r2']) && $r['r2'] !== null ? (int) $r['r2'] : null;
+            $ours = $same1 ? $r1 : $r2;
+            $theirs = $same1 ? $r2 : $r1;
+            $opponent = $same1 && is_array($clan2) ? $clan2 : (is_array($clan1) ? $clan1 : []);
+
+            $out[] = [
+                'match_id' => $resultId,
+                'time' => (int) ($r['time'] ?? 0),
+                'competition_name' => (string) ($r['competition']['name'] ?? ''),
+                'category' => (string) ($r['competition']['category'] ?? ''),
+                'round' => (string) ($r['round'] ?? ''),
+                'maps' => is_array($r['maps'] ?? null) ? $r['maps'] : [],
+                'team_id' => $teamId,
+                'score_ours' => $ours,
+                'score_theirs' => $theirs,
+                'won' => $ours !== null && $theirs !== null && $ours !== $theirs ? $ours > $theirs : null,
+                'opponent' => [
+                    'id' => (int) ($opponent['id'] ?? 0),
+                    'name' => (string) ($opponent['name'] ?? 'Adversaire'),
+                    'country' => isset($opponent['country']) ? mb_strtolower((string) $opponent['country']) : null,
+                ],
+            ];
+        }
+
+        usort($out, static fn (array $a, array $b): int => $b['time'] <=> $a['time'] ?: $b['match_id'] <=> $a['match_id']);
+
+        return $out;
     }
 
     /**

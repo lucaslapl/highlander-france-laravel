@@ -6,6 +6,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Etf2lMapRepository;
 use App\Models\Etf2lRepository;
+use App\Models\ManagedTeamsRepository;
 use App\Models\MatchLogRepository;
 use App\Models\PlayerRepository;
 use App\Services\Auth;
@@ -60,6 +61,13 @@ final class PageController extends Controller
             $latestPlayers = [];
         }
 
+        $teamsSidebar = [];
+        try {
+            $teamsSidebar = (new ManagedTeamsRepository)->activeTeams();
+        } catch (\Throwable) {
+            $teamsSidebar = [];
+        }
+
         return view('pages.home', [
             'title' => 'Highlander France - Communauté Compétitive de TF2',
             'description' => site_description(),
@@ -67,7 +75,8 @@ final class PageController extends Controller
             'breadcrumbs' => [
                 ['name' => 'Accueil', 'url' => site_url().'/'],
             ],
-        ] + compact('prochainsMatchs', 'matchsRecents', 'communityNews', 'latestPlayers'));
+            'divisions' => config('hlfr.team_divisions', []),
+        ] + compact('prochainsMatchs', 'matchsRecents', 'communityNews', 'latestPlayers', 'teamsSidebar'));
     }
 
     /**

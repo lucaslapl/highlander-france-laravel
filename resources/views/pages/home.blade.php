@@ -56,6 +56,7 @@
 <aside class="home-sidebar">
     @include('partials.streams-sidebar')
     @include('partials.community-news')
+    @include('partials.teams-sidebar')
     @include('partials.latest-players')
 </aside>
 

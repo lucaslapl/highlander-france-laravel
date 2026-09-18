@@ -129,6 +129,48 @@ return [
         'highlander' => [(int) env('FRANCE_TEAM_HIGHLANDER', 15176)],
     ],
 
+    // Classes TF2 (choix proposés sur la page équipe / édition par le leader).
+    'tf2_classes' => [
+        'scout' => 'Scout',
+        'soldier' => 'Soldier',
+        'pyro' => 'Pyro',
+        'demoman' => 'Demoman',
+        'heavy' => 'Heavy',
+        'engineer' => 'Engineer',
+        'medic' => 'Medic',
+        'sniper' => 'Sniper',
+        'spy' => 'Spy',
+    ],
+
+    // Divisions utilisées pour ordonner les équipes FR dans la sidebar
+    // et sur la page listing (Prem > High > Low > Open). L'ordre est celui
+    // de la clé numérique de team_division_order.
+    'team_divisions' => [
+        'prem' => 'Prem',
+        'high' => 'High',
+        'low' => 'Low',
+        'open' => 'Open',
+    ],
+
+    // Ordre d'affichage des divisions (tri de la sidebar / listing).
+    'team_division_order' => [
+        'prem' => 0,
+        'high' => 1,
+        'low' => 2,
+        'open' => 3,
+        '' => 4,
+    ],
+
+    // Noms de division renvoyés par l'API ETF2L => divisions du site
+    // (suggestion automatique à la création, validée ensuite par l'admin).
+    'etf2l_division_map' => [
+        'premiership' => 'prem',
+        'premier' => 'prem',
+        'high' => 'high',
+        'low' => 'low',
+        'open' => 'open',
+    ],
+
     // Nationalités proposées sur le profil (codes -> libellés).
     'countries' => [
         'fr' => 'France',
