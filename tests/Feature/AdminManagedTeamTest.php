@@ -101,6 +101,21 @@ class AdminManagedTeamTest extends TestCase
         $this->assertSame(1, (int) $team->is_active);
     }
 
+    public function test_update_conserve_l_activation_si_absent_du_formulaire(): void
+    {
+        $teamId = $this->insertTeam(['is_active' => 1]);
+
+        $this->withSession($this->adminSession())
+            ->post('/admin/equipes/'.$teamId.'/update', [
+                'name' => 'France',
+                'slogan' => 'Nouveau slogan',
+            ])
+            ->assertRedirect();
+
+        $this->assertSame(1, (int) DB::table('managed_teams')->where('id', $teamId)->value('is_active'));
+        $this->assertSame('Nouveau slogan', DB::table('managed_teams')->where('id', $teamId)->value('slogan'));
+    }
+
     public function test_toggle_bascule_l_activation(): void
     {
         $teamId = $this->insertTeam(['is_active' => 1]);
@@ -161,5 +176,54 @@ class AdminManagedTeamTest extends TestCase
             ->assertRedirect();
 
         $this->assertDatabaseMissing('managed_team_members', ['id' => $memberId]);
+    }
+
+    public function test_le_bouton_global_enregistre_roster_et_leaders(): void
+    {
+        $teamId = $this->insertTeam();
+        $demomanId = $this->addMember($teamId, '76561198000000042');
+        $engineerId = $this->addMember($teamId, '76561198000000043');
+
+        $this->withSession($this->adminSession())
+            ->post('/admin/equipes/'.$teamId.'/update', [
+                'name' => 'France',
+                'members' => [
+                    $demomanId => ['class' => 'demoman', 'status' => 'backup'],
+                    $engineerId => ['class' => 'engineer', 'status' => 'starter', 'is_leader' => '1'],
+                ],
+            ])
+            ->assertRedirect();
+
+        $this->assertDatabaseHas('managed_team_members', [
+            'id' => $demomanId,
+            'class' => 'demoman',
+            'status' => 'backup',
+            'is_leader' => 0,
+        ]);
+        $this->assertDatabaseHas('managed_team_members', [
+            'id' => $engineerId,
+            'class' => 'engineer',
+            'status' => 'starter',
+            'is_leader' => 1,
+        ]);
+    }
+
+    public function test_le_bouton_global_ignore_les_membres_etrangers(): void
+    {
+        $teamId = $this->insertTeam();
+
+        $this->withSession($this->adminSession())
+            ->post('/admin/equipes/'.$teamId.'/update', [
+                'name' => 'France',
+                'members' => [
+                    99999 => ['class' => 'demoman', 'status' => 'backup', 'is_leader' => '1'],
+                ],
+            ])
+            ->assertRedirect();
+
+        $this->assertSame(
+            DB::table('managed_team_members')->where('team_id', $teamId)->count(),
+            0
+        );
     }
 }

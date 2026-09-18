@@ -404,9 +404,12 @@ final class ManagedTeamsRepository
             return null;
         }
 
-        $rel = ltrim($logoPath, '/');
+        $logoPath = ltrim($logoPath, '/');
+        if (preg_match('#^team-logos/(\d+)/([^/]+)$#', $logoPath, $matches) !== 1) {
+            return null;
+        }
 
-        return asset('storage/'.$rel);
+        return url('/logo/team/'.$matches[1].'/'.rawurlencode($matches[2]));
     }
 
     /**

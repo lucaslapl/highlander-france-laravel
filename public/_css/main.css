@@ -3695,3 +3695,15 @@ body #nav .nav-content .nav-live-badge[hidden] {
     grid-template-columns: 1fr;
   }
 }
+
+/* Page d'édition leader : formulaire global « Enregistrer les changements »
+ * qui regroupe présentation + roster (un seul bouton de sauvegarde). */
+.teams-edit-form {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+} 
+
+.teams-edit-form .team-panel + .team-panel {
+  margin-top: 0;
+}

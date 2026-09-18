@@ -187,25 +187,48 @@ final class TeamStatsService
     }
 
     /**
-     * Derniers matchs d'une équipe ETF2L (première page uniquement, API
-     * renvoyant une ligne par joueur du roster : on déduplique par `result`).
+     * Derniers matchs d'une équipe ETF2L.
+     *
+     * L'API team/{id}/results renvoie une ligne par joueur du match : avec un
+     * petit `limit` on n'obtiendrait qu'un seul match réel (50 lignes ≈ 2-3
+     * matchs de 9v9). On pagine donc par lots de 100 lignes jusqu'à avoir
+     * collecté $limit matchs uniques (ou la dernière page).
      *
      * @return array<int, array<string, mixed>> matchs normalisés, du plus récent au plus ancien
      */
     public function fetchRecentResults(int $teamId, int $limit = 5): array
     {
-        $desired = max(1, min(50, $limit));
-        $data = $this->fetchEtf2l(
-            'https://api-v2.etf2l.org/team/'.$teamId.'/results?limit='.$desired.'&page=1',
-            3600
-        );
-        if (! is_array($data)) {
-            return [];
+        $desired = max(1, min(100, $limit));
+        $rows = [];
+        $normalized = [];
+
+        for ($page = 1; ; $page++) {
+            $data = $this->fetchEtf2l(
+                'https://api-v2.etf2l.org/team/'.$teamId.'/results?limit=100&page='.$page,
+                3600
+            );
+            if (! is_array($data)) {
+                break;
+            }
+
+            $pageResults = is_array($data['data'] ?? null) ? $data['data'] : [];
+            if ($pageResults === []) {
+                break;
+            }
+            $rows = array_merge($rows, $pageResults);
+
+            $normalized = $this->normalizeTeamMatches($rows, $teamId);
+            if (count($normalized) >= $desired) {
+                break;
+            }
+
+            $lastPage = (int) ($data['last_page'] ?? $page);
+            if ($page >= $lastPage) {
+                break;
+            }
         }
 
-        $results = is_array($data['data'] ?? null) ? $data['data'] : [];
-
-        return $this->normalizeTeamMatches($results, $teamId);
+        return array_slice($normalized, 0, $desired);
     }
 
     /**

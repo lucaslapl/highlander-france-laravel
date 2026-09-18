@@ -124,6 +124,41 @@ class TeamStatsServiceTest extends TestCase
         $this->assertFalse($recent[1]['won']);
     }
 
+    public function test_fetch_recent_results_pagine_jusqu_au_nombre_attendu(): void
+    {
+        $teamId = 15176;
+
+        // L'API renvoie une ligne par joueur : jusqu'à ~18 lignes pour un match.
+        $make = static function (int $resultId, int $time) use ($teamId): array {
+            $row = [
+                'result' => $resultId,
+                'time' => $time,
+                'round' => 'Week 1',
+                'clan1' => ['id' => $teamId, 'name' => 'France', 'country' => 'France'],
+                'clan2' => ['id' => 42, 'name' => 'Germany', 'country' => 'Germany'],
+                'r1' => 2, 'r2' => 1,
+                'competition' => ['name' => 'Highlander Season', 'category' => 'Highlander Season'],
+            ];
+
+            return array_merge([$row], array_fill(0, 17, $row));
+        };
+
+        // Page 1 : un seul match (20 lignes). Page 2 : trois autres matchs.
+        $page1 = ['data' => $make(9001, 1700000000), 'last_page' => 2];
+        $page2 = ['data' => array_merge($make(9004, 1700000003), $make(9003, 1700000002), $make(9002, 1700000001)), 'last_page' => 2];
+
+        $service = $this->service([
+            '/team/15176/results?limit=100&page=1' => $page1,
+            '/team/15176/results?limit=100&page=2' => $page2,
+        ]);
+
+        $recent = $service->fetchRecentResults($teamId, 4);
+
+        $this->assertCount(4, $recent);
+        // Du plus récent au plus ancien.
+        $this->assertSame([9004, 9003, 9002, 9001], array_column($recent, 'match_id'));
+    }
+
     public function test_fetch_recent_results_sans_donnee_retourne_vide(): void
     {
         $this->assertSame([], $this->service([])->fetchRecentResults(15176));

@@ -9,7 +9,7 @@
 
     <header class="teams-header">
         <h1><i class="fa-solid fa-pen"></i> Éditer {{ e($team['name']) }}</h1>
-        <p>Personnalise la présentation de ton équipe, son logo et son roster. Les changements sont visibles immédiatement sur la page publique.</p>
+        <p>Personnalise la présentation de ton équipe, son logo et son roster. Un seul bouton « Enregistrer » applique tous les changements, visibles immédiatement sur la page publique.</p>
     </header>
 
     @if ($errors->any())
@@ -22,10 +22,11 @@
         </div>
     @endif
 
-    <section class="team-panel">
-        <h2 class="team-panel__title"><i class="fa-solid fa-file-lines"></i> Présentation</h2>
-        <form method="POST" action="/equipes/{{ e($team['slug']) }}/editer" class="teams-form">
-            @csrf
+    <form method="POST" action="/equipes/{{ e($team['slug']) }}/editer" class="teams-edit-form">
+        @csrf
+
+        <section class="team-panel">
+            <h2 class="team-panel__title"><i class="fa-solid fa-file-lines"></i> Présentation</h2>
             <label class="teams-form__label" for="slogan">Slogan (max 160 caractères)</label>
             <input id="slogan" class="teams-form__input" type="text" name="slogan" maxlength="160"
                    value="{{ old('slogan', $team['slogan'] ?? '') }}"
@@ -35,12 +36,65 @@
             <textarea id="description" class="teams-form__textarea" name="description" rows="10" maxlength="20000"
                       placeholder="Présente ton équipe : histoire, objectifs, ambiance…">{{ old('description', $team['description'] ?? '') }}</textarea>
             <p class="teams-form__hint">Markdown accepté : titres, listes, tableaux, liens, blocs <code>:::info|conseil|danger|combo|flank</code>.</p>
+        </section>
 
-            <button type="submit" class="teams-btn"><i class="fa-solid fa-floppy-disk"></i> Enregistrer la présentation</button>
-        </form>
-    </section>
+        <section class="team-panel">
+            <h2 class="team-panel__title"><i class="fa-solid fa-people-group"></i> Roster ({{ count($members) }})</h2>
 
-    <section class="team-panel">
+            @if (empty($members))
+                <p class="no-data">Aucun joueur dans le roster.</p>
+            @else
+                <ul class="teams-edit-roster">
+                    @foreach ($members as $member)
+                        <li class="teams-edit-member">
+                            <img loading="lazy" decoding="async" src="{{ e($member['avatar_url']) }}" alt="" class="teams-edit-member__avatar" width="40" height="40">
+
+                            <div class="teams-edit-member__id">
+                                <span class="teams-edit-member__name">
+                                    {{ e($member['final_name']) }}
+                                    @if ($member['is_leader'])
+                                        <i class="fa-solid fa-star team-roster__leader" title="Leader"></i>
+                                    @endif
+                                </span>
+                                <span class="teams-edit-member__steam">
+                                    @include('partials.flag', ['country' => $member['country'] ?? null, 'label' => (string) ($member['country'] ?? '')])
+                                    <code>{{ e($member['steamid64']) }}</code>
+                                </span>
+                            </div>
+
+                            <div class="teams-edit-member__form">
+                                <select name="members[{{ (int) $member['id'] }}][class]" class="teams-form__select">
+                                    <option value="">— Classe —</option>
+                                    @foreach ($classes as $classKey => $classLabel)
+                                        <option value="{{ $classKey }}" @selected((string) ($member['class'] ?? '') === $classKey)>{{ $classLabel }}</option>
+                                    @endforeach
+                                </select>
+                                <select name="members[{{ (int) $member['id'] }}][status]" class="teams-form__select">
+                                    <option value="starter" @selected(($member['status'] ?? 'starter') === 'starter')>Titulaire</option>
+                                    <option value="backup" @selected(($member['status'] ?? 'starter') === 'backup')>Remplaçant</option>
+                                </select>
+                                <button type="submit" form="member-remove-{{ (int) $member['id'] }}"
+                                        class="teams-btn teams-btn--danger teams-btn--small" title="Retirer"
+                                        onclick="return confirm('Retirer {{ addslashes((string) $member['final_name']) }} du roster ?');">
+                                    <i class="fa-solid fa-user-xmark"></i>
+                                </button>
+                            </div>
+                        </li>
+                    @endforeach
+                </ul>
+            @endif
+        </section>
+
+        <div style="display:flex; justify-content:flex-end;">
+            <button type="submit" class="teams-btn"><i class="fa-solid fa-floppy-disk"></i> Enregistrer les changements</button>
+        </div>
+    </form>
+
+    @foreach ($members as $member)
+    <form id="member-remove-{{ (int) $member['id'] }}" method="POST" action="/equipes/{{ e($team['slug']) }}/membres/{{ (int) $member['id'] }}/retirer">@csrf</form>
+    @endforeach
+
+    <section class="team-panel" style="margin-top:14px;">
         <h2 class="team-panel__title"><i class="fa-solid fa-image"></i> Logo</h2>
         <div class="teams-logo-row">
             @if (! empty($team['logo_url']))
@@ -63,55 +117,6 @@
             @endif
         </div>
         <p class="teams-form__hint">JPEG, PNG ou WebP, 2 Mo maximum. Format carré conseillé.</p>
-    </section>
-
-    <section class="team-panel">
-        <h2 class="team-panel__title"><i class="fa-solid fa-people-group"></i> Roster ({{ count($members) }})</h2>
-
-        @if (empty($members))
-            <p class="no-data">Aucun joueur dans le roster.</p>
-        @else
-            <ul class="teams-edit-roster">
-                @foreach ($members as $member)
-                    <li class="teams-edit-member">
-                        <img loading="lazy" decoding="async" src="{{ e($member['avatar_url']) }}" alt="" class="teams-edit-member__avatar" width="40" height="40">
-
-                        <div class="teams-edit-member__id">
-                            <span class="teams-edit-member__name">
-                                {{ e($member['final_name']) }}
-                                @if ($member['is_leader'])
-                                    <i class="fa-solid fa-star team-roster__leader" title="Leader"></i>
-                                @endif
-                            </span>
-                            <span class="teams-edit-member__steam">
-                                @include('partials.flag', ['country' => $member['country'] ?? null, 'label' => (string) ($member['country'] ?? '')])
-                                <code>{{ e($member['steamid64']) }}</code>
-                            </span>
-                        </div>
-
-                        <form method="POST" action="/equipes/{{ e($team['slug']) }}/membres/{{ (int) $member['id'] }}/modifier" class="teams-edit-member__form">
-                            @csrf
-                            <select name="class" class="teams-form__select">
-                                <option value="">— Classe —</option>
-                                @foreach ($classes as $classKey => $classLabel)
-                                    <option value="{{ $classKey }}" @selected((string) ($member['class'] ?? '') === $classKey)>{{ $classLabel }}</option>
-                                @endforeach
-                            </select>
-                            <select name="status" class="teams-form__select">
-                                <option value="starter" @selected(($member['status'] ?? 'starter') === 'starter')>Titulaire</option>
-                                <option value="backup" @selected(($member['status'] ?? 'starter') === 'backup')>Remplaçant</option>
-                            </select>
-                            <button type="submit" class="teams-btn teams-btn--small" title="Enregistrer"><i class="fa-solid fa-floppy-disk"></i></button>
-                        </form>
-
-                        <form method="POST" action="/equipes/{{ e($team['slug']) }}/membres/{{ (int) $member['id'] }}/retirer" onsubmit="return confirm('Retirer ce joueur du roster ?');">
-                            @csrf
-                            <button type="submit" class="teams-btn teams-btn--danger teams-btn--small" title="Retirer"><i class="fa-solid fa-user-xmark"></i></button>
-                        </form>
-                    </li>
-                @endforeach
-            </ul>
-        @endif
     </section>
 
     <section class="team-panel">

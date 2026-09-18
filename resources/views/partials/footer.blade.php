@@ -17,6 +17,7 @@
                 <h4>Ligue ETF2L</h4>
                 <ul>
                     <li><a href="https://etf2l.org" target="_blank" rel="noopener">ETF2L</a></li>
+                    <li><a href="/equipes">Équipes FR</a></li>
                     <li><a href="/matchs">Matchs FR</a></li>
                     <li><a href="/etf2l/maps">Maps</a></li>
                 </ul>

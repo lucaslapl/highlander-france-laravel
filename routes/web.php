@@ -41,6 +41,7 @@ Route::get('/equipes/{slug}/editer', [ManagedTeamController::class, 'edit'])->wh
 Route::post('/equipes/{slug}/editer', [ManagedTeamController::class, 'update'])->where('slug', '[a-z0-9-]+');
 Route::post('/equipes/{slug}/logo', [ManagedTeamController::class, 'logo'])->where('slug', '[a-z0-9-]+');
 Route::post('/equipes/{slug}/logo/supprimer', [ManagedTeamController::class, 'logoDelete'])->where('slug', '[a-z0-9-]+');
+Route::get('/logo/team/{id}/{file}', [ManagedTeamController::class, 'logoFile'])->whereNumber('id')->where('file', '[a-zA-Z0-9._-]+');
 Route::post('/equipes/{slug}/membres/ajouter', [ManagedTeamController::class, 'memberAdd'])->where('slug', '[a-z0-9-]+');
 Route::post('/equipes/{slug}/membres/{memberId}/modifier', [ManagedTeamController::class, 'memberUpdate'])->where('slug', '[a-z0-9-]+')->whereNumber('memberId');
 Route::post('/equipes/{slug}/membres/{memberId}/retirer', [ManagedTeamController::class, 'memberRemove'])->where('slug', '[a-z0-9-]+')->whereNumber('memberId');

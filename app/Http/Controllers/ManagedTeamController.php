@@ -14,6 +14,7 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
+use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
 /**
  * Pages publiques des équipes françaises (/equipes) : listing par division,
@@ -124,7 +125,28 @@ final class ManagedTeamController extends Controller
     }
 
     /**
-     * POST /equipes/{slug}/editer — slogan + description (leader).
+     * GET /logo/team/{id}/{file} — sert le logo depuis le disque (storage/app/public)
+     * sans dépendre du lien symbolique public/storage (absent sur certains serveurs).
+     */
+    public function logoFile(int $id, string $file): BinaryFileResponse
+    {
+        if (! preg_match('/^logo\.(jpe?g|png|webp)$/i', $file)) {
+            abort(404);
+        }
+
+        $path = storage_path('app/public/team-logos/'.$id.'/'.$file);
+        $real = realpath($path);
+        if ($real === false || ! is_file($real)) {
+            abort(404);
+        }
+
+        return response()->file($real, [
+            'Cache-Control' => 'public, max-age=31536000, immutable',
+        ]);
+    }
+
+    /**
+     * POST /equipes/{slug}/editer — slogan + description + classe/statut du roster.
      */
     public function update(Request $request, string $slug): RedirectResponse
     {
@@ -133,6 +155,8 @@ final class ManagedTeamController extends Controller
         $data = $request->validate([
             'slogan' => ['nullable', 'string', 'max:160'],
             'description' => ['nullable', 'string', 'max:20000'],
+            'members.*.class' => ['nullable', Rule::in(array_keys(config('hlfr.tf2_classes', [])))],
+            'members.*.status' => ['sometimes', Rule::in(['starter', 'backup'])],
         ]);
 
         $slogan = $data['slogan'] ?? null;
@@ -144,7 +168,46 @@ final class ManagedTeamController extends Controller
             'updated_at' => now(),
         ]);
 
-        return redirect('/equipes/'.$team['slug'].'/editer')->with('success', 'Présentation enregistrée.');
+        $this->saveMemberClasses($team, (array) ($data['members'] ?? []));
+
+        return redirect('/equipes/'.$team['slug'].'/editer')->with('success', 'Modifications enregistrées.');
+    }
+
+    /**
+     * Applique classe/statut de chaque membre soumis, en ignorant les id
+     * n'appartenant pas au roster de l'équipe.
+     *
+     * @param  array<string, mixed>  $team
+     * @param  array<mixed, mixed>  $submitted
+     */
+    private function saveMemberClasses(array $team, array $submitted): void
+    {
+        if ($submitted === []) {
+            return;
+        }
+
+        $memberIds = DB::table('managed_team_members')
+            ->where('team_id', (int) $team['id'])
+            ->pluck('id')
+            ->map(static fn ($v): int => (int) $v)
+            ->all();
+
+        foreach ($submitted as $memberKey => $memberData) {
+            $memberId = (int) $memberKey;
+            if (! in_array($memberId, $memberIds, true)) {
+                continue;
+            }
+
+            $class = isset($memberData['class']) ? (string) $memberData['class'] : null;
+            $status = isset($memberData['status']) && in_array((string) $memberData['status'], ['starter', 'backup'], true)
+                ? (string) $memberData['status']
+                : 'starter';
+
+            $this->teams->updateMember((int) $team['id'], $memberId, [
+                'class' => $class === '' ? null : $class,
+                'status' => $status,
+            ]);
+        }
     }
 
     /**

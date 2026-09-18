@@ -164,6 +164,9 @@ final class AdminTeamController extends Controller
             'division' => ['nullable', Rule::in(array_keys(config('hlfr.team_divisions', [])))],
             'slogan' => ['nullable', 'string', 'max:160'],
             'description' => ['nullable', 'string', 'max:20000'],
+            'members.*.class' => ['nullable', Rule::in(array_keys(config('hlfr.tf2_classes', [])))],
+            'members.*.status' => ['sometimes', Rule::in(['starter', 'backup'])],
+            'members.*.is_leader' => ['sometimes', 'boolean'],
             'is_active' => ['sometimes', 'boolean'],
         ]);
 
@@ -174,20 +177,69 @@ final class AdminTeamController extends Controller
         $slogan = $data['slogan'] ?? null;
         $description = $data['description'] ?? null;
 
-        $this->teams->update($id, [
+        $fields = [
             'name' => mb_substr($name, 0, 255),
             'tag' => $tag !== null && (string) $tag !== '' ? mb_substr((string) $tag, 0, 64) : null,
             'country' => $country !== null && (string) $country !== '' ? mb_substr((string) $country, 0, 64) : null,
             'division' => $division !== null && (string) $division !== '' ? (string) $division : null,
             'slogan' => $slogan !== null && (string) $slogan !== '' ? mb_substr((string) $slogan, 0, 160) : null,
             'description' => $description !== null && (string) $description !== '' ? (string) $description : null,
-            'is_active' => ! empty($data['is_active']) && $data['is_active'] !== '0',
             'updated_at' => now(),
-        ]);
+        ];
+
+        // L'activation se gère via le bouton « Activer/Masquer » (route toggle) :
+        // on ne touche au statut ici que si le formulaire l'a explicitement envoyé,
+        // sinon une simple édition de description/slogan désactiverait l'équipe.
+        if (array_key_exists('is_active', $data)) {
+            $fields['is_active'] = ! empty($data['is_active']) && $data['is_active'] !== '0';
+        }
+
+        $this->teams->update($id, $fields);
+
+        $this->saveRoster($id, (array) ($data['members'] ?? []));
 
         AdminLogger::log('admin_teams.php', null, 'SUCCESS: mise à jour équipe #'.$id);
 
-        return back()->with('success', 'Équipe mise à jour.');
+        return back()->with('success', 'Équipe et roster enregistrés.');
+    }
+
+    /**
+     * Applique classe/statut/leader de chaque membre soumis (formulaire unique
+     * de la page équipe), en ignorant les id n'appartenant pas au roster.
+     *
+     * @param  array<mixed, mixed>  $submitted
+     */
+    private function saveRoster(int $teamId, array $submitted): void
+    {
+        if ($submitted === []) {
+            return;
+        }
+
+        $memberIds = DB::table('managed_team_members')
+            ->where('team_id', $teamId)
+            ->pluck('id')
+            ->map(static fn ($v): int => (int) $v)
+            ->all();
+
+        foreach ($submitted as $memberKey => $memberData) {
+            $memberId = (int) $memberKey;
+            if (! in_array($memberId, $memberIds, true)) {
+                continue;
+            }
+
+            $class = isset($memberData['class']) ? (string) $memberData['class'] : null;
+            $status = isset($memberData['status']) && in_array((string) $memberData['status'], ['starter', 'backup'], true)
+                ? (string) $memberData['status']
+                : 'starter';
+
+            $this->teams->updateMember($teamId, $memberId, [
+                'class' => $class === '' ? null : $class,
+                'status' => $status,
+            ]);
+
+            $isLeader = ! empty($memberData['is_leader']) && $memberData['is_leader'] !== '0';
+            $this->teams->setLeader($teamId, $memberId, $isLeader);
+        }
     }
 
     /**

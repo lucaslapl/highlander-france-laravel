@@ -196,4 +196,91 @@ class ManagedTeamsPublicTest extends TestCase
         $this->assertSame('Allez les bleus', $team->slogan);
         $this->assertStringContainsString('Titre', (string) $team->description);
     }
+
+    public function test_le_bouton_global_enregistre_presentation_et_roster(): void
+    {
+        $teamId = $this->insertTeam();
+        $this->addMember($teamId, self::LEADER_STEAMID, true);
+        $teammateId = $this->addMember($teamId, '76561198000000011');
+
+        $this->withSession(['steamid' => self::LEADER_STEAMID])
+            ->post('/equipes/france/editer', [
+                'slogan' => 'Ne lâchez rien',
+                'description' => 'Une équipe soudée.',
+                'members' => [
+                    $teammateId => ['class' => 'soldier', 'status' => 'backup'],
+                ],
+            ])
+            ->assertRedirect();
+
+        $this->assertDatabaseHas('managed_team_members', [
+            'id' => $teammateId,
+            'class' => 'soldier',
+            'status' => 'backup',
+        ]);
+        $this->assertDatabaseHas('managed_teams', [
+            'id' => $teamId,
+            'slogan' => 'Ne lâchez rien',
+        ]);
+    }
+
+    public function test_le_bouton_global_ignore_les_membres_etrangers(): void
+    {
+        $teamId = $this->insertTeam();
+        $this->addMember($teamId, self::LEADER_STEAMID, true);
+        $this->addMember($teamId, '76561198000000011');
+
+        $this->withSession(['steamid' => self::LEADER_STEAMID])
+            ->post('/equipes/france/editer', [
+                'members' => [
+                    99999 => ['class' => 'demoman', 'status' => 'backup'],
+                ],
+            ])
+            ->assertRedirect();
+
+        $this->assertSame(
+            0,
+            DB::table('managed_team_members')->where('team_id', $teamId)->where('id', 99999)->count()
+        );
+    }
+
+    // ─── Logo (servi par la route dédiée, sans symlink storage) ───────────
+
+    private function writeLogo(int $teamId): string
+    {
+        $dir = storage_path('app/public/team-logos/'.$teamId);
+        if (! is_dir($dir)) {
+            mkdir($dir, 0775, true);
+        }
+
+        $path = $dir.'/logo.png';
+        file_put_contents($path, base64_decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==', true));
+
+        return $path;
+    }
+
+    public function test_la_route_logo_sert_le_fichier_disque(): void
+    {
+        $teamId = $this->insertTeam();
+        $path = $this->writeLogo($teamId);
+
+        try {
+            $response = $this->get('/logo/team/'.$teamId.'/logo.png');
+
+            $response->assertOk();
+            $response->assertHeader('Content-Type', 'image/png');
+            $response->assertHeader('Cache-Control', 'immutable, max-age=31536000, public');
+        } finally {
+            @unlink($path);
+        }
+    }
+
+    public function test_la_route_logo_refuse_les_fichiers_invalides(): void
+    {
+        $teamId = $this->insertTeam();
+
+        $this->get('/logo/team/'.$teamId.'/logo.svg')->assertNotFound();
+        $this->get('/logo/team/'.$teamId.'/introuvable.png')->assertNotFound();
+        $this->get('/logo/team/'.$teamId.'/logo.png')->assertNotFound();
+    }
 }
