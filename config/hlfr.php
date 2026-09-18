@@ -54,9 +54,9 @@ return [
     ))),
 
     // Encadré sidebar « Streamers en direct » : filtre par langue (code ISO
-    // 639-1, ex. fr) et par jeu (ID Helix, TF2 = 33214) de /helix/streams.
+    // 639-1, ex. fr) et par jeu (ID Helix, TF2 = 16676) de /helix/streams.
     'twitch_fr_language' => (string) env('TWITCH_FR_LANGUAGE', 'fr'),
-    'twitch_tf2_game_id' => (string) env('TWITCH_TF2_GAME_ID', '33214'),
+    'twitch_tf2_game_id' => (string) env('TWITCH_TF2_GAME_ID', '16676'),
 
     // ID du serveur Discord attendu (optionnel).
     'discord_guild_id' => env('DISCORD_GUILD_ID', ''),

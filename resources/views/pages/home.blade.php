@@ -54,6 +54,7 @@
 </section>
 
 <aside class="home-sidebar">
+    @include('partials.streams-sidebar')
     @include('partials.community-news')
     @include('partials.latest-players')
 </aside>
@@ -62,6 +63,7 @@
 
 @push('scripts')
 @include('partials.index-stats-script')
+@include('partials.streams-sidebar-script')
 @include('partials.twitch-live-script')
 @include('partials.twitch-header-script')
 <script>
