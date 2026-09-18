@@ -54,7 +54,8 @@
 </section>
 
 <aside class="home-sidebar">
-    @include('partials.streams-sidebar')
+    {{-- Encadré streamers désactivé temporairement (réactivation future). --}}
+    {{-- @include('partials.streams-sidebar') --}}
     @include('partials.community-news')
     @include('partials.teams-sidebar')
     @include('partials.latest-players')
@@ -64,7 +65,7 @@
 
 @push('scripts')
 @include('partials.index-stats-script')
-@include('partials.streams-sidebar-script')
+{{-- @include('partials.streams-sidebar-script') --}}
 @include('partials.twitch-live-script')
 @include('partials.twitch-header-script')
 <script>
