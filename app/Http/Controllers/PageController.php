@@ -447,6 +447,7 @@ final class PageController extends Controller
                 '/hall-of-fame' => [0.8, 'daily'],
                 '/match-logs' => [0.8, 'daily'],
                 '/matchs' => [0.8, 'daily'],
+                '/equipes' => [0.8, 'weekly'],
                 '/etf2l/maps' => [0.7, 'weekly'],
                 '/guides' => [0.9, 'weekly'],
                 '/faq' => [0.9, 'weekly'],
@@ -635,7 +636,6 @@ final class PageController extends Controller
         return view('pages.match-log', [
             'title' => 'Highlander France - '.$mapDisplay.' | '.$gameModeLabel,
             'description' => $logDescription,
-            'ogType' => 'article',
             'breadcrumbs' => [
                 ['name' => 'Accueil', 'url' => site_url().'/'],
                 ['name' => 'Match Stats', 'url' => site_url().'/match-logs'],

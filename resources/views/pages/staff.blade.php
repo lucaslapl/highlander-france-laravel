@@ -5,7 +5,7 @@
 
 @section('content')
 
-<h1>L'équipe Highlander France</h1>
+<h1>L'équipe HL France</h1>
 <div id="staff" class="staff-categories">
 
     <article class="staff-category">
@@ -95,7 +95,7 @@
     </article>
 
     <article class="staff-category">
-        <h3>Twitch Highlander France</h3>
+        <h3>Twitch HL France</h3>
         <hr>
         <p>Les casters et l'équipe de production qui font vivre nos streams !</p>
         <div class="staff-role">

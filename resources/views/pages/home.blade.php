@@ -21,7 +21,7 @@
 
 <div id="about">
     <h2><b>Qui sommes-nous ?</b></h2>
-    <p>Créée en Février 2026 à l'initiative de joueurs expérimentés au plus haut niveau et des joueurs membre de l'Équipe de France TF2, la communauté Highlander France a vu le jour avec l'objectif de <b>faire découvrir et de réunir</b> les joueurs et joueuses francophones pratiquant.es ou intéressé.es par le mode 9v9 et de leur offrir un lieu unique pour <b>échanger, apprendre, jouer ensemble.</b><br>
+    <p>Créée en Février 2026 à l'initiative de joueurs expérimentés au plus haut niveau et des joueurs membre de l'Équipe de France TF2, la communauté Highlander France (ou simplement HL France) a vu le jour avec l'objectif de <b>faire découvrir et de réunir</b> les joueurs et joueuses francophones pratiquant.es ou intéressé.es par le mode 9v9 et de leur offrir un lieu unique pour <b>échanger, apprendre, jouer ensemble.</b><br>
     Nous mettons un point d'honneur à faire de notre communauté un <b>lieu sûr pour tous.</b></p>
     <div class="vid-container">
         <div class="pres-video">
@@ -34,7 +34,7 @@
     </div>
 
     <h2><b>Comment ça fonctionne ?</b></h2>
-    <p>Fort de notre expérience <b>nous aidons les débutants et débutantes à appréhender le compétitif</b>, les règles, les tournois, les ligues, les méthodes pour progresser rapidement. Nous organisons régulièrement des matchs de tout niveau pour permettre à tout le monde de développer leur connaissance et mettre en action leur apprentissage ainsi que des demoreview (visionnage de match avec explications) et des maptalks (explications sur comment jouer les maps) et bien plus encore...</p>
+    <p>Fort de notre expérience <b>nous aidons les débutants et débutantes à appréhender le compétitif</b>, les règles, les tournois, les ligues, les méthodes pour progresser rapidement. Sur le Discord HL France, nous organisons régulièrement des matchs de tout niveau pour permettre à tout le monde de développer leur connaissance et mettre en action leur apprentissage ainsi que des demoreview (visionnage de match avec explications) et des maptalks (explications sur comment jouer les maps) et bien plus encore...</p>
 </div>
 
 <div id="numbers">
@@ -47,7 +47,7 @@
     </ul>
 </div>
 <div id="join">
-    <p>Alors qu'attends-tu pour nous rejoindre ? <b>Cela ne t'engage en rien</b>, tu es libre de participer ou simplement observer et lorsque tu te sens prêt, tu te lances et nous t'aiderons !</p>
+    <p>Alors qu'attends-tu pour rejoindre HL France ? <b>Cela ne t'engage en rien</b>, tu es libre de participer ou simplement observer et lorsque tu te sens prêt, tu te lances et nous t'aiderons !</p>
     <a href="https://discord.gg/BMuj3cqUFt" class="join-btn">Rejoindre la communauté !</a>
 </div>
 

@@ -27,8 +27,9 @@ class HlFranceSeoTest extends TestCase
         $response->assertOk();
         $content = (string) $response->getContent();
 
-        // Titre + meta description avec l'abréviation.
-        $response->assertSee('HL France - Highlander France', false);
+        // Titre d'accueil inchangé + abréviation présente (meta description,
+        // contenu visible, données structurées).
+        $response->assertSee('Highlander France - Communauté Compétitive de TF2', false);
         $this->assertStringContainsString('HL France', $content);
 
         // Données structurées : Google apprend le synonyme.
