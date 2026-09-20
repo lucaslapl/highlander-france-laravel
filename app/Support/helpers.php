@@ -61,10 +61,12 @@ if (! function_exists('canonical_url')) {
 if (! function_exists('site_description')) {
     /**
      * Description par défaut du site (meta description / fallback de contenu).
+     * Inclut volontairement le synonyme « HL France » pour le référencement
+     * sur l'abréviation recherchée dans Google.
      */
     function site_description(): string
     {
-        return config('app.name').' est une communauté compétitive francophone de Team Fortress 2, offrant un espace pour les joueurs de tous niveaux pour apprendre, jouer et progresser ensemble.';
+        return 'Highlander France (HL France) est une communauté compétitive francophone de Team Fortress 2, offrant un espace pour les joueurs de tous niveaux pour apprendre, jouer et progresser ensemble.';
     }
 }
 

@@ -34,6 +34,7 @@
         "@@context": "https://schema.org",
         "@type": "WebSite",
         "name": {!! json_encode(config('app.name'), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) !!},
+        "alternateName": ["HL France", "HLFR"],
         "url": {!! json_encode(site_url(), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) !!},
         "inLanguage": "fr",
         "publisher": {
@@ -57,6 +58,7 @@
         "@@context": "https://schema.org",
         "@type": "Organization",
         "name": {!! json_encode(config('app.name'), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) !!},
+        "alternateName": "HL France",
         "url": {!! json_encode(site_url(), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) !!},
         "logo": {!! json_encode(site_url() . '/_img/hf.webp', JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) !!},
         "sameAs": [
