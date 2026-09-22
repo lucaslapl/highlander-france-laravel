@@ -9,6 +9,27 @@ return [
     // (ex. l'ancien _scripts/ pendant une transition).
     'data_dir' => env('HLFR_DATA_DIR') ?: storage_path('app/hlfr'),
 
+    // Téléchargements privés : ZIP volumineux servis via des liens à token
+    // secret (/dl/<token>), destinés uniquement à ceux qui connaissent l'URL.
+    // 'dir' : répertoire de stockage hors webroot (le fichier est déposé via SCP
+    // puis enregistré par app:downloads:add). Laissé à null, il prend la valeur du
+    // répertoire de données applicatives + /downloads, résolue à l'exécution par
+    // DownloadsService (on ne peut pas appeler hlfr_data_path() ici : config('hlfr.data_dir')
+    // n'est pas encore connu pendant le chargement de ce fichier).
+    'downloads' => [
+        'dir' => env('HLFR_DOWNLOADS_DIR'),
+
+        // Extensions autorisées (whitelist, minuscules) : le token sert uniquement
+        // les fichiers enregistrés avec une de ces extensions.
+        'extensions' => ['zip'],
+
+        // Délégation de l'envoi à Apache (mod_xsendfile) : le contrôleur émet alors
+        // l'en-tête X-Sendfile et le fichier ne transite plus par PHP. N'activer que
+        // si le module est chargé (vhost : XSendFile On), sinon le fichier est servi
+        // en streaming par BinaryFileResponse (avec reprise des téléchargements).
+        'xsendfile' => (bool) env('HLFR_XSENDFILE', false),
+    ],
+
     // Environnement sans bundle CA (WAMP) : vérification SSL désactivée.
     // Doit rester à true en production.
     'curl_verify_ssl' => (bool) env('CURL_VERIFY_SSL', true),

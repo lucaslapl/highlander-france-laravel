@@ -12,6 +12,7 @@ use App\Http\Controllers\Admin\AdminPlayerStatsController;
 use App\Http\Controllers\Admin\AdminTeamController;
 use App\Http\Controllers\ApiController;
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\DownloadController;
 use App\Http\Controllers\GuideController;
 use App\Http\Controllers\ManagedTeamController;
 use App\Http\Controllers\PageController;
@@ -46,6 +47,9 @@ Route::post('/equipes/{slug}/membres/ajouter', [ManagedTeamController::class, 'm
 Route::post('/equipes/{slug}/membres/{memberId}/modifier', [ManagedTeamController::class, 'memberUpdate'])->where('slug', '[a-z0-9-]+')->whereNumber('memberId');
 Route::post('/equipes/{slug}/membres/{memberId}/retirer', [ManagedTeamController::class, 'memberRemove'])->where('slug', '[a-z0-9-]+')->whereNumber('memberId');
 Route::get('/sitemap.xml', [PageController::class, 'sitemap']);
+
+// ─── Téléchargements privés (ZIP volumineux, liens à token secret) ─────────
+Route::get('/dl/{token}', [DownloadController::class, 'show'])->where('token', '[a-f0-9]{32}');
 
 // ─── API JSON ────────────────────────────────────────────────────────────────
 Route::prefix('api')->group(function (): void {
