@@ -9,6 +9,7 @@ use App\Services\Crons\GenerateJsonService;
 use App\Services\Crons\SyncSteamService;
 use App\Services\Crons\UpdateIndexStatsService;
 use App\Services\Crons\UpdateStatsService;
+use App\Services\Etf2lNameResolver;
 use App\Services\LiveMatches;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -20,6 +21,12 @@ use Illuminate\Http\Request;
 final class ServerHookController extends Controller
 {
     private const LOCK_FILE = 'webhook_match.lock';
+
+    /** Nombre max de SteamIDs traités par appel (un highlander 9v9 + remplaçants). */
+    private const MAX_ETF2L_PLAYERS = 32;
+
+    /** Format SteamID2 attendu (AuthId_Steam2 envoyé par les plugins SourceMod). */
+    private const STEAMID2_PATTERN = '/^STEAM_[0-1]:[0-1]:\d+$/';
 
     /**
      * POST /api/server/live-status
@@ -37,13 +44,13 @@ final class ServerHookController extends Controller
         $who = $server !== '' ? $server : 'inconnu';
 
         if (! $this->authenticate($body)) {
-            AdminLogger::log('webhook_live_status', null, 'FAILED (token invalide - ' . $who . ')');
+            AdminLogger::log('webhook_live_status', null, 'FAILED (token invalide - '.$who.')');
 
             return response()->json(['success' => false, 'message' => 'Non autorisé.'], 403);
         }
 
         if (! $this->ipAllowed()) {
-            AdminLogger::log('webhook_live_status', null, 'FAILED (IP non autorisée - ' . $who . ')');
+            AdminLogger::log('webhook_live_status', null, 'FAILED (IP non autorisée - '.$who.')');
 
             return response()->json(['success' => false, 'message' => 'IP non autorisée.'], 403);
         }
@@ -55,12 +62,65 @@ final class ServerHookController extends Controller
         $accepted = LiveMatches::apply($server, $status, $body);
 
         if (! $accepted) {
-            AdminLogger::log('webhook_live_status', null, 'IGNORED (statut obsolète ou sans joueur - ' . $who . ')');
+            AdminLogger::log('webhook_live_status', null, 'IGNORED (statut obsolète ou sans joueur - '.$who.')');
         }
 
         return response()->json([
             'success' => $accepted,
             'message' => $accepted ? 'Statut mis à jour.' : 'Statut obsolète ou sans joueur ignoré.',
+        ]);
+    }
+
+    /**
+     * POST /api/server/etf2l-names
+     * Body (JSON) : { token, server, players: ["STEAM_1:0:…", …] }
+     *
+     * Résout les pseudos ETF2L des joueurs en jeu (plugin hlfr_etf2l_rename).
+     * Léger : lecture de la base (etf2l_players + cache API) puis appels
+     * ETF2L en secours, rate-limités, dans Etf2lNameResolver.
+     */
+    public function etf2lNames(Request $request, Etf2lNameResolver $resolver): JsonResponse
+    {
+        $body = $this->jsonBody($request);
+        $server = (string) ($body['server'] ?? '');
+        $who = $server !== '' ? $server : 'inconnu';
+
+        if (! $this->authenticate($body)) {
+            AdminLogger::log('webhook_etf2l_names', null, 'FAILED (token invalide - '.$who.')');
+
+            return response()->json(['success' => false, 'message' => 'Non autorisé.'], 403);
+        }
+
+        if (! $this->ipAllowed()) {
+            AdminLogger::log('webhook_etf2l_names', null, 'FAILED (IP non autorisée - '.$who.')');
+
+            return response()->json(['success' => false, 'message' => 'IP non autorisée.'], 403);
+        }
+
+        $players = $body['players'] ?? null;
+        $playersValid = is_array($players) && $players !== [] && count($players) <= self::MAX_ETF2L_PLAYERS;
+
+        if ($playersValid) {
+            foreach ($players as $steamid) {
+                if (! is_string($steamid) || preg_match(self::STEAMID2_PATTERN, $steamid) !== 1) {
+                    $playersValid = false;
+                    break;
+                }
+            }
+        }
+
+        if (! $playersValid) {
+            return response()->json(['success' => false, 'message' => 'Paramètres invalides.'], 400);
+        }
+
+        $resolved = $resolver->resolve($players);
+
+        AdminLogger::log('webhook_etf2l_names', null, 'SUCCESS ('.$who.' - '.count($resolved).'/'.count($players).' pseudos résolus)');
+
+        return response()->json([
+            'success' => true,
+            'message' => count($resolved).' pseudos résolus.',
+            'players' => $resolved,
         ]);
     }
 
@@ -100,7 +160,7 @@ final class ServerHookController extends Controller
             $guildId = (string) ($body['guild_id'] ?? '');
 
             if ($guildId !== '' && ! hash_equals($expectedGuild, $guildId)) {
-                AdminLogger::log('webhook_discord_member_count', null, 'FAILED (guild_id inattendu - ' . $guildId . ')');
+                AdminLogger::log('webhook_discord_member_count', null, 'FAILED (guild_id inattendu - '.$guildId.')');
 
                 return response()->json(['success' => false, 'message' => 'Guild non autorisée.'], 403);
             }
@@ -117,7 +177,7 @@ final class ServerHookController extends Controller
             return response()->json(['success' => false, 'message' => 'Écriture du cache impossible.'], 500);
         }
 
-        AdminLogger::log('webhook_discord_member_count', null, 'SUCCESS (' . $count . ' membres)');
+        AdminLogger::log('webhook_discord_member_count', null, 'SUCCESS ('.$count.' membres)');
 
         return response()->json(['success' => true, 'message' => 'Compteur mis à jour.', 'members' => $count]);
     }
@@ -131,16 +191,16 @@ final class ServerHookController extends Controller
         $body = $this->jsonBody($request);
         $server = (string) ($body['server'] ?? 'inconnu');
         $map = (string) ($body['map'] ?? '');
-        $who = $server . ($map !== '' ? ' - ' . $map : '');
+        $who = $server.($map !== '' ? ' - '.$map : '');
 
         if (! $this->authenticate($body)) {
-            AdminLogger::log('webhook_match_ended', null, 'FAILED (token invalide - ' . $who . ')');
+            AdminLogger::log('webhook_match_ended', null, 'FAILED (token invalide - '.$who.')');
 
             return response()->json(['success' => false, 'message' => 'Non autorisé.'], 403);
         }
 
         if (! $this->ipAllowed()) {
-            AdminLogger::log('webhook_match_ended', null, 'FAILED (IP non autorisée - ' . $who . ')');
+            AdminLogger::log('webhook_match_ended', null, 'FAILED (IP non autorisée - '.$who.')');
 
             return response()->json(['success' => false, 'message' => 'IP non autorisée.'], 403);
         }
@@ -163,22 +223,22 @@ final class ServerHookController extends Controller
         $logToken = AdminLogger::log('webhook_match_ended');
 
         try {
-            $updateStats = (new UpdateStatsService())->run();
-            $syncSteam = (new SyncSteamService())->run();
-            $generateJson = (new GenerateJsonService())->run();
-            $indexStats = (new UpdateIndexStatsService())->run();
+            $updateStats = (new UpdateStatsService)->run();
+            $syncSteam = (new SyncSteamService)->run();
+            $generateJson = (new GenerateJsonService)->run();
+            $indexStats = (new UpdateIndexStatsService)->run();
 
-            AdminLogger::log('webhook_match_ended', $logToken, 'SUCCESS (via ' . $who . ')');
+            AdminLogger::log('webhook_match_ended', $logToken, 'SUCCESS (via '.$who.')');
 
             return response()->json([
                 'success' => true,
-                'message' => 'Mise à jour déclenchée par webhook (' . $server . ').',
+                'message' => 'Mise à jour déclenchée par webhook ('.$server.').',
                 'processed_logs' => $this->extractProcessedLogs($updateStats),
                 'details' => [$updateStats, $syncSteam, $generateJson, $indexStats],
             ]);
         } catch (\Throwable $e) {
-            error_log('Webhook match ended : ' . $e->getMessage());
-            AdminLogger::log('webhook_match_ended', $logToken, 'FAILED (' . $e->getMessage() . ')');
+            error_log('Webhook match ended : '.$e->getMessage());
+            AdminLogger::log('webhook_match_ended', $logToken, 'FAILED ('.$e->getMessage().')');
 
             return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
         } finally {
@@ -190,7 +250,7 @@ final class ServerHookController extends Controller
     /**
      * Valide le token partagé (comparaison à temps constant).
      *
-     * @param array<string, mixed> $body
+     * @param  array<string, mixed>  $body
      */
     private function authenticate(array $body): bool
     {
@@ -208,7 +268,7 @@ final class ServerHookController extends Controller
     /**
      * Valide le token partagé du bot Discord (comparaison à temps constant).
      *
-     * @param array<string, mixed> $body
+     * @param  array<string, mixed>  $body
      */
     private function discordAuthenticate(array $body): bool
     {

@@ -8,7 +8,7 @@ Refonte du site MVC maison sous **Laravel 13** (PHP 8.3+, MySQL 8).
 ## Composants
 
 - le **site Laravel** (`app/`, `resources/views/`, `routes/`) ;
-- deux **plugins SourceMod** (`plugins/`) qui poussent les données via webhooks tokenisés ;
+- trois **plugins SourceMod** (`plugins/`) qui poussent/échangent des données via webhooks tokenisés ;
 - un **bot Discord « Octave »** (`bot/`, Node.js / discord.js v14).
 
 ## Correspondance ancien → nouveau

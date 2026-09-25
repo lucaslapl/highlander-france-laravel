@@ -74,6 +74,7 @@ Route::prefix('api')->group(function (): void {
 // Authentifiés par token partagé : exemptés de CSRF (cf. bootstrap/app.php).
 Route::post('/api/server/match-ended', [ServerHookController::class, 'matchEnded']);
 Route::post('/api/server/live-status', [ServerHookController::class, 'liveStatus']);
+Route::post('/api/server/etf2l-names', [ServerHookController::class, 'etf2lNames']);
 
 // ─── Webhook bot Discord (compteur de membres du serveur) ────────────────────
 Route::post('/api/discord/member-count', [ServerHookController::class, 'discordMemberCount']);
