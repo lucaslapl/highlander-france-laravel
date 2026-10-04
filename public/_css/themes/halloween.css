@@ -34,7 +34,8 @@
   /* Image d'entête : dégradé provisoire en attendant une illustration.
      Déposer l'image dans public/_img/themes/halloween.webp puis remplacer par :
      --header-bg: url("../../_img/themes/halloween.webp"); */
-  --header-bg: linear-gradient(165deg, #1a0f05 0%, #2b1508 55%, #140b04 100%);
+  /* --header-bg: linear-gradient(165deg, #1a0f05 0%, #2b1508 55%, #140b04 100%); */
+  --header-bg: url("../../_img/sulfur1.webp");
 
   /* Barre de navigation et menus déroulants */
   --nav-1: #4a2a0e;
