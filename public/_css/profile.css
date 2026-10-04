@@ -41,14 +41,14 @@ body #main #content .personnal-info .flag-icon {
   object-fit: contain;
 }
 body #main #content .personnal-info .steam-profile-link {
-  color: #fff;
+  color: var(--white);
   text-decoration: none;
   font-size: 1.3em;
 }
 body #main #content .personnal-info .activity-calendar {
   position: relative;
-  background-color: rgba(255, 255, 255, 0.1);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  background-color: rgba(var(--white-rgb), 0.1);
+  border: 1px solid rgba(var(--white-rgb), 0.08);
   padding: 12px 16px;
   border-radius: 8px;
   flex-shrink: 0;
@@ -58,7 +58,7 @@ body #main #content .personnal-info .activity-calendar h3 {
   margin: 0 0 4px;
 }
 body #main #content .personnal-info .activity-calendar__summary {
-  color: #ccc;
+  color: var(--gray-ccc);
   font-size: 0.8em;
   margin: 0 0 10px;
 }
@@ -83,7 +83,7 @@ body #main #content .personnal-info .activity-calendar__months {
 body #main #content .personnal-info .activity-calendar__months span {
   font-size: 0.7em;
   font-weight: 600;
-  color: #ccc;
+  color: var(--gray-ccc);
   text-transform: uppercase;
   white-space: nowrap;
   text-align: left;
@@ -97,7 +97,7 @@ body #main #content .personnal-info .activity-calendar__days {
 }
 body #main #content .personnal-info .activity-calendar__days span {
   font-size: 0.6em;
-  color: #888;
+  color: var(--gray-888);
   text-transform: uppercase;
   display: flex;
   align-items: center;
@@ -116,19 +116,19 @@ body #main #content .personnal-info .activity-calendar__cell {
   width: 10px;
   height: 10px;
   border-radius: 2px;
-  background-color: rgba(255, 255, 255, 0.06);
+  background-color: rgba(var(--white-rgb), 0.06);
 }
 body #main #content .personnal-info .activity-calendar__cell--1 {
-  background-color: rgba(255, 87, 34, 0.25);
+  background-color: rgba(var(--profile-accent-rgb), 0.25);
 }
 body #main #content .personnal-info .activity-calendar__cell--2 {
-  background-color: rgba(255, 87, 34, 0.45);
+  background-color: rgba(var(--profile-accent-rgb), 0.45);
 }
 body #main #content .personnal-info .activity-calendar__cell--3 {
-  background-color: rgba(255, 87, 34, 0.7);
+  background-color: rgba(var(--profile-accent-rgb), 0.7);
 }
 body #main #content .personnal-info .activity-calendar__cell--4 {
-  background-color: #ff5722;
+  background-color: var(--profile-accent);
 }
 body #main #content .personnal-info .activity-calendar__legend {
   display: flex;
@@ -137,7 +137,7 @@ body #main #content .personnal-info .activity-calendar__legend {
   gap: 4px;
   margin-top: 8px;
   font-size: 0.65em;
-  color: #aaa;
+  color: var(--gray-aaa);
 }
 body #main #content .personnal-info .activity-calendar__legend .activity-calendar__cell {
   width: 9px;
@@ -149,8 +149,8 @@ body #main #content .personnal-info .activity-calendar__tooltip {
   top: 0;
   left: 0;
   z-index: 20;
-  background: #2a2a2a;
-  color: #fff;
+  background: var(--gray-2a2a2a);
+  color: var(--white);
   padding: 4px 8px;
   border-radius: 4px;
   font-size: 0.75em;
@@ -158,7 +158,7 @@ body #main #content .personnal-info .activity-calendar__tooltip {
   white-space: nowrap;
   pointer-events: none;
   opacity: 0;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.5);
+  box-shadow: 0 2px 10px rgba(var(--black-rgb), 0.5);
   transition: opacity 0.12s ease;
 }
 body #main #content .personnal-info .activity-calendar__tooltip.is-visible {
@@ -178,7 +178,7 @@ body #main #content .player-stats .stats-grid.stats-key {
 }
 body #main #content .player-stats .stats-grid.stats-key .stat-label {
   font-size: 0.8em;
-  color: #aaa;
+  color: var(--gray-aaa);
   text-transform: uppercase;
   letter-spacing: 0.5px;
   margin-bottom: 8px;
@@ -192,13 +192,13 @@ body #main #content .player-stats .stats-grid.stats-combat {
 }
 body #main #content .player-stats .stats-grid.stats-combat .stat-label {
   font-size: 0.8em;
-  color: #aaa;
+  color: var(--gray-aaa);
   text-transform: uppercase;
   letter-spacing: 0.5px;
   margin-bottom: 8px;
 }
 body #main #content .player-stats .box-stats {
-  background-color: rgba(255, 255, 255, 0.1);
+  background-color: rgba(var(--white-rgb), 0.1);
   padding: 15px 25px;
   border-radius: 8px;
 }
@@ -215,7 +215,7 @@ body #main #content .player-stats .box-stats .box-title {
   margin-bottom: 15px;
 }
 body #main #content .player-stats .box-stats.matches-played {
-  background-color: rgba(255, 255, 255, 0.2);
+  background-color: rgba(var(--white-rgb), 0.2);
 }
 body #main #content .player-stats .box-stats.matches-played .stat-value {
   font-size: 2.8em;
@@ -237,7 +237,7 @@ body #main #content .player-stats .stats-list li:last-child {
 }
 body #main #content .player-stats .stats-list li .stat-value {
   font-size: 1.2em;
-  color: #ccc;
+  color: var(--gray-ccc);
   font-weight: bold;
 }
 body #main #content .player-stats .classes-played .stats-list {
@@ -290,7 +290,7 @@ body #main #content .player-stats .classes-killed .classes-killed-legend__item .
 }
 body #main #content .player-stats .classes-killed .classes-killed-legend__name {
   flex: 1;
-  color: #ccc;
+  color: var(--gray-ccc);
   font-size: 0.85em;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -299,16 +299,16 @@ body #main #content .player-stats .classes-killed .classes-killed-legend__name {
 body #main #content .player-stats .classes-killed .classes-killed-legend__count {
   font-size: 0.9em;
   font-weight: bold;
-  color: #fff;
+  color: var(--white);
   white-space: nowrap;
 }
 body #main #content .player-stats .classes-killed .classes-killed-legend__pct {
-  color: #aaa;
+  color: var(--gray-aaa);
   font-weight: normal;
 }
 body #main #content .player-stats .no-data {
   font-style: italic;
-  color: #ccc;
+  color: var(--gray-ccc);
 }
 body #main #content .player-stats .recent-matches {
   overflow-x: auto;
@@ -325,21 +325,21 @@ body #main #content .player-stats .recent-matches .matches-table th,
 body #main #content .player-stats .recent-matches .matches-table td {
   padding: 10px 12px;
   text-align: left;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  border-bottom: 1px solid rgba(var(--white-rgb), 0.08);
 }
 body #main #content .player-stats .recent-matches .matches-table th {
   font-size: 0.8em;
-  color: #aaa;
+  color: var(--gray-aaa);
   text-transform: uppercase;
   letter-spacing: 0.5px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.15);
+  border-bottom: 1px solid rgba(var(--white-rgb), 0.15);
 }
 body #main #content .player-stats .recent-matches .matches-table .match-row {
   cursor: pointer;
   transition: background-color 0.15s ease;
 }
 body #main #content .player-stats .recent-matches .matches-table .match-row:hover {
-  background-color: rgba(255, 255, 255, 0.06);
+  background-color: rgba(var(--white-rgb), 0.06);
 }
 body #main #content .player-stats .recent-matches .matches-table .match-row td:first-child {
   display: flex;
@@ -356,16 +356,16 @@ body #main #content .player-stats .recent-matches .matches-table .match-result {
   white-space: nowrap;
 }
 body #main #content .player-stats .recent-matches .matches-table .match-result.result-win {
-  background-color: rgba(39, 174, 96, 0.25);
-  color: #2ecc71;
+  background-color: rgba(var(--success-strong-rgb), 0.25);
+  color: var(--success);
 }
 body #main #content .player-stats .recent-matches .matches-table .match-result.result-loss {
-  background-color: rgba(231, 76, 60, 0.25);
-  color: #e74c3c;
+  background-color: rgba(var(--danger-strong-rgb), 0.25);
+  color: var(--danger-strong);
 }
 body #main #content .player-stats .recent-matches .matches-table .match-result.result-unknown {
-  background-color: rgba(255, 255, 255, 0.1);
-  color: #aaa;
+  background-color: rgba(var(--white-rgb), 0.1);
+  color: var(--gray-aaa);
 }
 body #main #content .player-stats {
   /* --- Responsive : grille des statistiques --- */
@@ -416,16 +416,16 @@ body #main #content .profile-tabs {
   display: flex;
   gap: 10px;
   margin: 20px 0;
-  background: #141414;
+  background: var(--gray-141414);
   padding: 6px;
   border-radius: 8px;
   width: fit-content;
-  border: 1px solid rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(var(--white-rgb), 0.05);
 }
 body #main #content .profile-tabs .profile-tab-btn {
   background: transparent;
   border: none;
-  color: #888;
+  color: var(--gray-888);
   padding: 8px 20px;
   font-size: 0.85rem;
   font-weight: 600;
@@ -436,13 +436,13 @@ body #main #content .profile-tabs .profile-tab-btn {
   transition: all 0.25s ease-in-out;
 }
 body #main #content .profile-tabs .profile-tab-btn:hover:not(.active) {
-  background: rgba(255, 255, 255, 0.03);
-  color: #fff;
+  background: rgba(var(--white-rgb), 0.03);
+  color: var(--white);
 }
 body #main #content .profile-tabs .profile-tab-btn.active {
-  background: #ff5722;
-  color: #fff;
-  box-shadow: 0 4px 12px rgba(255, 87, 34, 0.3);
+  background: var(--profile-accent);
+  color: var(--white);
+  box-shadow: 0 4px 12px rgba(var(--profile-accent-rgb), 0.3);
 }
 
 /* --- Styles pour les icônes de classe --- */
@@ -480,37 +480,37 @@ body #main #content .personnal-info .badge-staff {
   text-transform: uppercase;
   letter-spacing: 0.5px;
   border-radius: 12px;
-  color: #fff;
-  background: #444;
+  color: var(--white);
+  background: var(--gray-444);
 }
 body #main #content .personnal-info .badge-staff.badge-founder {
-  background-color: #f0ad4e;
+  background-color: var(--warning-soft);
 }
 body #main #content .personnal-info .badge-staff.badge-admin {
-  background-color: #d9534f;
+  background-color: var(--danger-soft);
 }
 body #main #content .personnal-info .badge-staff.badge-moderator {
-  background-color: #5bc0de;
+  background-color: var(--info-soft);
 }
 body #main #content .personnal-info .badge-staff.badge-mentor {
-  background-color: #5cb85c;
+  background-color: var(--success-alt);
 }
 body #main #content .personnal-info .badge-staff.badge-mixer {
-  background-color: #9b59b6;
+  background-color: var(--twitch-muted);
 }
 body #main #content .personnal-info .badge-staff.badge-caster {
-  background-color: #9146ff;
+  background-color: var(--twitch);
 }
 body #main #content .personnal-info .badge-staff.badge-producer {
-  background-color: #6441a5;
+  background-color: var(--twitch-dark);
 }
 body #main #content .personnal-info .division-badge.badge-france {
   position: relative;
-  background: #2a2d30;
-  border: 1px solid rgba(255, 255, 255, 0.07);
+  background: var(--steam-panel);
+  border: 1px solid rgba(var(--white-rgb), 0.07);
   border-left: none;
   padding: 5px 7px 5px 12px;
-  color: #e8e8e8;
+  color: var(--gray-e8e8e8);
   font-size: 0.88em;
   font-weight: 600;
   letter-spacing: 0.2px;
@@ -523,7 +523,7 @@ body #main #content .personnal-info .division-badge.badge-france::before {
   top: 0;
   bottom: 0;
   width: 4px;
-  background: linear-gradient(to bottom, #002395 0%, #002395 33%, #ffffff 33%, #ffffff 66%, #ed2939 66%, #ed2939 100%);
+  background: linear-gradient(to bottom, var(--flag-blue) 0%, var(--flag-blue) 33%, var(--white) 33%, var(--white) 66%, var(--flag-red) 66%, var(--flag-red) 100%);
   opacity: 0.95;
 }
 body #main #content .personnal-info .division-badge.badge-france::after {
@@ -531,14 +531,14 @@ body #main #content .personnal-info .division-badge.badge-france::after {
   position: absolute;
   inset: 0;
   left: 4px;
-  background: linear-gradient(90deg, rgba(0, 35, 149, 0.12) 0%, rgba(255, 255, 255, 0.04) 45%, rgba(237, 41, 57, 0.1) 100%);
+  background: linear-gradient(90deg, rgba(var(--flag-blue-rgb), 0.12) 0%, rgba(var(--white-rgb), 0.04) 45%, rgba(var(--flag-red-rgb), 0.1) 100%);
   pointer-events: none;
 }
 body #main #content .personnal-info .division-badge.badge-france-highlander {
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  box-shadow: 0 1px 4px rgba(var(--black-rgb), 0.3), inset 0 1px 0 rgba(var(--white-rgb), 0.04);
 }
 body #main #content .personnal-info .division-badge.badge-france-6v6 {
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  box-shadow: 0 1px 4px rgba(var(--black-rgb), 0.3), inset 0 1px 0 rgba(var(--white-rgb), 0.04);
 }
 .badge-france {
   display: inline-flex;
@@ -550,9 +550,9 @@ body #main #content .personnal-info .division-badge.badge-france-6v6 {
   text-transform: uppercase;
   letter-spacing: 0.35px;
   border-radius: 12px;
-  color: #e8e8e8;
-  background: #2a2d30;
-  border: 1px solid rgba(255, 255, 255, 0.07);
+  color: var(--gray-e8e8e8);
+  background: var(--steam-panel);
+  border: 1px solid rgba(var(--white-rgb), 0.07);
   border-left: none;
   position: relative;
   overflow: hidden;
@@ -565,7 +565,7 @@ body #main #content .personnal-info .division-badge.badge-france-6v6 {
   top: 0;
   bottom: 0;
   width: 4px;
-  background: linear-gradient(to bottom, #002395 0%, #002395 33%, #ffffff 33%, #ffffff 66%, #ed2939 66%, #ed2939 100%);
+  background: linear-gradient(to bottom, var(--flag-blue) 0%, var(--flag-blue) 33%, var(--white) 33%, var(--white) 66%, var(--flag-red) 66%, var(--flag-red) 100%);
   opacity: 0.95;
 }
 .badge-france::after {
@@ -573,7 +573,7 @@ body #main #content .personnal-info .division-badge.badge-france-6v6 {
   position: absolute;
   inset: 0;
   left: 4px;
-  background: linear-gradient(90deg, rgba(0, 35, 149, 0.1) 0%, rgba(255, 255, 255, 0.03) 50%, rgba(237, 41, 57, 0.08) 100%);
+  background: linear-gradient(90deg, rgba(var(--flag-blue-rgb), 0.1) 0%, rgba(var(--white-rgb), 0.03) 50%, rgba(var(--flag-red-rgb), 0.08) 100%);
   pointer-events: none;
 }
 .badge-france--small {
@@ -595,7 +595,7 @@ body #main #content .personnal-info .division-badges-label {
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 1.2px;
-  color: #666;
+  color: var(--gray-666);
   flex-basis: 100%;
   margin-bottom: -2px;
 }
@@ -613,13 +613,13 @@ body #main #content .personnal-info .division-badge {
   font-weight: 600;
   border-radius: 6px;
   overflow: hidden;
-  background: #2a2d30;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  background: var(--steam-panel);
+  box-shadow: 0 1px 4px rgba(var(--black-rgb), 0.3), inset 0 1px 0 rgba(var(--white-rgb), 0.04);
   transition: box-shadow 0.2s ease, transform 0.2s ease;
-  border: 1px solid rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(var(--white-rgb), 0.06);
 }
 body #main #content .personnal-info .division-badge:hover {
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  box-shadow: 0 2px 8px rgba(var(--black-rgb), 0.4), inset 0 1px 0 rgba(var(--white-rgb), 0.06);
   transform: translateY(-1px);
 }
 body #main #content .personnal-info .division-badge-mode {
@@ -631,74 +631,74 @@ body #main #content .personnal-info .division-badge-mode {
   font-weight: 800;
   text-transform: uppercase;
   letter-spacing: 0.5px;
-  background: rgba(255, 255, 255, 0.08);
-  color: #999;
+  background: rgba(var(--white-rgb), 0.08);
+  color: var(--gray-999);
   min-width: 34px;
 }
 body #main #content .personnal-info .division-badge-sep {
   width: 1px;
   align-self: stretch;
-  background: rgba(255, 255, 255, 0.08);
+  background: rgba(var(--white-rgb), 0.08);
 }
 body #main #content .personnal-info .division-badge-division {
   padding: 5px 12px;
-  color: #ccc;
+  color: var(--gray-ccc);
   white-space: nowrap;
 }
 /* --- Tiers --- */
 body #main #content .personnal-info .division-tier-0 {
-  border-left: 3px solid #ffd700;
+  border-left: 3px solid var(--tier-0);
 }
 body #main #content .personnal-info .division-tier-0 .division-badge-mode {
-  color: #ffd700;
+  color: var(--tier-0);
 }
 body #main #content .personnal-info .division-tier-0 .division-badge-division {
-  color: #ffe066;
+  color: var(--tier-0-light);
 }
 body #main #content .personnal-info .division-tier-1 {
-  border-left: 3px solid #c0c0c0;
+  border-left: 3px solid var(--tier-1);
 }
 body #main #content .personnal-info .division-tier-1 .division-badge-mode {
-  color: #c0c0c0;
+  color: var(--tier-1);
 }
 body #main #content .personnal-info .division-tier-1 .division-badge-division {
-  color: #dcdcdc;
+  color: var(--tier-1-light);
 }
 body #main #content .personnal-info .division-tier-2 {
-  border-left: 3px solid #8fbcbb;
+  border-left: 3px solid var(--tier-2);
 }
 body #main #content .personnal-info .division-tier-2 .division-badge-mode {
-  color: #8fbcbb;
+  color: var(--tier-2);
 }
 body #main #content .personnal-info .division-tier-2 .division-badge-division {
-  color: #b0d4d3;
+  color: var(--tier-2-light);
 }
 body #main #content .personnal-info .division-tier-3 {
-  border-left: 3px solid #a08060;
+  border-left: 3px solid var(--tier-3);
 }
 body #main #content .personnal-info .division-tier-3 .division-badge-mode {
-  color: #a08060;
+  color: var(--tier-3);
 }
 body #main #content .personnal-info .division-tier-3 .division-badge-division {
-  color: #bfa080;
+  color: var(--tier-3-light);
 }
 body #main #content .personnal-info .division-tier-4 {
-  border-left: 3px solid #6b7075;
+  border-left: 3px solid var(--tier-4);
 }
 body #main #content .personnal-info .division-tier-4 .division-badge-mode {
-  color: #6b7075;
+  color: var(--tier-4);
 }
 body #main #content .personnal-info .division-tier-4 .division-badge-division {
-  color: #8a8e92;
+  color: var(--tier-4-light);
 }
 body #main #content .personnal-info .division-tier-5 {
-  border-left: 3px solid #505458;
+  border-left: 3px solid var(--tier-5);
 }
 body #main #content .personnal-info .division-tier-5 .division-badge-mode {
-  color: #505458;
+  color: var(--tier-5);
 }
 body #main #content .personnal-info .division-tier-5 .division-badge-division {
-  color: #6a6e72;
+  color: var(--tier-5-light);
 }
 
 /* --- Liens externes sur les profils joueurs --- */
@@ -709,21 +709,21 @@ body #main #content .personnal-info .profile-link-icon {
   width: 30px;
   height: 30px;
   border-radius: 50%;
-  background: rgba(255, 255, 255, 0.1);
-  color: #ccc;
+  background: rgba(var(--white-rgb), 0.1);
+  color: var(--gray-ccc);
   font-size: 0.95em;
   text-decoration: none;
   transition: background-color 0.15s ease-in-out, color 0.15s ease-in-out;
 }
 body #main #content .personnal-info .profile-link-icon:hover {
-  background: #ff5722;
-  color: #fff;
+  background: var(--profile-accent);
+  color: var(--white);
 }
 body #main #content .personnal-info .profile-link-icon--tag {
   cursor: help;
 }
 .profile-link-icon-label {
-  color: #ff5722;
+  color: var(--profile-accent);
 }
 
 /* --- Rangée de cartes d'informations (profil public) --- */
@@ -734,8 +734,8 @@ body #main #content .profile-cards-row {
   margin: 15px 0;
 }
 body #main #content .profile-info-card {
-  background-color: rgba(255, 255, 255, 0.1);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  background-color: rgba(var(--white-rgb), 0.1);
+  border: 1px solid rgba(var(--white-rgb), 0.08);
   padding: 15px 20px;
   border-radius: 8px;
 }
@@ -744,10 +744,10 @@ body #main #content .profile-info-card h4 {
   font-size: 1em;
   text-transform: uppercase;
   letter-spacing: 0.5px;
-  color: #aaa;
+  color: var(--gray-aaa);
 }
 body #main #content .profile-info-card h4 i {
-  color: #ff5722;
+  color: var(--profile-accent);
   margin-right: 4px;
 }
 body #main #content .profile-info-card p {
@@ -757,7 +757,7 @@ body #main #content .profile-info-card p:last-child {
   margin-bottom: 0;
 }
 body #main #content .profile-info-card i {
-  color: #ff5722;
+  color: var(--profile-accent);
   min-width: 20px;
   text-align: center;
 }
@@ -770,8 +770,8 @@ body #main #content .dashboard-actions {
 body #main #content .personnal-info .btn-edit-profile,
 body #main #content .btn-edit-profile {
   display: inline-block;
-  background: #ff5722;
-  color: #fff;
+  background: var(--profile-accent);
+  color: var(--white);
   padding: 9px 18px;
   border-radius: 6px;
   text-decoration: none;
@@ -780,12 +780,12 @@ body #main #content .btn-edit-profile {
 }
 body #main #content .personnal-info .btn-edit-profile:hover,
 body #main #content .btn-edit-profile:hover {
-  background: #e64a19;
-  box-shadow: 0 4px 12px rgba(255, 87, 34, 0.3);
+  background: var(--profile-accent-hover);
+  box-shadow: 0 4px 12px rgba(var(--profile-accent-rgb), 0.3);
 }
 body #main #content .personnal-info .steamid-hint,
 body #main #content .steamid-hint {
-  color: #888;
+  color: var(--gray-888);
   font-size: 0.85rem;
 }
 
@@ -798,8 +798,8 @@ body #main #content .personnal-info .edit-header h2 {
 }
 body #main #content .personnal-info .btn-back {
   display: inline-block;
-  background: rgba(255, 255, 255, 0.1);
-  color: #ccc;
+  background: rgba(var(--white-rgb), 0.1);
+  color: var(--gray-ccc);
   padding: 7px 14px;
   border-radius: 6px;
   text-decoration: none;
@@ -807,12 +807,12 @@ body #main #content .personnal-info .btn-back {
   transition: background-color 0.15s ease-in-out, color 0.15s ease-in-out;
 }
 body #main #content .personnal-info .btn-back:hover {
-  background: #ff5722;
-  color: #fff;
+  background: var(--profile-accent);
+  color: var(--white);
 }
 body #main #content .edit-card {
-  background-color: rgba(255, 255, 255, 0.1);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  background-color: rgba(var(--white-rgb), 0.1);
+  border: 1px solid rgba(var(--white-rgb), 0.08);
   padding: 18px 22px;
   border-radius: 8px;
   margin: 15px 0;
@@ -822,7 +822,7 @@ body #main #content .edit-card h3 {
   font-size: 1.3em;
 }
 body #main #content .edit-card h3 i {
-  color: #ff5722;
+  color: var(--profile-accent);
   margin-right: 6px;
 }
 body #main #content .form-grid {
@@ -842,8 +842,8 @@ body #main #content .form-grid--inline {
   margin-bottom: 0;
 }
 body #main #content .edit-card .btn-submit {
-  background: #525252;
-  border: 1px solid #333;
+  background: var(--gray-525252);
+  border: 1px solid var(--gray-333);
   color: white;
   padding: 9px 16px;
   border-radius: 4px;
@@ -851,8 +851,8 @@ body #main #content .edit-card .btn-submit {
   transition: background-color 0.15s ease-in-out;
 }
 body #main #content .edit-card .btn-submit:hover {
-  background: #ff5722;
-  border-color: #e64a19;
+  background: var(--profile-accent);
+  border-color: var(--profile-accent-hover);
 }
 @media all and (max-width: 720px) {
   body #main #content .form-grid {
@@ -877,7 +877,7 @@ body #main #content .edit-card .btn-submit:hover {
   font-weight: bold;
   text-transform: uppercase;
   letter-spacing: 1px;
-  color: #777;
+  color: var(--gray-777);
   margin-bottom: 4px;
 }
 .palmares-entry {
@@ -893,7 +893,7 @@ body #main #content .edit-card .btn-submit:hover {
   text-align: right;
   font-size: 0.8rem;
   font-weight: 600;
-  color: #999;
+  color: var(--gray-999);
   opacity: 0.5;
 }
 .palmares-year-empty {
@@ -906,13 +906,13 @@ body #main #content .edit-card .btn-submit:hover {
   flex-shrink: 0;
 }
 .palmares-medal-icon.palmares-gold {
-  color: #ffd700;
+  color: var(--tier-0);
 }
 .palmares-medal-icon.palmares-silver {
-  color: #c0c0c0;
+  color: var(--tier-1);
 }
 .palmares-medal-icon.palmares-bronze {
-  color: #cd7f32;
+  color: var(--bronze);
 }
 .palmares-medal-placeholder {
   width: 20px;
@@ -926,17 +926,17 @@ body #main #content .edit-card .btn-submit:hover {
   flex-wrap: wrap;
 }
 .palmares-text strong {
-  color: #ddd;
+  color: var(--gray-ddd);
 }
 .palmares-division {
-  color: #999;
+  color: var(--gray-999);
   font-size: 0.85rem;
 }
 .palmares-sep {
-  color: #555;
+  color: var(--gray-555);
 }
 .palmares-team {
-  color: #888;
+  color: var(--gray-888);
   font-style: italic;
   font-size: 0.85rem;
 }
@@ -944,8 +944,8 @@ body #main #content .edit-card .btn-submit:hover {
   font-size: 0.7rem;
   padding: 2px 6px;
   border-radius: 3px;
-  background: #333;
-  color: #aaa;
+  background: var(--gray-333);
+  color: var(--gray-aaa);
   white-space: nowrap;
   display: inline-flex;
   align-items: center;
@@ -955,16 +955,16 @@ body #main #content .edit-card .btn-submit:hover {
   font-size: 0.6rem;
 }
 .palmares-playoff-won {
-  background: #2a4a2a;
-  color: #8c8;
+  background: var(--playoff-won-bg);
+  color: var(--playoff-won);
 }
 .palmares-playoff-won i {
-  color: #6c6;
+  color: var(--playoff-won-icon);
 }
 .palmares-nations {
   margin-top: 12px;
   padding-top: 10px;
-  border-top: 1px solid rgba(255, 255, 255, 0.07);
+  border-top: 1px solid rgba(var(--white-rgb), 0.07);
 }
 .palmares-nations-label {
   display: inline-flex;
@@ -974,14 +974,14 @@ body #main #content .edit-card .btn-submit:hover {
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.6px;
-  color: #8ab4f8;
+  color: var(--nations);
   margin-bottom: 6px;
 }
 .palmares-nations-label i {
-  color: #8ab4f8;
+  color: var(--nations);
 }
 .palmares-entry-nations {
-  background: rgba(138, 180, 248, 0.06);
+  background: rgba(var(--nations-rgb), 0.06);
   border-radius: 4px;
   padding: 4px 6px;
   margin: 2px 0;
@@ -1005,14 +1005,14 @@ body #main #content .edit-card .btn-submit:hover {
   align-items: center;
   gap: 12px;
   padding: 10px 12px;
-  background-color: rgba(255, 255, 255, 0.1);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  background-color: rgba(var(--white-rgb), 0.1);
+  border: 1px solid rgba(var(--white-rgb), 0.08);
   border-radius: 8px;
   text-decoration: none;
   transition: background-color 0.15s ease-in-out, transform 0.15s ease-in-out;
 }
 .profile-team:hover {
-  background-color: rgba(255, 255, 255, 0.16);
+  background-color: rgba(var(--white-rgb), 0.16);
   transform: translateY(-1px);
 }
 .profile-team__logo {
@@ -1024,7 +1024,7 @@ body #main #content .edit-card .btn-submit:hover {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  background: rgba(255, 255, 255, 0.08);
+  background: rgba(var(--white-rgb), 0.08);
 }
 .profile-team__logo img {
   width: 38px;
@@ -1036,7 +1036,7 @@ body #main #content .edit-card .btn-submit:hover {
   font-size: 0.8em;
   font-weight: 800;
   letter-spacing: 0.5px;
-  color: #fbb7fb;
+  color: var(--accent);
 }
 .profile-team__body {
   display: flex;
@@ -1045,7 +1045,7 @@ body #main #content .edit-card .btn-submit:hover {
   min-width: 0;
 }
 .profile-team__name {
-  color: #e8e8e8;
+  color: var(--gray-e8e8e8);
   font-weight: 600;
   font-size: 0.95em;
   white-space: nowrap;
@@ -1056,34 +1056,34 @@ body #main #content .edit-card .btn-submit:hover {
   gap: 4px;
 }
 .profile-team__leader {
-  color: #fbb7fb;
+  color: var(--accent);
   font-size: 0.75em;
 }
 .profile-team__meta {
   display: flex;
   align-items: center;
   gap: 8px;
-  color: #9a9a9a;
+  color: var(--gray-9a9a9a);
   font-size: 0.78em;
   flex-wrap: wrap;
 }
 .profile-team__division {
-  color: #ccc;
+  color: var(--gray-ccc);
 }
 .profile-team__format {
-  color: #7be9dc;
+  color: var(--teal);
 }
 .profile-team__class {
-  color: #fbb7fb;
+  color: var(--accent);
 }
 .profile-team__status {
   padding: 1px 6px;
   border-radius: 4px;
-  border: 1px solid rgba(255, 255, 255, 0.15);
+  border: 1px solid rgba(var(--white-rgb), 0.15);
 }
 .profile-team__status.status-backup {
-  color: #f0b95c;
-  border-color: rgba(240, 185, 92, 0.4);
+  color: var(--yellow-f0b95c);
+  border-color: rgba(var(--yellow-f0b95c-rgb), 0.4);
 }
 @media all and (max-width: 720px) {
   .profile-teams-list {

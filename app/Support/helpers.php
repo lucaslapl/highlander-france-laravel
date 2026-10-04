@@ -96,6 +96,27 @@ if (! function_exists('hlfr_asset')) {
     }
 }
 
+if (! function_exists('hlfr_theme')) {
+    /**
+     * Thème visuel actif du site ("default", "halloween", "noel", ...).
+     *
+     * Piloté par HLFR_THEME (config hlfr.theme). Le nom est validé contre
+     * les thèmes réellement installés dans public/_css/themes/ : un thème
+     * manquant (ou au nom invalide, pour éviter toute injection de chemin)
+     * retombe sur le thème par défaut.
+     */
+    function hlfr_theme(): string
+    {
+        $theme = mb_strtolower(trim((string) config('hlfr.theme', 'default')));
+
+        if ($theme === '' || $theme === 'default' || ! preg_match('/^[a-z0-9-]+$/', $theme)) {
+            return 'default';
+        }
+
+        return is_file(public_path('_css/themes/'.$theme.'.css')) ? $theme : 'default';
+    }
+}
+
 if (! function_exists('avatar_url')) {
     function avatar_url(?string $steamid64): string
     {

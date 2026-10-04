@@ -9,6 +9,13 @@ return [
     // (ex. l'ancien _scripts/ pendant une transition).
     'data_dir' => env('HLFR_DATA_DIR') ?: storage_path('app/hlfr'),
 
+    // Thème visuel du site : "default" (rose/violet), "halloween", "noel"...
+    // Les thèmes disponibles sont les fichiers public/_css/themes/<nom>.css,
+    // qui surchargent les variables CSS de la section « THÈME » de main.css.
+    // Un nom introuvable ou invalide retombe silencieusement sur le thème par
+    // défaut (voir hlfr_theme() dans app/Support/helpers.php).
+    'theme' => env('HLFR_THEME', 'default'),
+
     // Téléchargements privés : ZIP volumineux servis via des liens à token
     // secret (/dl/<token>), destinés uniquement à ceux qui connaissent l'URL.
     // 'dir' : répertoire de stockage hors webroot (le fichier est déposé via SCP

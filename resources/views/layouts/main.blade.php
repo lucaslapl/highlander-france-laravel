@@ -5,6 +5,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="robots" content="{{ $noIndex ?? false ? 'noindex, nofollow' : 'index, follow' }}">
+    {{-- Thème visuel actif (config hlfr.theme) : "default" ou un thème saisonnier. --}}
+    @php($theme = hlfr_theme())
     <link rel="canonical" href="{{ canonical_url() }}">
     <title>@yield('title', config('app.name'))</title>
     <meta name="description" content="@yield('description', site_description())">
@@ -106,6 +108,9 @@
     <link rel="preload" href="/_fonts/Montserrat-Bold.woff2" as="font" type="font/woff2" crossorigin>
     <link rel="stylesheet" href="{{ hlfr_asset('/_css/main.css') }}">
     <link rel="stylesheet" href="{{ hlfr_asset('/_css/sprite.css') }}">
+    @if ($theme !== 'default')
+    <link rel="stylesheet" href="{{ hlfr_asset('/_css/themes/'.$theme.'.css') }}">
+    @endif
     @stack('styles')
 
     <!-- Google tag (gtag.js) -->
@@ -117,14 +122,14 @@
     gtag('config', 'G-30553SX3GJ');
     </script>
 </head>
-<body>
+<body @if ($theme !== 'default') class="theme-{{ $theme }}" @endif>
 @if (session('error'))
-    <div style="background: #3d1c1c; color: #e74c3c; border: 1px solid #c0392b; padding: 12px 15px; border-radius: 4px; margin: 20px auto; max-width: 1200px; font-size: 14px;">
+    <div style="background: var(--danger-bg-alt); color: var(--danger-strong); border: 1px solid var(--danger-deep); padding: 12px 15px; border-radius: 4px; margin: 20px auto; max-width: 1200px; font-size: 14px;">
         <i class="fa-solid fa-circle-xmark"></i> {{ session('error') }}
     </div>
 @endif
 @if (session('success'))
-    <div style="background: #1c3d1c; color: #2ecc71; border: 1px solid #27ae60; padding: 12px 15px; border-radius: 4px; margin: 20px auto; max-width: 1200px; font-size: 14px;">
+    <div style="background: var(--success-bg); color: var(--success); border: 1px solid var(--success-strong); padding: 12px 15px; border-radius: 4px; margin: 20px auto; max-width: 1200px; font-size: 14px;">
         <i class="fa-solid fa-circle-check"></i> {{ session('success') }}
     </div>
 @endif

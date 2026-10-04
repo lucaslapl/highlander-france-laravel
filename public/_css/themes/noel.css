@@ -1,0 +1,64 @@
+/* ==================================================================
+   THÈME SAISONNIER — NOËL
+   Surcharge les variables de la section « THÈME » définies dans
+   main.css. Ce fichier n'est chargé que lorsque le thème est actif
+   (config hlfr.theme / HLFR_THEME=noel), après main.css, donc
+   ses :root gagnent la cascade. Rouge sapin et vert profondeur :
+   les neutres, statuts, marques (Discord, Twitch, Steam...) et
+   couleurs de profil sont conservés.
+   ================================================================== */
+:root {
+  /* Accent : rouge Noël */
+  --accent: #ff6161;
+  --accent-rgb: 255, 97, 97;
+  --accent-soft: #ff9c9c;
+  --accent-deep: #a32626;
+  --accent-deep-rgb: 163, 38, 38;
+  --on-accent: #260505;
+  --accent-border: rgba(255, 97, 97, 0.5882352941);
+
+  /* Surfaces et bordures : verts sapin sombres */
+  --border: #1c3a24;
+  --border-rgb: 28, 58, 36;
+  --border-strong: #2a5236;
+  --surface-raised: #2f5c3c;
+  --surface-dark: #08140c;
+  --mauve: #5c8a68;
+
+  /* Fonds de page : forêt hivernale */
+  --bg-body-1: #14231a;
+  --bg-body-1-rgb: 20, 35, 26;
+  --bg-body-2: #0d1210;
+  --bg-body-3: #1c2b24;
+
+  /* Image d'entête : dégradé provisoire en attendant une illustration.
+     Déposer l'image dans public/_img/themes/noel.webp puis remplacer par :
+     --header-bg: url("../../_img/themes/noel.webp"); */
+  --header-bg: linear-gradient(165deg, #0d1a12 0%, #1f2d22 50%, #3a1414 100%);
+
+  /* Barre de navigation et menus déroulants */
+  --nav-1: #1f3a2a;
+  --nav-2-rgb: 8, 14, 10;
+  --nav-3: #24422e;
+  --dropdown-1: #1c3324;
+  --dropdown-2: #0a120d;
+  --dropdown-3: #16331f;
+
+  /* Voile sombre au-dessus des fonds */
+  --overlay: rgba(8, 14, 10, 0.85);
+
+  /* Lueurs et ombres : guirlandes rouges */
+  --violet: #d43a2f;
+  --violet-bright: #ff8f8f;
+  --violet-light: #7ec8a0;
+  --violet-shadow: #701818;
+  --violet-deep: #7a1f1f;
+  --violet-soft: #3a1414;
+  --violet-glow: rgba(212, 58, 47, 0.1098039216);
+  --violet-line: rgba(212, 58, 47, 0.57);
+  --violet-muted: rgba(232, 106, 106, 0.4901960784);
+
+  /* Dégradés de boutons */
+  --etf2l-btn-1: #8a1f1f;
+  --etf2l-btn-2: #a63c3c;
+}

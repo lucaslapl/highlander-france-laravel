@@ -1,0 +1,64 @@
+/* ==================================================================
+   THÈME SAISONNIER — HALLOWEEN
+   Surcharge les variables de la section « THÈME » définies dans
+   main.css. Ce fichier n'est chargé que lorsque le thème est actif
+   (config hlfr.theme / HLFR_THEME=halloween), après main.css, donc
+   ses :root gagnent la cascade. Les éléments restent lisibles : seuls
+   accent, surfaces et lueurs changent ; les neutres, statuts, marques
+   (Discord, Twitch, Steam...) et couleurs de profil sont conservés.
+   ================================================================== */
+:root {
+  /* Accent : orange citrouille */
+  --accent: #ffa94d;
+  --accent-rgb: 255, 169, 77;
+  --accent-soft: #ffc98a;
+  --accent-deep: #8c4a00;
+  --accent-deep-rgb: 140, 74, 0;
+  --on-accent: #1a0e00;
+  --accent-border: rgba(255, 169, 77, 0.5882352941);
+
+  /* Surfaces et bordures : bruns/ambres sombres */
+  --border: #3d2508;
+  --border-rgb: 61, 37, 8;
+  --border-strong: #5c3a0e;
+  --surface-raised: #8a5a2a;
+  --surface-dark: #0f0a05;
+  --mauve: #b08a3d;
+
+  /* Fonds de page : nuit d'automne */
+  --bg-body-1: #3a2510;
+  --bg-body-1-rgb: 58, 37, 16;
+  --bg-body-2: #0f0703;
+  --bg-body-3: #33241a;
+
+  /* Image d'entête : dégradé provisoire en attendant une illustration.
+     Déposer l'image dans public/_img/themes/halloween.webp puis remplacer par :
+     --header-bg: url("../../_img/themes/halloween.webp"); */
+  --header-bg: linear-gradient(165deg, #1a0f05 0%, #2b1508 55%, #140b04 100%);
+
+  /* Barre de navigation et menus déroulants */
+  --nav-1: #4a2a0e;
+  --nav-2-rgb: 20, 10, 3;
+  --nav-3: #55300f;
+  --dropdown-1: #3a2410;
+  --dropdown-2: #150d05;
+  --dropdown-3: #401c08;
+
+  /* Voile sombre au-dessus des fonds */
+  --overlay: rgba(25, 12, 2, 0.85);
+
+  /* Lueurs et ombres : braises et lanternes */
+  --violet: #ff6a00;
+  --violet-bright: #ffb14d;
+  --violet-light: #e8a04c;
+  --violet-shadow: #713000;
+  --violet-deep: #7a3308;
+  --violet-soft: #4a2408;
+  --violet-glow: rgba(255, 106, 0, 0.1098039216);
+  --violet-line: rgba(255, 106, 0, 0.57);
+  --violet-muted: rgba(230, 126, 34, 0.4901960784);
+
+  /* Dégradés de boutons */
+  --etf2l-btn-1: #7a3d0a;
+  --etf2l-btn-2: #9c5210;
+}
