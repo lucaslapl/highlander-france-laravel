@@ -443,7 +443,7 @@ class TeamStatsServiceTest extends TestCase
         $this->assertSame(0, $result['players'][0]['kills']);
     }
 
-    // ─── Fixtures logs.tf (même contrat que PlayerStatsServiceTest) ──────
+    // ─── Fixtures logs.tf ──────────────────────────────────────────────
 
     private function logDetails(array $players, int $length = 900): array
     {

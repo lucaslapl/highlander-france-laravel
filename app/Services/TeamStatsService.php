@@ -5,10 +5,10 @@ declare(strict_types=1);
 namespace App\Services;
 
 /**
- * Préparation des stats d'une équipe (onglet « Équipe » de /admin/stats-joueur).
+ * Préparation des données d'une équipe ETF2L pour les équipes gérées du site
+ * (import via ManagedTeamImportService).
  *
- * Collecte, à la volée et en synchrone (petit volume), les données nécessaires
- * avant le lancement du calcul asynchrone :
+ * Collecte, à la volée et en synchrone (petit volume), les données nécessaires :
  *  - le roster ETF2L (équipe + membres avec steamid64) via team/{id} ;
  *  - les résultats officiels ETF2L (team/{id}/results) regroupés par
  *    compétition/saison et par mode => winrate officiel par compétition ;
