@@ -115,6 +115,7 @@ body {
     padding: 10px 15px 10px 35px;
     font-size: 17px;
     font-weight: 800;
+    text-shadow: 1px 1px 3px #000;
     background: rgba(255, 255, 255, 0.03);
     color: var(--ink-dim);
 }
@@ -129,7 +130,7 @@ body {
     content: '';
     position: absolute;
     inset: 0;
-    background-color: rgba(12, 14, 20, 0.6);
+    background-color: rgba(12, 14, 20, 0.3);
 }
 
 .series-map__name,
