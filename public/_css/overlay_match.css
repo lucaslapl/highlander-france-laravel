@@ -1,0 +1,235 @@
+/* Overlay OBS « stats match » (/overlay/{token}) — 1920x1080, fond transparent.
+   Variables CSS injectées en inline sur .overlay-stage :
+   --overlay-opacity (0-100%) et --overlay-blur (px). */
+
+.overlay-stage {
+    --overlay-opacity: 70%;
+    --overlay-blur: 6px;
+    --red: #b8383b;
+    --red-soft: rgba(184, 56, 59, 0.18);
+    --blue: #5885a2;
+    --blue-soft: rgba(88, 133, 162, 0.18);
+    --gold: #ffd24a;
+    --ink: #f5f5f5;
+    --panel-bg: rgba(12, 14, 20, calc(var(--overlay-opacity) / 100));
+
+    position: relative;
+    width: 1920px;
+    height: 1080px;
+    margin: 0;
+    box-sizing: border-box;
+    padding: 26px 56px 30px;
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+    color: var(--ink);
+    font-family: "Montserrat", "Segoe UI", Roboto, sans-serif;
+    background: transparent;
+}
+
+/* ─── En-tête : avatars, noms d'équipes, scores ──────────────────────────── */
+
+.overlay-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 40px;
+    padding: 14px 34px;
+    background: var(--panel-bg);
+    -webkit-backdrop-filter: blur(var(--overlay-blur));
+    backdrop-filter: blur(var(--overlay-blur));
+    border: 1px solid rgba(255, 255, 255, 0.09);
+    border-radius: 16px;
+}
+
+.overlay-stage--no-panel .overlay-header,
+.overlay-stage--no-panel .overlay-panel,
+.overlay-stage--no-panel .overlay-medics {
+    background: transparent;
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+    border-color: transparent;
+}
+
+.overlay-team {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+}
+
+.overlay-team__avatar {
+    width: 64px;
+    height: 64px;
+    object-fit: contain;
+    border-radius: 10px;
+}
+
+.overlay-team__name {
+    font-size: 34px;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    text-shadow: 0 2px 6px rgba(0, 0, 0, 0.6);
+}
+
+.overlay-team__score {
+    font-size: 46px;
+    font-weight: 800;
+    min-width: 60px;
+    text-align: center;
+    border-radius: 12px;
+    padding: 2px 14px;
+}
+
+.overlay-team--red .overlay-team__score,
+.overlay-team__score--red { color: #ffd6d6; background: var(--red-soft); }
+.overlay-team--blue .overlay-team__score,
+.overlay-team__score--blue { color: #d7e8f5; background: var(--blue-soft); }
+
+.overlay-header__center {
+    text-align: center;
+}
+
+.overlay-header__vs {
+    font-size: 26px;
+    font-weight: 600;
+    text-transform: uppercase;
+    color: rgba(255, 255, 255, 0.55);
+    letter-spacing: 4px;
+}
+
+.overlay-map {
+    margin: -8px 0 0;
+    text-align: center;
+    font-size: 20px;
+    color: rgba(255, 255, 255, 0.75);
+    text-shadow: 0 2px 6px rgba(0, 0, 0, 0.7);
+}
+
+/* ─── Colonnes d'équipes ─────────────────────────────────────────────────── */
+
+.overlay-teams {
+    flex: 1;
+    display: flex;
+    gap: 24px;
+    min-height: 0;
+}
+
+.overlay-panel {
+    flex: 1;
+    padding: 16px 22px 20px;
+    background: var(--panel-bg);
+    -webkit-backdrop-filter: blur(var(--overlay-blur));
+    backdrop-filter: blur(var(--overlay-blur));
+    border: 1px solid rgba(255, 255, 255, 0.09);
+    border-radius: 16px;
+    overflow: hidden;
+}
+
+.overlay-panel--red { border-top: 4px solid var(--red); }
+.overlay-panel--blue { border-top: 4px solid var(--blue); }
+
+.overlay-stats {
+    width: 100%;
+    border-collapse: collapse;
+    table-layout: fixed;
+    font-size: 22px;
+}
+
+.overlay-stats th,
+.overlay-stats td {
+    padding: 5px 8px;
+    text-align: right;
+    white-space: nowrap;
+}
+
+.overlay-stats thead th {
+    font-size: 16px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: rgba(255, 255, 255, 0.55);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.14);
+    padding-bottom: 8px;
+}
+
+.overlay-stats tbody tr:nth-child(even) {
+    background: rgba(255, 255, 255, 0.04);
+}
+
+.overlay-stats td.c-class {
+    width: 42px;
+    text-align: left;
+}
+
+.overlay-stats td.c-class img {
+    width: 32px;
+    height: 32px;
+    vertical-align: middle;
+}
+
+.overlay-stats td.c-name {
+    text-align: left;
+    font-weight: 500;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.overlay-stats th.c-name { text-align: left; }
+
+.overlay-stats .num {
+    font-variant-numeric: tabular-nums;
+    color: rgba(255, 255, 255, 0.88);
+}
+
+/* Meilleure valeur d'une stat : mise en avant or + gras. */
+.overlay-stats .num.best {
+    color: var(--gold);
+    font-weight: 800;
+}
+
+/* ─── Bandeau medics ────────────────────────────────────────────────────── */
+
+.overlay-medics {
+    display: flex;
+    gap: 24px;
+}
+
+.overlay-medic {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    gap: 28px;
+    padding: 12px 22px;
+    background: var(--panel-bg);
+    -webkit-backdrop-filter: blur(var(--overlay-blur));
+    backdrop-filter: blur(var(--overlay-blur));
+    border: 1px solid rgba(255, 255, 255, 0.09);
+    border-radius: 16px;
+    font-size: 21px;
+}
+
+.overlay-medic--red { border-left: 4px solid var(--red); }
+.overlay-medic--blue { border-left: 4px solid var(--blue); }
+
+.overlay-medic__title {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-weight: 700;
+    white-space: nowrap;
+}
+
+.overlay-medic__title img {
+    width: 30px;
+    height: 30px;
+}
+
+.overlay-medic__stat {
+    color: rgba(255, 255, 255, 0.82);
+    white-space: nowrap;
+}
+
+.overlay-medic__stat strong {
+    color: #fff;
+    font-weight: 800;
+}

@@ -8,12 +8,14 @@ use App\Http\Controllers\Admin\AdminController;
 use App\Http\Controllers\Admin\AdminCronController;
 use App\Http\Controllers\Admin\AdminGuideController;
 use App\Http\Controllers\Admin\AdminMapController;
+use App\Http\Controllers\Admin\AdminOverlayController;
 use App\Http\Controllers\Admin\AdminTeamController;
 use App\Http\Controllers\ApiController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\DownloadController;
 use App\Http\Controllers\GuideController;
 use App\Http\Controllers\ManagedTeamController;
+use App\Http\Controllers\OverlayController;
 use App\Http\Controllers\PageController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\ServerHookController;
@@ -81,6 +83,11 @@ Route::post('/api/discord/member-count', [ServerHookController::class, 'discordM
 // ─── Match en direct ─────────────────────────────────────────────────────────
 Route::get('/live/{server}', [PageController::class, 'liveMatch']);
 
+// ─── Overlays OBS (source navigateur web, accès par token) ───────────────────
+Route::get('/overlay/{token}', [OverlayController::class, 'show'])->where('token', '[a-z0-9]{16}');
+Route::get('/overlay/{token}/version', [OverlayController::class, 'version'])->where('token', '[a-z0-9]{16}');
+Route::get('/overlay/{token}/avatar/{team}', [OverlayController::class, 'avatar'])->where('token', '[a-z0-9]{16}')->whereIn('team', ['red', 'blue']);
+
 // ─── Panel admin (accès strict réservé aux admins) ───────────────────────────
 Route::middleware('admin')->prefix('admin')->group(function (): void {
     Route::get('/dashboard', [AdminController::class, 'dashboard']);
@@ -111,6 +118,14 @@ Route::middleware('admin')->prefix('admin')->group(function (): void {
     Route::post('/faq/{id}/update', [AdminGuideController::class, 'faqUpdate'])->whereNumber('id');
     Route::post('/faq/{id}/delete', [AdminGuideController::class, 'faqDelete'])->whereNumber('id');
     Route::post('/faq/{id}/toggle', [AdminGuideController::class, 'faqToggle'])->whereNumber('id');
+    Route::get('/overlay', [AdminOverlayController::class, 'index'])->name('admin.overlay');
+    Route::post('/overlay/generate', [AdminOverlayController::class, 'generate']);
+    Route::get('/overlay/{token}', [AdminOverlayController::class, 'edit'])->where('token', '[a-z0-9]{16}');
+    Route::post('/overlay/{token}/update', [AdminOverlayController::class, 'update'])->where('token', '[a-z0-9]{16}');
+    Route::post('/overlay/{token}/refresh', [AdminOverlayController::class, 'refresh'])->where('token', '[a-z0-9]{16}');
+    Route::post('/overlay/{token}/avatar', [AdminOverlayController::class, 'avatar'])->where('token', '[a-z0-9]{16}');
+    Route::post('/overlay/{token}/avatar/delete', [AdminOverlayController::class, 'avatarDelete'])->where('token', '[a-z0-9]{16}');
+    Route::post('/overlay/{token}/delete', [AdminOverlayController::class, 'delete'])->where('token', '[a-z0-9]{16}');
     Route::get('/equipes', [AdminTeamController::class, 'index']);
     Route::get('/equipes/search', [AdminTeamController::class, 'search']);
     Route::post('/equipes/store', [AdminTeamController::class, 'store']);

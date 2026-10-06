@@ -1,0 +1,28 @@
+/* Outil admin « Overlay match » (/admin/overlay) : champs d'URL et aperçu. */
+
+.overlay-url-input {
+    font-family: monospace;
+    font-size: 13px;
+    color: #9b6dff;
+    background: #17141f;
+}
+
+.overlay-preview-wrap {
+    width: 100%;
+    max-width: 960px;
+    aspect-ratio: 16 / 9;
+    border: 1px solid #333;
+    border-radius: 8px;
+    overflow: hidden;
+    background: repeating-conic-gradient(#222 0% 25%, #2a2a2a 0% 50%) 0 0 / 24px 24px;
+}
+
+.overlay-preview {
+    width: 1920px;
+    height: 1080px;
+    border: 0;
+    transform: scale(0.5);
+    transform-origin: top left;
+    pointer-events: none;
+    background: transparent;
+}

@@ -145,6 +145,12 @@ window.__dashboardData = {!! json_encode($dashboardData, JSON_UNESCAPED_UNICODE 
                 <p class="admin-action-card__desc">Import d'équipes ETF2L, roster, leaders, division et logo pour la sidebar d'accueil et les pages /equipes.</p>
                 <a href="/admin/equipes" class="admin-link-btn">Gérer les équipes</a>
             </div>
+
+            <div class="admin-action-card" style="--accent: #9b6dff;">
+                <h4 class="admin-action-card__title"><i class="fa-solid fa-tv"></i> Overlay match</h4>
+                <p class="admin-action-card__desc">Génération d'overlays de stats logs.tf pour les broadcasts OBS : équipes, scores, joueurs et medics, avec transparence réglable.</p>
+                <a href="/admin/overlay" class="admin-link-btn">Gérer les overlays</a>
+            </div>
         </div>
 
         <h3 class="admin-section-title">Gestion interne du site (dangereux !)</h3>
