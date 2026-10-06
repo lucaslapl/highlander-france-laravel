@@ -9,6 +9,7 @@ use App\Http\Controllers\Admin\AdminCronController;
 use App\Http\Controllers\Admin\AdminGuideController;
 use App\Http\Controllers\Admin\AdminMapController;
 use App\Http\Controllers\Admin\AdminOverlayController;
+use App\Http\Controllers\Admin\AdminPanelController;
 use App\Http\Controllers\Admin\AdminSeriesController;
 use App\Http\Controllers\Admin\AdminTeamController;
 use App\Http\Controllers\ApiController;
@@ -92,6 +93,29 @@ Route::get('/overlay/{token}/avatar/{team}', [OverlayController::class, 'avatar'
 Route::get('/series-overlay/{token}', [SeriesOverlayController::class, 'show'])->where('token', '[a-z0-9]{16}');
 Route::get('/series-overlay/{token}/version', [SeriesOverlayController::class, 'version'])->where('token', '[a-z0-9]{16}');
 
+// ─── Outils overlay OBS (admins + rôles caster / prod) ───────────────────────
+// Panel restreint : les casters et prod n'ont accès qu'aux deux outils
+// d'overlay et au panel ci-dessous, rien d'autre du /admin/*.
+Route::middleware('overlay-tools')->prefix('admin')->group(function (): void {
+    Route::get('/panel', [AdminPanelController::class, 'index'])->name('admin.panel');
+    Route::get('/overlay', [AdminOverlayController::class, 'index'])->name('admin.overlay');
+    Route::post('/overlay/generate', [AdminOverlayController::class, 'generate']);
+    Route::get('/overlay/{token}', [AdminOverlayController::class, 'edit'])->where('token', '[a-z0-9]{16}');
+    Route::post('/overlay/{token}/update', [AdminOverlayController::class, 'update'])->where('token', '[a-z0-9]{16}');
+    Route::post('/overlay/{token}/refresh', [AdminOverlayController::class, 'refresh'])->where('token', '[a-z0-9]{16}');
+    Route::post('/overlay/{token}/swap', [AdminOverlayController::class, 'swap'])->where('token', '[a-z0-9]{16}');
+    Route::post('/overlay/{token}/avatar', [AdminOverlayController::class, 'avatar'])->where('token', '[a-z0-9]{16}');
+    Route::post('/overlay/{token}/avatar/delete', [AdminOverlayController::class, 'avatarDelete'])->where('token', '[a-z0-9]{16}');
+    Route::post('/overlay/{token}/delete', [AdminOverlayController::class, 'delete'])->where('token', '[a-z0-9]{16}');
+    Route::get('/series', [AdminSeriesController::class, 'index'])->name('admin.series');
+    Route::post('/series/create', [AdminSeriesController::class, 'create']);
+    Route::get('/series/{token}', [AdminSeriesController::class, 'show'])->where('token', '[a-z0-9]{16}');
+    Route::post('/series/{token}/status', [AdminSeriesController::class, 'status'])->where('token', '[a-z0-9]{16}');
+    Route::post('/series/{token}/point', [AdminSeriesController::class, 'point'])->where('token', '[a-z0-9]{16}');
+    Route::post('/series/{token}/void', [AdminSeriesController::class, 'void'])->where('token', '[a-z0-9]{16}');
+    Route::post('/series/{token}/delete', [AdminSeriesController::class, 'delete'])->where('token', '[a-z0-9]{16}');
+});
+
 // ─── Panel admin (accès strict réservé aux admins) ───────────────────────────
 Route::middleware('admin')->prefix('admin')->group(function (): void {
     Route::get('/dashboard', [AdminController::class, 'dashboard']);
@@ -122,22 +146,6 @@ Route::middleware('admin')->prefix('admin')->group(function (): void {
     Route::post('/faq/{id}/update', [AdminGuideController::class, 'faqUpdate'])->whereNumber('id');
     Route::post('/faq/{id}/delete', [AdminGuideController::class, 'faqDelete'])->whereNumber('id');
     Route::post('/faq/{id}/toggle', [AdminGuideController::class, 'faqToggle'])->whereNumber('id');
-    Route::get('/overlay', [AdminOverlayController::class, 'index'])->name('admin.overlay');
-    Route::post('/overlay/generate', [AdminOverlayController::class, 'generate']);
-    Route::get('/overlay/{token}', [AdminOverlayController::class, 'edit'])->where('token', '[a-z0-9]{16}');
-    Route::post('/overlay/{token}/update', [AdminOverlayController::class, 'update'])->where('token', '[a-z0-9]{16}');
-    Route::post('/overlay/{token}/refresh', [AdminOverlayController::class, 'refresh'])->where('token', '[a-z0-9]{16}');
-    Route::post('/overlay/{token}/swap', [AdminOverlayController::class, 'swap'])->where('token', '[a-z0-9]{16}');
-    Route::post('/overlay/{token}/avatar', [AdminOverlayController::class, 'avatar'])->where('token', '[a-z0-9]{16}');
-    Route::post('/overlay/{token}/avatar/delete', [AdminOverlayController::class, 'avatarDelete'])->where('token', '[a-z0-9]{16}');
-    Route::post('/overlay/{token}/delete', [AdminOverlayController::class, 'delete'])->where('token', '[a-z0-9]{16}');
-    Route::get('/series', [AdminSeriesController::class, 'index'])->name('admin.series');
-    Route::post('/series/create', [AdminSeriesController::class, 'create']);
-    Route::get('/series/{token}', [AdminSeriesController::class, 'show'])->where('token', '[a-z0-9]{16}');
-    Route::post('/series/{token}/status', [AdminSeriesController::class, 'status'])->where('token', '[a-z0-9]{16}');
-    Route::post('/series/{token}/point', [AdminSeriesController::class, 'point'])->where('token', '[a-z0-9]{16}');
-    Route::post('/series/{token}/void', [AdminSeriesController::class, 'void'])->where('token', '[a-z0-9]{16}');
-    Route::post('/series/{token}/delete', [AdminSeriesController::class, 'delete'])->where('token', '[a-z0-9]{16}');
     Route::get('/equipes', [AdminTeamController::class, 'index']);
     Route::get('/equipes/search', [AdminTeamController::class, 'search']);
     Route::post('/equipes/store', [AdminTeamController::class, 'store']);

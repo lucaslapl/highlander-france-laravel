@@ -4,6 +4,8 @@
 @section('description', $description)
 
 @section('content')
+@include('admin.partials.panel_back_link')
+
 <div class="admin-header" style="--accent:#4cc46a;">
     <h2><i class="fa-solid fa-trophy"></i> Séries de matchs (playoffs)</h2>
     <p>Suivi automatique du score des séries via logs.tf : lancez le suivi, et chaque log uploadé par le serveur de match met à jour les maps gagnées — sans aucun alt-tab pendant le cast. Les ajustements manuels (contestation, log manquant) restent possibles dans le détail de chaque série.</p>

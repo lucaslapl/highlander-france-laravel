@@ -122,7 +122,7 @@ class SeriesOverlayTest extends TestCase
 
         $html = (string) $this->get('/series-overlay/'.self::TOKEN)->assertOk()->getContent();
 
-        $this->assertStringContainsString('series-map__score">0–0', $html);
+        $this->assertStringContainsString('series-map__score">0 – 0', $html);
         $this->assertStringContainsString('series-map--won-red', $html);
     }
 

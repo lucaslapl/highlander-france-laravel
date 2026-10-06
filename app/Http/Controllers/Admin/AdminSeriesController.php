@@ -15,10 +15,11 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 
 /**
- * Outil admin « Séries de matchs » : suivi automatique du score d'une série
+ * Outil « Séries de matchs » : suivi automatique du score d'une série
  * de playoffs via logs.tf (réconciliateur app:series-reconcile), avec ajustements
  * manuels (point de map, annulation d'un événement) pour les contestations et
- * les cas que l'automatisme ne couvre pas.
+ * les cas que l'automatisme ne couvre pas. Accessible aux admins et aux rôles
+ * caster / prod (panel restreint /admin/panel).
  */
 final class AdminSeriesController extends Controller
 {
@@ -36,7 +37,7 @@ final class AdminSeriesController extends Controller
      */
     public function index(): View
     {
-        Auth::requireAdmin();
+        Auth::requireOverlayTools();
 
         return view('admin.series', [
             'title' => 'Admin - Séries de matchs (playoffs)',
@@ -55,7 +56,7 @@ final class AdminSeriesController extends Controller
      */
     public function create(Request $request): RedirectResponse
     {
-        Auth::requireAdmin();
+        Auth::requireOverlayTools();
 
         $data = $request->validate([
             'title' => ['required', 'string', 'max:255'],
@@ -116,7 +117,7 @@ final class AdminSeriesController extends Controller
      */
     public function show(string $token): View
     {
-        Auth::requireAdmin();
+        Auth::requireOverlayTools();
 
         $series = $this->series->find($token);
         if ($series === null) {
@@ -141,7 +142,7 @@ final class AdminSeriesController extends Controller
      */
     public function status(Request $request, string $token): RedirectResponse
     {
-        Auth::requireAdmin();
+        Auth::requireOverlayTools();
 
         $series = $this->series->find($token);
         if ($series === null) {
@@ -168,7 +169,7 @@ final class AdminSeriesController extends Controller
      */
     public function point(Request $request, string $token): RedirectResponse
     {
-        Auth::requireAdmin();
+        Auth::requireOverlayTools();
 
         $series = $this->series->find($token);
         if ($series === null) {
@@ -211,7 +212,7 @@ final class AdminSeriesController extends Controller
      */
     public function void(Request $request, string $token): RedirectResponse
     {
-        Auth::requireAdmin();
+        Auth::requireOverlayTools();
 
         $series = $this->series->find($token);
         if ($series === null) {
@@ -248,7 +249,7 @@ final class AdminSeriesController extends Controller
      */
     public function delete(string $token): RedirectResponse
     {
-        Auth::requireAdmin();
+        Auth::requireOverlayTools();
 
         $this->series->delete($token);
         AdminLogger::log('admin_series_delete', null, 'SUCCESS (série '.$token.')');

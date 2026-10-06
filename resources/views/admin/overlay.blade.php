@@ -4,6 +4,8 @@
 @section('description', $description)
 
 @section('content')
+@include('admin.partials.panel_back_link')
+
 <div class="admin-header" style="--accent:#9b6dff;">
     <h2><i class="fa-solid fa-tv"></i> Overlay match (OBS)</h2>
     <p>Génération d'overlays de stats logs.tf pour les broadcasts OBS : entrez un lien logs.tf, personnalisez, puis pointez l'URL d'overlay dans OBS Studio (source navigateur web, 1920x1080, fond transparent).</p>

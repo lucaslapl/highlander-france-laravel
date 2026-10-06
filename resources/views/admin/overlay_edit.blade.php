@@ -11,6 +11,8 @@
     $blur = (int) ($style['blur'] ?? 6);
 @endphp
 
+@include('admin.partials.panel_back_link')
+
 <div class="admin-header" style="--accent:#9b6dff;">
     <h2><i class="fa-solid fa-tv"></i> Overlay — logs.tf #{{ (int) $overlay['log_id'] }}</h2>
     <p>{{ e($overlay['title']) }} · {{ e($overlay['map']) }} · score {{ (int) $overlay['teams']['red']['score'] }} - {{ (int) $overlay['teams']['blue']['score'] }}</p>

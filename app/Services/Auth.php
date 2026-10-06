@@ -31,6 +31,43 @@ final class Auth
         return Session::get('is_admin', false) === true;
     }
 
+    public static function isCaster(): bool
+    {
+        return Session::get('is_caster', false) === true;
+    }
+
+    public static function isProducer(): bool
+    {
+        return Session::get('is_producer', false) === true;
+    }
+
+    /**
+     * Accès aux outils d'overlay OBS : réservé aux admins, mais aussi aux
+     * rôles caster / prod (team Twitch) pour la préparation des streams.
+     */
+    public static function canAccessOverlayTools(): bool
+    {
+        if (self::steamId64() === null) {
+            return false;
+        }
+
+        return self::isAdmin() || self::isCaster() || self::isProducer();
+    }
+
+    /**
+     * Bloque l'accès si le visiteur n'a pas le droit d'utiliser les outils
+     * d'overlay OBS (à utiliser derrière le middleware overlay-tools,
+     * en filet de sécurité).
+     */
+    public static function requireOverlayTools(): void
+    {
+        if (self::canAccessOverlayTools()) {
+            return;
+        }
+
+        abort(403, 'Accès refusé.');
+    }
+
     /**
      * Bloque l'accès si le visiteur n'est pas un administrateur authentifié
      * (à utiliser derrière le middleware admin, en filet de sécurité).

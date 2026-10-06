@@ -15,6 +15,7 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->alias([
             'admin' => \App\Http\Middleware\EnsureAdmin::class,
+            'overlay-tools' => \App\Http\Middleware\EnsureOverlayTools::class,
         ]);
 
         // Les webhooks serveurs (plugin SourceMod) et bot Discord sont

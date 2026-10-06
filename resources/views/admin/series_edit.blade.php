@@ -4,6 +4,8 @@
 @section('description', $description)
 
 @section('content')
+@include('admin.partials.panel_back_link')
+
 <div class="admin-header" style="--accent:#4cc46a;">
     <h2><i class="fa-solid fa-trophy"></i> {{ e($series['title']) }}</h2>
     <p>

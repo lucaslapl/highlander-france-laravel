@@ -15,8 +15,9 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 
 /**
- * Outil admin « Overlay match » : génération d'overlays de stats pour OBS
- * Studio à partir d'un log logs.tf.
+ * Outil « Overlay match » : génération d'overlays de stats pour OBS
+ * Studio à partir d'un log logs.tf. Accessible aux admins et aux rôles
+ * caster / prod (panel restreint /admin/panel).
  *
  * Chaque overlay possède son propre token et son URL publique
  * (/overlay/{token}) à pointer dans OBS via une source navigateur web.
@@ -43,7 +44,7 @@ final class AdminOverlayController extends Controller
      */
     public function index(): View
     {
-        Auth::requireAdmin();
+        Auth::requireOverlayTools();
 
         return view('admin.overlay', [
             'title' => 'Admin - Overlay match (OBS)',
@@ -60,7 +61,7 @@ final class AdminOverlayController extends Controller
      */
     public function generate(Request $request): RedirectResponse
     {
-        Auth::requireAdmin();
+        Auth::requireOverlayTools();
 
         $data = $request->validate([
             'log' => ['required', 'string', 'max:255'],
@@ -99,7 +100,7 @@ final class AdminOverlayController extends Controller
      */
     public function edit(string $token): View
     {
-        Auth::requireAdmin();
+        Auth::requireOverlayTools();
 
         $overlay = $this->requireOverlay($token);
 
@@ -121,7 +122,7 @@ final class AdminOverlayController extends Controller
      */
     public function update(Request $request, string $token): RedirectResponse
     {
-        Auth::requireAdmin();
+        Auth::requireOverlayTools();
 
         $overlay = $this->requireOverlay($token);
 
@@ -158,7 +159,7 @@ final class AdminOverlayController extends Controller
      */
     public function swap(string $token): RedirectResponse
     {
-        Auth::requireAdmin();
+        Auth::requireOverlayTools();
 
         $overlay = $this->requireOverlay($token);
 
@@ -182,7 +183,7 @@ final class AdminOverlayController extends Controller
      */
     public function avatar(Request $request, string $token): RedirectResponse
     {
-        Auth::requireAdmin();
+        Auth::requireOverlayTools();
 
         $this->requireOverlay($token);
 
@@ -203,7 +204,7 @@ final class AdminOverlayController extends Controller
      */
     public function avatarDelete(Request $request, string $token): RedirectResponse
     {
-        Auth::requireAdmin();
+        Auth::requireOverlayTools();
 
         $this->requireOverlay($token);
 
@@ -222,7 +223,7 @@ final class AdminOverlayController extends Controller
      */
     public function refresh(Request $request, string $token): RedirectResponse
     {
-        Auth::requireAdmin();
+        Auth::requireOverlayTools();
 
         $overlay = $this->requireOverlay($token);
 
@@ -246,7 +247,7 @@ final class AdminOverlayController extends Controller
      */
     public function delete(Request $request, string $token): RedirectResponse
     {
-        Auth::requireAdmin();
+        Auth::requireOverlayTools();
 
         $this->requireOverlay($token);
         $this->overlays->delete($token);
