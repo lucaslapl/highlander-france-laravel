@@ -155,6 +155,29 @@ final class OverlayStatsService
     }
 
     /**
+     * Recalcule les marqueurs « best » (meilleure valeur par stat, par équipe)
+     * sur un overlay déjà persisté. Appelé au rendu de la vue overlay : les
+     * overlays créés avant un changement de logique sont corrigés sans
+     * avoir à relire le log logs.tf.
+     *
+     * @param  array<string, mixed>  $overlay
+     */
+    public function applyBestStats(array &$overlay): void
+    {
+        if (! is_array($overlay['players'] ?? null)) {
+            return;
+        }
+
+        foreach (['red', 'blue'] as $team) {
+            foreach ($overlay['players'][$team] ?? [] as &$player) {
+                $player['best'] = [];
+            }
+        }
+
+        $this->markBestStats($overlay['players']);
+    }
+
+    /**
      * Marque la meilleure valeur de chaque stat, pour chaque équipe
      * indépendamment (rouge et bleu).
      *

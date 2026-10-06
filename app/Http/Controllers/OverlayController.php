@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Controllers;
 
 use App\Models\OverlayRepository;
+use App\Services\OverlayStatsService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Response;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
@@ -22,9 +23,12 @@ final class OverlayController extends Controller
 {
     private OverlayRepository $overlays;
 
+    private OverlayStatsService $stats;
+
     public function __construct()
     {
         $this->overlays = new OverlayRepository;
+        $this->stats = new OverlayStatsService;
     }
 
     /**
@@ -36,6 +40,10 @@ final class OverlayController extends Controller
         if ($overlay === null) {
             abort(404);
         }
+
+        // Les bests sont recalculés au rendu (et non figés dans le JSON) :
+        // un changement de logique s'applique aux overlays existants.
+        $this->stats->applyBestStats($overlay);
 
         return response()
             ->view('overlay.match', [

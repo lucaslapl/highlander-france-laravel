@@ -145,7 +145,7 @@
 
 .overlay-stats th,
 .overlay-stats td {
-    padding: 5px 8px;
+    padding: 9px 8px;
     text-align: right;
     white-space: nowrap;
 }
@@ -168,6 +168,7 @@
    fixed n'écoute que le colgroup / la première ligne, pas les td du tbody).
    La colonne Joueur n'a pas de largeur : elle absorbe l'espace restant. */
 .overlay-stats col.c-class { width: 42px; }
+.overlay-stats col.c-name { width: 120px; }
 .overlay-stats col.c-kad { width: 46px; }
 .overlay-stats col.c-dmg { width: 68px; }
 .overlay-stats col.c-dpm { width: 58px; }

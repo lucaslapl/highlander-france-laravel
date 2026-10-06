@@ -214,6 +214,31 @@ class OverlayStatsServiceTest extends TestCase
         $this->assertNull($payload['medics']['blue']['avg_uber_length']);
     }
 
+    public function test_apply_best_stats_recalcule_un_overlay_persiste(): void
+    {
+        $fixture = $this->serviceWithFixture($this->logResponse());
+        $overlay = $fixture['service']->buildPayload(1, $fixture['fetcher']);
+
+        // Simule un overlay persisté avec une logique obsolète : les bests
+        // globaux (une seule équipe) et non plus par équipe.
+        foreach (['red', 'blue'] as $team) {
+            foreach ($overlay['players'][$team] as &$player) {
+                $player['best'] = $team === 'red' ? ['kills'] : [];
+            }
+        }
+        unset($player);
+
+        $fixture['service']->applyBestStats($overlay);
+
+        $this->assertContains('kills', $overlay['players']['red'][0]['best']);
+        $this->assertContains('hr', $overlay['players']['red'][0]['best']);
+        // L'équipe bleue doit avoir ses propres bests (ici tout ScoutEN
+        // sauf assists/dt qui reviennent à DocEN).
+        $this->assertContains('kills', $overlay['players']['blue'][0]['best']);
+        $this->assertContains('assists', $overlay['players']['blue'][1]['best']);
+        $this->assertContains('dt', $overlay['players']['blue'][1]['best']);
+    }
+
     #[DataProvider('invalidResponsesProvider')]
     public function test_rejette_les_reponses_invalides(?array $response): void
     {
