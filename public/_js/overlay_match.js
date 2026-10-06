@@ -35,6 +35,7 @@
         /* Couper les animations puis les réactiver (avec un reflow entre les
            deux) force le navigateur à les rejouer depuis le début. */
         stage.classList.add('overlay-stage--no-anim');
+        stage.classList.remove('overlay-stage--enter-done');
         void stage.offsetWidth;
         stage.classList.remove('overlay-stage--no-anim');
     }
@@ -150,6 +151,15 @@
                 var key = th.dataset.key;
                 if (!key) {
                     return;
+                }
+
+                /* Un tri pendant l'animation d'apparition doit la couper
+                   net : tant que les keyframes d'entrée tournent sur les
+                   lignes, elles écrasent le transform du FLIP. La classe
+                   sera retirée au prochain rejeu de l'entrée. */
+                var stage = document.querySelector('.overlay-stage');
+                if (stage) {
+                    stage.classList.add('overlay-stage--enter-done');
                 }
 
                 if (key === currentKey) {

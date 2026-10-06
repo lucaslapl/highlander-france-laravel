@@ -348,6 +348,18 @@
     animation: none !important;
 }
 
+/* Tri pendant l'animation d'apparition : tant que les keyframes d'entrée
+   tournent sur les lignes, elles écrasent le transform du FLIP du tri. Le
+   premier clic de tri pose donc cette classe pour y mettre fin net et laisser
+   les animations du tri prendre le relais. Retirée au rejeu de l'entrée. */
+.overlay-stage--enter-done .overlay-header,
+.overlay-stage--enter-done .overlay-map,
+.overlay-stage--enter-done .overlay-panel,
+.overlay-stage--enter-done .overlay-medic,
+.overlay-stage--enter-done .overlay-stats tbody tr {
+    animation: none;
+}
+
 /* ─── Tri interactif des stats (fenêtre « Interagir » d'OBS) ─────────────── */
 
 .overlay-stats thead th[data-key] {
