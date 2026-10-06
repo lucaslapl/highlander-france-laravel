@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Controllers;
 
 use App\Models\OverlayRepository;
+use App\Services\MatchFormat;
 use App\Services\OverlayStatsService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Response;
@@ -44,6 +45,13 @@ final class OverlayController extends Controller
         // Les bests sont recalculés au rendu (et non figés dans le JSON) :
         // un changement de logique s'applique aux overlays existants.
         $this->stats->applyBestStats($overlay);
+
+        // Nom de map raccourci au rendu (« koth_product_final » → « Product »)
+        // pour la même raison : les overlays existants en profitent sans
+        // avoir à être régénérés depuis logs.tf.
+        if (($overlay['map'] ?? '') !== '') {
+            $overlay['map'] = MatchFormat::mapDisplay((string) $overlay['map']);
+        }
 
         return response()
             ->view('overlay.match', [

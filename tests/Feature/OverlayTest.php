@@ -151,6 +151,30 @@ class OverlayTest extends TestCase
         $this->assertStringContainsString('no-store', (string) $response->headers->get('Cache-Control'));
     }
 
+    public function test_la_vue_overlay_affiche_le_diminutif_de_la_map(): void
+    {
+        $overlay = $this->overlayFixture();
+        $overlay['map'] = 'koth_product_final';
+        (new OverlayRepository)->save($overlay);
+
+        $response = $this->get('/overlay/'.self::TOKEN);
+
+        $response->assertOk();
+        $this->assertStringContainsString('Product', (string) $response->getContent());
+        $this->assertStringNotContainsString('koth_product_final', (string) $response->getContent());
+
+        // Second cas : suffixe de version chiffré (cp_steel_f12 → Steel).
+        $overlay['token'] = 'bbbbbbbbbbbbbbbb';
+        $overlay['map'] = 'cp_steel_f12';
+        (new OverlayRepository)->save($overlay);
+
+        $response = $this->get('/overlay/bbbbbbbbbbbbbbbb');
+
+        $response->assertOk();
+        $this->assertStringContainsString('Steel', (string) $response->getContent());
+        $this->assertStringNotContainsString('cp_steel_f12', (string) $response->getContent());
+    }
+
     public function test_le_endpoint_de_version_expose_la_version_courante(): void
     {
         $this->seedOverlay();

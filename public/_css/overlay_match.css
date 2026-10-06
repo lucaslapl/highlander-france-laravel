@@ -9,7 +9,7 @@
     --red-soft: rgba(184, 56, 59, 0.18);
     --blue: #5885a2;
     --blue-soft: rgba(88, 133, 162, 0.18);
-    --gold: #ffd24a;
+    --accent: #e97fff;
     --ink: #f5f5f5;
     --panel-bg: rgba(12, 14, 20, calc(var(--overlay-opacity) / 100));
 
@@ -210,9 +210,10 @@
     color: rgba(255, 255, 255, 0.88);
 }
 
-/* Meilleure valeur d'une stat : mise en avant or + gras. */
+/* Meilleure valeur d'une stat : mise en avant rose/violet du site (palette
+   main.css, --violet-bright) + gras. */
 .overlay-stats .num.best {
-    color: var(--gold);
+    color: var(--accent);
     font-weight: 800;
 }
 
