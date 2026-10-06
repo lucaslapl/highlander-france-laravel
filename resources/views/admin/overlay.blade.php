@@ -36,6 +36,12 @@
             </div>
         @endforeach
     </div>
+    <div class="admin-form-row" style="display:flex; justify-content:flex-end;">
+        <button type="button" class="admin-btn js-overlay-swap"
+                title="Échange les noms et avatars entre Rouge et Bleue">
+            <i class="fa-solid fa-right-left"></i> Intervertir Rouge / Bleue
+        </button>
+    </div>
     <p style="color:#777; font-size:13px; margin:6px 0 0;">
         Les scores, joueurs, classes et stats medics sont récupérés depuis l'API logs.tf. Noms et avatars saisis ici sont appliqués dès la création : tout est prêt avant le stream, et reste modifiable ensuite (transparence, upload d'avatar).
     </p>
@@ -88,5 +94,9 @@
 
 @push('styles')
 <link rel="stylesheet" href="{{ hlfr_asset('/_css/admin_overlay.css') }}">
+@endpush
+
+@push('scripts')
+<script src="{{ hlfr_asset('/_js/admin_overlay.js') }}" defer></script>
 @endpush
 @endsection

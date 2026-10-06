@@ -152,6 +152,32 @@ final class AdminOverlayController extends Controller
     }
 
     /**
+     * POST /admin/overlay/{token}/swap — intervertit les équipes Rouge et
+     * Bleue côté personnalisation : noms, avatars par URL et avatars
+     * uploadés. Les scores et stats des joueurs ne bougent pas.
+     */
+    public function swap(string $token): RedirectResponse
+    {
+        Auth::requireAdmin();
+
+        $overlay = $this->requireOverlay($token);
+
+        $redName = (string) $overlay['teams']['red']['name'];
+        $redAvatarUrl = $overlay['teams']['red']['avatar_url'] ?? null;
+
+        $overlay['teams']['red']['name'] = (string) $overlay['teams']['blue']['name'];
+        $overlay['teams']['red']['avatar_url'] = $overlay['teams']['blue']['avatar_url'] ?? null;
+        $overlay['teams']['blue']['name'] = $redName;
+        $overlay['teams']['blue']['avatar_url'] = $redAvatarUrl;
+
+        $this->overlays->save($overlay);
+        $this->overlays->swapAvatars($token);
+        AdminLogger::log('admin_overlay_swap', null, 'SUCCESS (overlay '.$token.')');
+
+        return back()->with('success', 'Équipes interverties : noms et avatars Rouge / Bleue échangés.');
+    }
+
+    /**
      * POST /admin/overlay/{token}/avatar — upload de l'avatar d'une équipe.
      */
     public function avatar(Request $request, string $token): RedirectResponse

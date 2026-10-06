@@ -170,6 +170,37 @@ final class OverlayRepository
     }
 
     /**
+     * Intervertit les avatars uploadés des équipes Rouge et Bleue
+     * (silencieux si l'un des deux, ou les deux, est absent).
+     */
+    public function swapAvatars(string $token): void
+    {
+        if (! preg_match('/^[a-z0-9]{16}$/', $token)) {
+            return;
+        }
+
+        $red = $this->avatar($token, 'red');
+        $blue = $this->avatar($token, 'blue');
+
+        if ($red === null && $blue === null) {
+            return;
+        }
+
+        // Le passage par un fichier temporaire gère les extensions
+        // différentes (ex : red.png <-> blue.webp).
+        $dir = $this->avatarDir($token);
+        if ($red !== null) {
+            @rename($red['path'], $dir.'/_swap.'.$red['ext']);
+        }
+        if ($blue !== null) {
+            @rename($blue['path'], $dir.'/red.'.$blue['ext']);
+        }
+        if ($red !== null) {
+            @rename($dir.'/_swap.'.$red['ext'], $dir.'/blue.'.$red['ext']);
+        }
+    }
+
+    /**
      * Chemin absolu de l'avatar uploadé d'une équipe, ou null.
      *
      * @return array{path: string, ext: string}|null

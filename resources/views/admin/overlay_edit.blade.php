@@ -108,6 +108,13 @@
             <i class="fa-solid fa-arrows-rotate"></i> Relire le log logs.tf (stats à jour)
         </button>
     </form>
+    <form method="POST" action="/admin/overlay/{{ $overlay['token'] }}/swap"
+          onsubmit="return confirm('Intervertir les équipes Rouge et Bleue (noms et avatars) ?');">
+        @csrf
+        <button type="submit" class="admin-btn">
+            <i class="fa-solid fa-right-left"></i> Intervertir Rouge / Bleue
+        </button>
+    </form>
     <a href="/admin/overlay" class="admin-btn"><i class="fa-solid fa-arrow-left"></i> Retour à la liste</a>
 </div>
 

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Tests\Feature;
 
 use App\Models\OverlayRepository;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
 /**
@@ -13,6 +14,8 @@ use Tests\TestCase;
  */
 class OverlayTest extends TestCase
 {
+    use RefreshDatabase;
+
     private const TOKEN = 'aaaaaaaaaaaaaaaa';
 
     private string $dataDir;
@@ -112,7 +115,9 @@ class OverlayTest extends TestCase
             ->assertSee('red_name')
             ->assertSee('blue_name')
             ->assertSee('red_avatar_url')
-            ->assertSee('blue_avatar_url');
+            ->assertSee('blue_avatar_url')
+            // Bouton d'interversion des équipes côté client.
+            ->assertSee('js-overlay-swap');
     }
 
     public function test_la_generation_rejette_une_saisie_invalide(): void
@@ -204,6 +209,52 @@ class OverlayTest extends TestCase
                 'blur' => 6,
             ])
             ->assertInvalid(['opacity']);
+    }
+
+    public function test_l_admin_intervertit_les_equipes_noms_avatars(): void
+    {
+        $this->seedOverlay();
+
+        $repo = new OverlayRepository;
+        $overlay = $repo->find(self::TOKEN);
+        $overlay['teams']['red'] = ['name' => 'Rouges', 'score' => 3, 'avatar_url' => 'https://example.com/rouge.png'];
+        $overlay['teams']['blue'] = ['name' => 'Bleus', 'score' => 2, 'avatar_url' => null];
+        $repo->save($overlay);
+
+        // Faux avatars uploadés pour vérifier l'échange des fichiers.
+        $avatarDir = storage_path('app/public/overlay-avatars/'.self::TOKEN);
+        if (! is_dir($avatarDir)) {
+            @mkdir($avatarDir, 0755, true);
+        }
+        file_put_contents($avatarDir.'/red.png', 'avatar-rouge');
+        file_put_contents($avatarDir.'/blue.webp', 'avatar-bleu');
+
+        try {
+            $this->withSession($this->adminSession())
+                ->post('/admin/overlay/'.self::TOKEN.'/swap')
+                ->assertRedirect();
+
+            $after = $repo->find(self::TOKEN);
+            $this->assertSame('Bleus', $after['teams']['red']['name']);
+            $this->assertSame('Rouges', $after['teams']['blue']['name']);
+            $this->assertSame('https://example.com/rouge.png', $after['teams']['blue']['avatar_url']);
+            $this->assertNull($after['teams']['red']['avatar_url']);
+            // Les scores ne bougent pas : seules les personnalisation s'échangent.
+            $this->assertSame(3, $after['teams']['red']['score']);
+            $this->assertSame(2, $after['teams']['blue']['score']);
+
+            // Les fichiers uploadés sont échangés, même avec des extensions différentes.
+            $this->assertSame('avatar-bleu', (string) file_get_contents($avatarDir.'/red.webp'));
+            $this->assertSame('avatar-rouge', (string) file_get_contents($avatarDir.'/blue.png'));
+
+            // L'overlay répercute l'interversion (polling OBS → reload).
+            $this->get('/overlay/'.self::TOKEN)->assertOk()->assertSee('Bleus');
+        } finally {
+            foreach (glob($avatarDir.'/*') ?: [] as $file) {
+                @unlink($file);
+            }
+            @rmdir($avatarDir);
+        }
     }
 
     public function test_la_suppression_efface_l_overlay_et_sa_vue(): void
