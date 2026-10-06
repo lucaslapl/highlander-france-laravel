@@ -16,27 +16,8 @@
     <p>{{ e($overlay['title']) }} · {{ e($overlay['map']) }} · score {{ (int) $overlay['teams']['red']['score'] }} - {{ (int) $overlay['teams']['blue']['score'] }}</p>
 </div>
 
-<h3 class="admin-section-title"><i class="fa-solid fa-link"></i> URL de l'overlay (OBS)</h3>
-<div class="admin-form-stack">
-    <div class="admin-form-row" style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
-        <input type="text" class="form-control overlay-url-input" readonly value="{{ $overlay_url }}" onclick="this.select();" style="flex:1; min-width:320px;">
-        <button type="button" class="admin-btn" onclick="navigator.clipboard.writeText('{{ $overlay_url }}');">
-            <i class="fa-solid fa-copy"></i> Copier
-        </button>
-        <a href="{{ $overlay_url }}" target="_blank" rel="noopener" class="admin-btn">Ouvrir</a>
-    </div>
-    <p style="color:#777; font-size:13px; margin:6px 0 0;">
-        Dans OBS : Sources → + → Navigateur web → collez l'URL, largeur 1920, hauteur 1080. Cochez bien « Rafraîchir le navigateur lorsque la scène devient active » si vous le souhaitez ; l'overlay se met à jour tout seul dès que vous modifiez les stats ici.
-    </p>
-</div>
-
-<h3 class="admin-section-title"><i class="fa-solid fa-tv"></i> Aperçu</h3>
-<div class="overlay-preview-wrap">
-    <iframe src="{{ $overlay_url }}" class="overlay-preview" title="Aperçu de l'overlay" scrolling="no" tabindex="-1"></iframe>
-</div>
-
 <h3 class="admin-section-title"><i class="fa-solid fa-pen-to-square"></i> Personnalisation</h3>
-<form method="POST" action="/admin/overlay/{{ $overlay['token'] }}/update" class="admin-form-stack">
+<form method="POST" action="/admin/overlay/{{ $overlay['token'] }}/update" class="admin-form-stack admin-form-stack--wide">
     @csrf
     <div class="admin-form-row" style="display:flex; gap:24px; flex-wrap:wrap;">
         @foreach (['red' => 'Rouge', 'blue' => 'Bleue'] as $team => $label)
@@ -105,6 +86,20 @@
     @endforeach
 </div>
 
+<h3 class="admin-section-title"><i class="fa-solid fa-link"></i> URL de l'overlay (OBS)</h3>
+<div class="admin-form-stack admin-form-stack--wide">
+    <div class="admin-form-row" style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+        <input type="text" class="form-control overlay-url-input" readonly value="{{ $overlay_url }}" onclick="this.select();" style="flex:1; min-width:320px;">
+        <button type="button" class="admin-btn" onclick="navigator.clipboard.writeText('{{ $overlay_url }}');">
+            <i class="fa-solid fa-copy"></i> Copier
+        </button>
+        <a href="{{ $overlay_url }}" target="_blank" rel="noopener" class="admin-btn">Ouvrir</a>
+    </div>
+    <p style="color:#777; font-size:13px; margin:6px 0 0;">
+        Dans OBS : Sources → + → Navigateur web → collez l'URL, largeur 1920, hauteur 1080. Cochez bien « Rafraîchir le navigateur lorsque la scène devient active » si vous le souhaitez ; l'overlay se met à jour tout seul dès que vous modifiez les stats ici.
+    </p>
+</div>
+
 <h3 class="admin-section-title"><i class="fa-solid fa-rotate"></i> Actions</h3>
 <div style="display:flex; gap:12px; flex-wrap:wrap;">
     <form method="POST" action="/admin/overlay/{{ $overlay['token'] }}/refresh">
@@ -114,6 +109,11 @@
         </button>
     </form>
     <a href="/admin/overlay" class="admin-btn"><i class="fa-solid fa-arrow-left"></i> Retour à la liste</a>
+</div>
+
+<h3 class="admin-section-title"><i class="fa-solid fa-tv"></i> Aperçu</h3>
+<div class="overlay-preview-wrap">
+    <iframe src="{{ $overlay_url }}" class="overlay-preview" title="Aperçu de l'overlay" scrolling="no" tabindex="-1"></iframe>
 </div>
 
 @push('styles')
