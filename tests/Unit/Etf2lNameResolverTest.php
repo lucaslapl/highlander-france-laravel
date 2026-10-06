@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Tests\Unit;
 
 use App\Services\Etf2lNameResolver;
+use App\Services\SteamId;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Tests\TestCase;
@@ -234,5 +235,28 @@ class Etf2lNameResolverTest extends TestCase
 
         $this->assertSame(['name' => 'Psycho', 'etf2l_id' => 112835], $resolved['STEAM_0:0:62326440']);
         $this->assertSame(['name' => 'Psycho', 'etf2l_id' => 112835], $resolved[self::SID2_PSYCHO]);
+    }
+
+    // ─── Variantes SteamID3 (logs.tf → overlay OBS) ────────────────────────
+
+    public function test_resolve_by_steamid3_indexe_par_le_steamid3_origine(): void
+    {
+        $steamid3 = SteamId::toSteamId3(self::SID64_PSYCHO);
+
+        $resolved = $this->resolver([self::SID64_PSYCHO => $this->playerPayload('Psycho', 112835)])
+            ->resolveBySteamId3([$steamid3]);
+
+        $this->assertSame(['name' => 'Psycho', 'etf2l_id' => 112835], $resolved[$steamid3]);
+    }
+
+    public function test_resolve_by_steamid3_ignore_les_entrees_invalides(): void
+    {
+        $steamid3 = SteamId::toSteamId3(self::SID64_AUTRE);
+
+        $resolved = $this->resolver([self::SID64_AUTRE => $this->playerPayload('ViaApi', 42)])
+            ->resolveBySteamId3([$steamid3, 'toto', '[X:2:1]', '']);
+
+        $this->assertSame(['name' => 'ViaApi', 'etf2l_id' => 42], $resolved[$steamid3]);
+        $this->assertSame([$steamid3], array_keys($resolved));
     }
 }

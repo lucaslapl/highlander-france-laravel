@@ -4,17 +4,23 @@ declare(strict_types=1);
 
 namespace Tests\Unit;
 
+use App\Services\Etf2lNameResolver;
 use App\Services\OverlayStatsService;
+use App\Services\SteamId;
+use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\TestCase;
 
 /**
  * Construction du payload d'overlay depuis une réponse de l'API logs.tf :
  * normalisation des équipes/joueurs, tri par classe, mise en avant des
- * meilleures stats et agrégats medics.
+ * meilleures stats et agrégats medics. Les pseudos ETF2L priment sur les
+ * noms en jeu, avec repli sur le nom du log.
  */
 class OverlayStatsServiceTest extends TestCase
 {
+    use RefreshDatabase;
     // ─── Fixtures (contrat /api/v1/log/{id} de logs.tf) ────────────────────
 
     /**
@@ -85,10 +91,21 @@ class OverlayStatsServiceTest extends TestCase
      */
     private function serviceWithFixture(array $response): array
     {
+        // Cache négatif ETF2L pour chaque joueur du log : la résolution des
+        // pseudos reste en base (aucun appel HTTP, donc pas de rate-limit
+        // usleep dans les tests) et les noms du log sont conservés.
+        foreach (array_keys($response['players'] ?? []) as $steamid3) {
+            DB::table('etf2l_api_cache')->insert([
+                'url' => 'https://api-v2.etf2l.org/player/'.SteamId::toSteamId64((string) $steamid3),
+                'payload' => json_encode(['status' => ['code' => 404, 'message' => 'No player was found']], JSON_THROW_ON_ERROR),
+                'fetched_at' => time(),
+            ]);
+        }
+
         $fetches = [];
 
         return [
-            'service' => new OverlayStatsService,
+            'service' => new OverlayStatsService(new Etf2lNameResolver(static fn (string $url): ?array => null)),
             'fetches' => &$fetches,
             'fetcher' => static function (int $id) use ($response, &$fetches): ?array {
                 $fetches[] = $id;
@@ -114,6 +131,28 @@ class OverlayStatsServiceTest extends TestCase
         $this->assertSame(2, $payload['teams']['blue']['score']);
         $this->assertCount(3, $payload['players']['red']);
         $this->assertCount(2, $payload['players']['blue']);
+    }
+
+    public function test_utilise_le_pseudo_etf2l_quand_disponible_et_le_nom_du_log_sinon(): void
+    {
+        // [U:1:111] (nom en jeu « ScoutFR ») figure dans les rosters ETF2L
+        // synchronisés : son pseudo ETF2L doit primer. Les autres joueurs
+        // gardent le nom du log (cache négatif du fixture).
+        DB::table('etf2l_players')->insert([
+            'team_id' => 15176,
+            'player_id' => 112835,
+            'name' => 'Psycho',
+            'steamid64' => SteamId::toSteamId64('[U:1:111]'),
+        ]);
+
+        $fixture = $this->serviceWithFixture($this->logResponse());
+        $payload = $fixture['service']->buildPayload(1, $fixture['fetcher']);
+
+        $redNames = array_column($payload['players']['red'], 'name');
+        $blueNames = array_column($payload['players']['blue'], 'name');
+
+        $this->assertSame(['Psycho', 'SoldatFR', 'DocFR'], $redNames);
+        $this->assertSame(['ScoutEN', 'DocEN'], $blueNames);
     }
 
     public function test_trie_les_joueurs_par_ordre_de_classe(): void

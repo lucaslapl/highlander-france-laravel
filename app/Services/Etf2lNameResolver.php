@@ -9,7 +9,7 @@ use Illuminate\Support\Facades\DB;
 /**
  * Résolution des pseudos ETF2L à partir des SteamID des joueurs en jeu
  * (endpoint POST /api/server/etf2l-names, consommé par le plugin SourceMod
- * hlfr_etf2l_rename).
+ * hlfr_etf2l_rename, et overlays OBS via OverlayStatsService).
  *
  * Ordre de résolution (aucune requête réseau tant que possible) :
  *  1. la table etf2l_players (rosters ETF2L déjà synchronisés) ;
@@ -65,6 +65,43 @@ final class Etf2lNameResolver
 
             return $meta['data'];
         };
+    }
+
+    /**
+     * Résolution des pseudos ETF2L d'une liste de SteamID3 « [U:1:…] »
+     * (format des clés de l'API logs.tf), avec le même ordre de résolution
+     * que resolve() : table etf2l_players, cache API, puis API ETF2L.
+     *
+     * @param  array<int, string>  $steamids3  SteamID3 « [U:1:…] » (les entrées invalides sont ignorées)
+     * @return array<string, array{name: string, etf2l_id: int|null}> pseudos trouvés, indexés par le SteamID3 d'origine
+     */
+    public function resolveBySteamId3(array $steamids3): array
+    {
+        // steamid3 → steamid2 (le resolve() interne regroupe par SteamID64,
+        // les alias éventuels sont donc gérés naturellement).
+        $aliases = [];
+        $steamids2 = [];
+
+        foreach ($steamids3 as $steamid3) {
+            $steamid64 = SteamId::toSteamId64((string) $steamid3);
+            if ($steamid64 === null) {
+                continue;
+            }
+
+            $steamid2 = SteamId::toSteam2($steamid64);
+            $aliases[$steamid2][] = (string) $steamid3;
+            $steamids2[] = $steamid2;
+        }
+
+        $out = [];
+
+        foreach ($this->resolve($steamids2) as $steamid2 => $hit) {
+            foreach ($aliases[$steamid2] ?? [] as $steamid3) {
+                $out[$steamid3] = $hit;
+            }
+        }
+
+        return $out;
     }
 
     /**

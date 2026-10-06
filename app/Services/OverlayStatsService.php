@@ -17,11 +17,23 @@ namespace App\Services;
  * La récupération HTTP est injectable (closure) pour les tests sans réseau.
  * Aucun modèle Eloquent : le payload est persisté en JSON via
  * OverlayRepository (hlfr_data_path()).
+ *
+ * Les pseudos ETF2L (Etf2lNameResolver) priment sur les noms en jeu des
+ * logs — plus reconnaissables pour les spectateurs — avec repli sur le
+ * nom du log pour les joueurs sans compte ETF2L.
  */
 final class OverlayStatsService
 {
     /** Colonnes de stats proposées pour la mise en avant du maximum. */
     private const BEST_STATS = ['kills', 'assists', 'deaths', 'dmg', 'dapm', 'hr', 'dt', 'kd'];
+
+    /** Résolution des pseudos ETF2L (injectable pour les tests). */
+    private Etf2lNameResolver $names;
+
+    public function __construct(?Etf2lNameResolver $names = null)
+    {
+        $this->names = $names ?? new Etf2lNameResolver;
+    }
 
     /**
      * Construit le payload d'overlay pour un log logs.tf.
@@ -77,6 +89,11 @@ final class OverlayStatsService
             return null;
         }
 
+        // Pseudos ETF2L en priorité (plus reconnaissables que les noms en
+        // jeu), avec repli sur le pseudo du log pour les joueurs sans
+        // compte ETF2L (mercs, pseudos temporaires).
+        $this->applyEtf2lNames($players);
+
         $this->sortByClassOrder($players['red']);
         $this->sortByClassOrder($players['blue']);
         $this->markBestStats($players);
@@ -102,6 +119,35 @@ final class OverlayStatsService
             'players' => $players,
             'medics' => $this->medicStats($details['players'], $players),
         ];
+    }
+
+    /**
+     * Remplace, quand il est résoluble, le pseudo en jeu de chaque joueur
+     * par son pseudo ETF2L (les joueurs sans compte ETF2L — mercs, etc. —
+     * conservent le pseudo du log).
+     *
+     * @param  array<string, array<int, array<string, mixed>>>  $players
+     */
+    private function applyEtf2lNames(array &$players): void
+    {
+        $steamids3 = [];
+
+        foreach ($players as $teamPlayers) {
+            foreach ($teamPlayers as $player) {
+                $steamids3[] = (string) $player['steamid3'];
+            }
+        }
+
+        $resolved = $this->names->resolveBySteamId3($steamids3);
+
+        foreach ($players as &$teamPlayers) {
+            foreach ($teamPlayers as &$player) {
+                $hit = $resolved[(string) $player['steamid3']] ?? null;
+                if ($hit !== null) {
+                    $player['name'] = $hit['name'];
+                }
+            }
+        }
     }
 
     /**

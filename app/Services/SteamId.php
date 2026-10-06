@@ -10,7 +10,7 @@ final class SteamId
 
     public static function toSteamId3(string $steamid64): string
     {
-        return '[U:1:' . bcsub($steamid64, self::STEAMID64_CONSTANT) . ']';
+        return '[U:1:'.bcsub($steamid64, self::STEAMID64_CONSTANT).']';
     }
 
     public static function toSteamId64(string $steamid3): ?string
@@ -20,6 +20,17 @@ final class SteamId
         }
 
         return null;
+    }
+
+    /**
+     * Convertit un SteamID64 en SteamID2 « STEAM_1:Y:Z » (format AuthId_Steam2
+     * utilisé par les plugins SourceMod et attendu par Etf2lNameResolver).
+     */
+    public static function toSteam2(string $steamid64): string
+    {
+        $account = bcsub($steamid64, self::STEAMID64_CONSTANT);
+
+        return 'STEAM_1:'.bcmod($account, '2').':'.bcdiv($account, '2', 0);
     }
 
     /**
