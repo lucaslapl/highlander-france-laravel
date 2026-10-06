@@ -55,6 +55,8 @@ final class AdminOverlayController extends Controller
     /**
      * POST /admin/overlay/generate — extrait l'ID du log depuis une URL ou
      * un identifiant saisi, récupère les stats logs.tf et crée l'overlay.
+     * Les noms d'équipes et avatars par URL saisis dès la génération sont
+     * appliqués au payload, pour préparer l'overlay en amont du stream.
      */
     public function generate(Request $request): RedirectResponse
     {
@@ -62,6 +64,10 @@ final class AdminOverlayController extends Controller
 
         $data = $request->validate([
             'log' => ['required', 'string', 'max:255'],
+            'red_name' => ['nullable', 'string', 'max:'.self::MAX_NAME_LEN],
+            'blue_name' => ['nullable', 'string', 'max:'.self::MAX_NAME_LEN],
+            'red_avatar_url' => ['nullable', 'url:http,https', 'max:500'],
+            'blue_avatar_url' => ['nullable', 'url:http,https', 'max:500'],
         ]);
 
         $logId = $this->parseLogId((string) $data['log']);
@@ -78,7 +84,7 @@ final class AdminOverlayController extends Controller
         $overlay = array_merge($payload, [
             'token' => $token,
             'created_at' => time(),
-            'teams' => $this->withAvatarDefaults($payload['teams']),
+            'teams' => $this->withGenerationInputs($payload['teams'], $data),
             'style' => $this->defaultStyle(),
         ]);
 
@@ -254,15 +260,20 @@ final class AdminOverlayController extends Controller
     }
 
     /**
-     * Ajoute les champs personnalisables (avatar) aux équipes du payload.
+     * Initialise les champs personnalisables des équipes depuis les saisies
+     * du formulaire de génération (optionnelles) : noms et avatars par URL,
+     * avec repli sur les valeurs par défaut du payload logs.tf.
      *
      * @param  array<string, array<string, mixed>>  $teams
+     * @param  array<string, mixed>  $data
      * @return array<string, array<string, mixed>>
      */
-    private function withAvatarDefaults(array $teams): array
+    private function withGenerationInputs(array $teams, array $data): array
     {
         foreach (['red', 'blue'] as $team) {
-            $teams[$team]['avatar_url'] = $teams[$team]['avatar_url'] ?? null;
+            $name = trim((string) ($data[$team.'_name'] ?? ''));
+            $teams[$team]['name'] = $name !== '' ? $name : (string) $teams[$team]['name'];
+            $teams[$team]['avatar_url'] = $this->cleanUrl($data[$team.'_avatar_url'] ?? null);
         }
 
         return $teams;

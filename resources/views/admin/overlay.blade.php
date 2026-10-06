@@ -10,7 +10,7 @@
 </div>
 
 <h3 class="admin-section-title"><i class="fa-solid fa-wand-magic-sparkles"></i> Générer un overlay</h3>
-<form method="POST" action="/admin/overlay/generate" class="admin-form-stack">
+<form method="POST" action="/admin/overlay/generate" class="admin-form-stack admin-form-stack--wide">
     @csrf
     <div class="admin-form-row" style="display:flex; gap:10px; align-items:flex-end; flex-wrap:wrap;">
         <div style="flex:1; min-width:320px;">
@@ -22,8 +22,22 @@
             <i class="fa-solid fa-bolt"></i> Générer l'overlay
         </button>
     </div>
+
+    <div class="admin-form-row" style="display:flex; gap:24px; flex-wrap:wrap;">
+        @foreach (['red' => 'Rouge', 'blue' => 'Bleue'] as $team => $label)
+            <div style="flex:1; min-width:300px; border:1px solid #333; border-radius:8px; padding:14px;">
+                <h4 style="margin:0 0 10px; color: {{ $team === 'red' ? '#e06c5a' : '#5885a2' }};">Équipe {{ $label }}</h4>
+                <label class="admin-form-label" for="overlay-{{ $team }}-name">Nom affiché (optionnel)</label>
+                <input type="text" id="overlay-{{ $team }}-name" name="{{ $team }}_name" class="form-control"
+                       placeholder="{{ $team === 'red' ? 'RED par défaut' : 'BLU par défaut' }}" maxlength="64">
+                <label class="admin-form-label" style="margin-top:10px;" for="overlay-{{ $team }}-avatar">Avatar par URL externe (optionnel)</label>
+                <input type="url" id="overlay-{{ $team }}-avatar" name="{{ $team }}_avatar_url" class="form-control"
+                       placeholder="https://…/logo.png">
+            </div>
+        @endforeach
+    </div>
     <p style="color:#777; font-size:13px; margin:6px 0 0;">
-        Les scores, joueurs, classes et stats medics sont récupérés depuis l'API logs.tf. Tout reste modifiable ensuite (noms d'équipes, avatars, transparence).
+        Les scores, joueurs, classes et stats medics sont récupérés depuis l'API logs.tf. Noms et avatars saisis ici sont appliqués dès la création : tout est prêt avant le stream, et reste modifiable ensuite (transparence, upload d'avatar).
     </p>
 </form>
 

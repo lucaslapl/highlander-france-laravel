@@ -107,7 +107,12 @@ class OverlayTest extends TestCase
             ->get('/admin/overlay')
             ->assertOk()
             ->assertSee('4059225')
-            ->assertSee(url('/overlay/'.self::TOKEN));
+            ->assertSee(url('/overlay/'.self::TOKEN))
+            // Le formulaire de génération permet de préparer noms et avatars.
+            ->assertSee('red_name')
+            ->assertSee('blue_name')
+            ->assertSee('red_avatar_url')
+            ->assertSee('blue_avatar_url');
     }
 
     public function test_la_generation_rejette_une_saisie_invalide(): void
