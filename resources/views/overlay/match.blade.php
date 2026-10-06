@@ -60,6 +60,20 @@
             @endif
             <section class="overlay-panel overlay-panel--{{ $team }}">
                 <table class="overlay-stats">
+                    {{-- En table-layout:fixed, les largeurs de colonnes se règlent
+                         UNIQUEMENT ici (colgroup) : un seul endroit à modifier. --}}
+                    <colgroup>
+                        <col class="c-class">
+                        <col class="c-name">
+                        <col class="c-kad">
+                        <col class="c-kad">
+                        <col class="c-kad">
+                        <col class="c-dmg">
+                        <col class="c-dpm">
+                        <col class="c-hr">
+                        <col class="c-dt">
+                        <col class="c-kd">
+                    </colgroup>
                     <thead>
                         <tr>
                             <th class="c-class"></th>

@@ -119,6 +119,7 @@
     display: flex;
     gap: 24px;
     min-height: 0;
+    margin-top: 110px;
 }
 
 .overlay-panel {
@@ -163,8 +164,18 @@
     background: rgba(255, 255, 255, 0.04);
 }
 
+/* Largeurs de colonnes : UNIQUEMENT sur les <col> du colgroup (table-layout:
+   fixed n'écoute que le colgroup / la première ligne, pas les td du tbody).
+   La colonne Joueur n'a pas de largeur : elle absorbe l'espace restant. */
+.overlay-stats col.c-class { width: 42px; }
+.overlay-stats col.c-kad { width: 46px; }
+.overlay-stats col.c-dmg { width: 68px; }
+.overlay-stats col.c-dpm { width: 58px; }
+.overlay-stats col.c-hr { width: 62px; }
+.overlay-stats col.c-dt { width: 62px; }
+.overlay-stats col.c-kd { width: 58px; }
+
 .overlay-stats td.c-class {
-    width: 42px;
     padding-right: 0;
     text-align: left;
 }
@@ -178,24 +189,11 @@
 /* K / A / D resserrés : pseudos et icônes proches, chiffres compacts. */
 .overlay-stats th.c-kad,
 .overlay-stats td.c-kad {
-    width: 46px;
     padding-left: 4px;
     padding-right: 4px;
 }
 
-.overlay-stats th.c-dmg,
-.overlay-stats td.c-dmg { width: 68px; }
-.overlay-stats th.c-dpm,
-.overlay-stats td.c-dpm { width: 58px; }
-.overlay-stats th.c-hr,
-.overlay-stats td.c-hr { width: 62px; }
-.overlay-stats th.c-dt,
-.overlay-stats td.c-dt { width: 62px; }
-.overlay-stats th.c-kd,
-.overlay-stats td.c-kd { width: 58px; }
-
 .overlay-stats td.c-name {
-    width: auto;
     padding-left: 8px;
     text-align: left;
     font-weight: 500;
