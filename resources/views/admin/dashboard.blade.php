@@ -151,6 +151,12 @@ window.__dashboardData = {!! json_encode($dashboardData, JSON_UNESCAPED_UNICODE 
                 <p class="admin-action-card__desc">Génération d'overlays de stats logs.tf pour les broadcasts OBS : équipes, scores, joueurs et medics, avec transparence réglable.</p>
                 <a href="/admin/overlay" class="admin-link-btn">Gérer les overlays</a>
             </div>
+
+            <div class="admin-action-card" style="--accent: #4cc46a;">
+                <h4 class="admin-action-card__title"><i class="fa-solid fa-trophy"></i> Séries de matchs</h4>
+                <p class="admin-action-card__desc">Suivi automatique du score des séries de playoffs via logs.tf (maps gagnées par équipe), avec ajustements manuels pour les contestations.</p>
+                <a href="/admin/series" class="admin-link-btn">Gérer les séries</a>
+            </div>
         </div>
 
         <h3 class="admin-section-title">Gestion interne du site (dangereux !)</h3>

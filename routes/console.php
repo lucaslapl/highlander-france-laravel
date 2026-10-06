@@ -33,6 +33,10 @@ Schedule::command('app:compute-player-palmares')->weeklyOn(0, '5:30')->withoutOv
 // Chaînes Twitch en direct (badge "EN DIRECT" sur les matchs streamés).
 Schedule::command('app:sync-twitch')->everyMinute()->withoutOverlapping(10);
 
+// Réconciliation des séries de matchs (playoffs) via logs.tf : sans série en
+// direct la passe est immédiate, le coût à la minute est donc nul hors match.
+Schedule::command('app:series-reconcile')->everyMinute()->withoutOverlapping(10);
+
 // Import des profils Steam manquants.
 Schedule::command('app:sync-steam')->hourly()->withoutOverlapping(30);
 
