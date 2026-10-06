@@ -19,6 +19,7 @@ use App\Http\Controllers\ManagedTeamController;
 use App\Http\Controllers\OverlayController;
 use App\Http\Controllers\PageController;
 use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\SeriesOverlayController;
 use App\Http\Controllers\ServerHookController;
 use Illuminate\Support\Facades\Route;
 
@@ -88,6 +89,8 @@ Route::get('/live/{server}', [PageController::class, 'liveMatch']);
 Route::get('/overlay/{token}', [OverlayController::class, 'show'])->where('token', '[a-z0-9]{16}');
 Route::get('/overlay/{token}/version', [OverlayController::class, 'version'])->where('token', '[a-z0-9]{16}');
 Route::get('/overlay/{token}/avatar/{team}', [OverlayController::class, 'avatar'])->where('token', '[a-z0-9]{16}')->whereIn('team', ['red', 'blue']);
+Route::get('/series-overlay/{token}', [SeriesOverlayController::class, 'show'])->where('token', '[a-z0-9]{16}');
+Route::get('/series-overlay/{token}/version', [SeriesOverlayController::class, 'version'])->where('token', '[a-z0-9]{16}');
 
 // ─── Panel admin (accès strict réservé aux admins) ───────────────────────────
 Route::middleware('admin')->prefix('admin')->group(function (): void {

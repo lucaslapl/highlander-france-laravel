@@ -62,6 +62,19 @@
     </p>
 @endif
 
+<h3 class="admin-section-title"><i class="fa-solid fa-tv"></i> Overlay OBS</h3>
+<p style="color:#aaa; font-size:13px;">
+    Dans OBS Studio, ajoutez une source navigateur web (fond transparent) pointant sur l'URL ci-dessous :
+    elle affiche les noms d'équipes, le score de série et l'état de chaque map, et se rafraîchit toute seule
+    (polling toutes les 5 secondes — aucun alt-tab pendant le cast).
+</p>
+<p style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+    <code style="background:#111; border:1px solid #333; border-radius:6px; padding:8px 12px; font-size:14px;">
+        {{ url('/series-overlay/'.$series['token']) }}
+    </code>
+    <a class="admin-link-btn" href="/series-overlay/{{ $series['token'] }}" target="_blank">Prévisualiser</a>
+</p>
+
 <h3 class="admin-section-title"><i class="fa-solid fa-map"></i> Maps de la série</h3>
 <div class="admin-table-scroll">
     <table class="admin-table">

@@ -1,0 +1,193 @@
+/* Overlay OBS « scoreboard de série » (/series-overlay/{token}) — 1920x1080,
+   fond transparent. Panneau ancré en haut à gauche : dans OBS, ciblez la
+   source navigateur sur la taille du panneau (~440x320) pour un placement
+   précis, ou gardez 1920x1080 et laissez la transparence faire le reste. */
+
+.series-overlay-stage {
+    --red: #b8383b;
+    --red-soft: rgba(184, 56, 59, 0.28);
+    --blue: #5885a2;
+    --blue-soft: rgba(88, 133, 162, 0.28);
+    --ink: #f5f5f5;
+    --ink-dim: #9aa0a6;
+    --panel-bg: rgba(12, 14, 20, 0.72);
+    --enter-ease: cubic-bezier(0.22, 1, 0.36, 1);
+
+    width: 1920px;
+    height: 1080px;
+    margin: 0;
+    box-sizing: border-box;
+    background: transparent;
+    color: var(--ink);
+    font-family: "Montserrat", "Segoe UI", Roboto, sans-serif;
+}
+
+.series-scoreboard {
+    width: 440px;
+    box-sizing: border-box;
+    background: var(--panel-bg);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-radius: 10px;
+    overflow: hidden;
+
+    animation: series-enter 0.7s var(--enter-ease) both;
+}
+
+@keyframes series-enter {
+    from {
+        opacity: 0;
+        transform: translateY(-14px);
+    }
+    to {
+        opacity: 1;
+        transform: none;
+    }
+}
+
+/* ─── En-tête : noms d'équipes + score de série ─────────────────────────── */
+
+.series-scoreboard__header {
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
+    align-items: center;
+    gap: 12px;
+    padding: 14px 18px 10px;
+}
+
+.series-scoreboard__team {
+    min-width: 0;
+}
+
+.series-scoreboard__name {
+    display: block;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 19px;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+}
+
+.series-scoreboard__team--red .series-scoreboard__name {
+    color: #e8a49d;
+}
+
+.series-scoreboard__team--blue {
+    text-align: right;
+}
+
+.series-scoreboard__team--blue .series-scoreboard__name {
+    color: #a9c6d9;
+}
+
+.series-scoreboard__score {
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+    font-weight: 800;
+    line-height: 1;
+}
+
+.series-scoreboard__score-value {
+    font-size: 42px;
+}
+
+.series-scoreboard__score-value--red {
+    color: var(--red);
+}
+
+.series-scoreboard__score-value--blue {
+    color: var(--blue);
+}
+
+.series-scoreboard__score-sep {
+    color: var(--ink-dim);
+    font-size: 26px;
+    font-weight: 600;
+}
+
+/* ─── Maps de la série ─────────────────────────────────────────────────── */
+
+.series-scoreboard__maps {
+    list-style: none;
+    margin: 0;
+    padding: 4px 12px 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.series-map {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 10px;
+    border-radius: 6px;
+    font-size: 14px;
+    background: rgba(255, 255, 255, 0.03);
+    color: var(--ink-dim);
+}
+
+.series-map__name {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-weight: 600;
+}
+
+.series-map__score {
+    font-variant-numeric: tabular-nums;
+    font-weight: 700;
+    opacity: 0.85;
+}
+
+.series-map__gc {
+    font-size: 11px;
+    font-weight: 800;
+    padding: 1px 6px;
+    border-radius: 4px;
+    background: rgba(217, 165, 68, 0.25);
+    color: #d9a544;
+}
+
+/* Map gagnée : la ligne prend la couleur de l'équipe vainqueure. */
+.series-map--won-red {
+    background: var(--red-soft);
+    color: #f0c7c2;
+}
+
+.series-map--won-blue {
+    background: var(--blue-soft);
+    color: #c4d7e4;
+}
+
+/* Map en cours : point d'attention léger, sans surcharger le stream. */
+.series-map--current {
+    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.18);
+    color: var(--ink);
+}
+
+/* ─── Série terminée ───────────────────────────────────────────────────── */
+
+.series-scoreboard__footer {
+    padding: 10px 18px;
+    border-top: 1px solid rgba(255, 255, 255, 0.06);
+    text-align: center;
+}
+
+.series-scoreboard__winner {
+    font-size: 15px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.14em;
+}
+
+.series-scoreboard__winner--red {
+    color: #e8a49d;
+}
+
+.series-scoreboard__winner--blue {
+    color: #a9c6d9;
+}

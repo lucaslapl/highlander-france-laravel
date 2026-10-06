@@ -89,7 +89,9 @@ final class SeriesRepository
             return;
         }
 
-        $series['version'] = time();
+        // Version strictement croissante : deux écritures dans la même
+        // seconde doivent quand même faire recharger l'overlay OBS.
+        $series['version'] = max(time(), (int) ($series['version'] ?? 0) + 1);
         $series['updated_at'] = time();
 
         if (! is_dir($this->dir)) {
