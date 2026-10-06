@@ -25,7 +25,7 @@
      style="--overlay-opacity: {{ $opacity }}%; --overlay-blur: {{ $blur }}px;">
 
     <header class="overlay-header">
-        @foreach (['red', 'blue'] as $team)
+        @foreach (['blue', 'red'] as $team)
             @php
                 $teamData = $overlay['teams'][$team];
             @endphp
@@ -36,7 +36,7 @@
                 <span class="overlay-team__name">{{ e($teamData['name']) }}</span>
                 <span class="overlay-team__score overlay-team__score--{{ $team }}">{{ (int) $teamData['score'] }}</span>
             </div>
-            @if ($team === 'red')
+            @if ($team === 'blue')
                 <div class="overlay-header__center">
                     <span class="overlay-header__vs">vs</span>
                 </div>
@@ -54,7 +54,7 @@
     @endif
 
     <main class="overlay-teams">
-        @foreach (['red', 'blue'] as $team)
+        @foreach (['blue', 'red'] as $team)
             @if (($overlay['players'][$team] ?? []) === [])
                 @continue
             @endif
@@ -129,7 +129,7 @@
     </main>
 
     <footer class="overlay-medics">
-        @foreach (['red', 'blue'] as $team)
+        @foreach (['blue', 'red'] as $team)
             @php
                 $medic = $overlay['medics'][$team] ?? null;
             @endphp

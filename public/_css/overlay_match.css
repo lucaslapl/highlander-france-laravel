@@ -58,8 +58,8 @@
    À placer après le bloc générique ci-dessus pour le gagner en cascade. */
 .overlay-stage--no-panel .overlay-panel--red { border-top-color: var(--red); }
 .overlay-stage--no-panel .overlay-panel--blue { border-top-color: var(--blue); }
-.overlay-stage--no-panel .overlay-medic--red { border-left-color: var(--red); }
-.overlay-stage--no-panel .overlay-medic--blue { border-right-color: var(--blue); }
+.overlay-stage--no-panel .overlay-medic--red { border-right-color: var(--red); }
+.overlay-stage--no-panel .overlay-medic--blue { border-left-color: var(--blue); }
 
 .overlay-team {
     display: flex;
@@ -68,8 +68,8 @@
     justify-self: start;
 }
 
-/* Équipe bleue en miroir : score à gauche du nom, avatar à droite. */
-.overlay-team--blue {
+/* Équipe rouge en miroir : score à gauche du nom, avatar à droite. */
+.overlay-team--red {
     flex-direction: row-reverse;
     justify-self: end;
 }
@@ -257,18 +257,18 @@
     border-radius: 16px;
 }
 
-/* Rouge à gauche, bleu en miroir à droite (accent côté centre) : liseré
+/* Bleu à gauche, rouge en miroir à droite (accent côté centre) : liseré
    soutenu + teinte d'équipe partant du bord accentué. */
 .overlay-medic--red {
-    border-left: 6px solid var(--red);
-    justify-content: flex-start;
-    background: linear-gradient(90deg, var(--red-soft), rgba(184, 56, 59, 0) 280px), var(--panel-bg);
+    border-right: 6px solid var(--red);
+    justify-content: flex-end;
+    background: linear-gradient(270deg, var(--red-soft), rgba(184, 56, 59, 0) 280px), var(--panel-bg);
 }
 
 .overlay-medic--blue {
-    border-right: 6px solid var(--blue);
-    justify-content: flex-end;
-    background: linear-gradient(270deg, var(--blue-soft), rgba(88, 133, 162, 0) 280px), var(--panel-bg);
+    border-left: 6px solid var(--blue);
+    justify-content: flex-start;
+    background: linear-gradient(90deg, var(--blue-soft), rgba(88, 133, 162, 0) 280px), var(--panel-bg);
 }
 
 .overlay-medic__icon img {
@@ -337,11 +337,11 @@
 }
 
 .overlay-panel--red {
-    animation: overlay-enter-left 0.7s var(--overlay-enter-ease) calc(var(--overlay-enter-delay) + 0.2s) backwards;
+    animation: overlay-enter-right 0.7s var(--overlay-enter-ease) calc(var(--overlay-enter-delay) + 0.2s) backwards;
 }
 
 .overlay-panel--blue {
-    animation: overlay-enter-right 0.7s var(--overlay-enter-ease) calc(var(--overlay-enter-delay) + 0.2s) backwards;
+    animation: overlay-enter-left 0.7s var(--overlay-enter-ease) calc(var(--overlay-enter-delay) + 0.2s) backwards;
 }
 
 .overlay-medic {
