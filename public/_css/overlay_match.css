@@ -8,9 +8,9 @@
     --overlay-enter-delay: 1s;
     --overlay-enter-ease: cubic-bezier(0.22, 1, 0.36, 1);
     --red: #b8383b;
-    --red-soft: rgba(184, 56, 59, 0.18);
+    --red-soft: rgba(184, 56, 59, 0.35);
     --blue: #5885a2;
-    --blue-soft: rgba(88, 133, 162, 0.18);
+    --blue-soft: rgba(88, 133, 162, 0.35);
     --accent: #e97fff;
     --ink: #f5f5f5;
     --panel-bg: rgba(12, 14, 20, calc(var(--overlay-opacity) / 100));
@@ -53,6 +53,14 @@
     border-color: transparent;
 }
 
+/* Sans panneau, la coquille disparaît mais pas la couleur : les liserés
+   d'équipe (haut des panneaux, bords accentués des medics) restent visibles.
+   À placer après le bloc générique ci-dessus pour le gagner en cascade. */
+.overlay-stage--no-panel .overlay-panel--red { border-top-color: var(--red); }
+.overlay-stage--no-panel .overlay-panel--blue { border-top-color: var(--blue); }
+.overlay-stage--no-panel .overlay-medic--red { border-left-color: var(--red); }
+.overlay-stage--no-panel .overlay-medic--blue { border-right-color: var(--blue); }
+
 .overlay-team {
     display: flex;
     align-items: center;
@@ -89,10 +97,11 @@
     padding: 2px 14px;
 }
 
+/* Pastilles de score : accent d'équipe net (fond soutenu + liseré). */
 .overlay-team--red .overlay-team__score,
-.overlay-team__score--red { color: #ffd6d6; background: var(--red-soft); }
+.overlay-team__score--red { color: #ffc4c4; background: var(--red-soft); border: 1px solid rgba(184, 56, 59, 0.55); }
 .overlay-team--blue .overlay-team__score,
-.overlay-team__score--blue { color: #d7e8f5; background: var(--blue-soft); }
+.overlay-team__score--blue { color: #d4e9f8; background: var(--blue-soft); border: 1px solid rgba(88, 133, 162, 0.55); }
 
 .overlay-header__center {
     text-align: center;
@@ -136,8 +145,17 @@
     overflow: hidden;
 }
 
-.overlay-panel--red { border-top: 4px solid var(--red); }
-.overlay-panel--blue { border-top: 4px solid var(--blue); }
+/* Teinte d'équipe délavée vers le bas : chaque panneau reste clairement
+   identifiable RED/BLU, liseré plus épais en soutien. */
+.overlay-panel--red {
+    border-top: 6px solid var(--red);
+    background: linear-gradient(180deg, var(--red-soft), rgba(184, 56, 59, 0) 170px), var(--panel-bg);
+}
+
+.overlay-panel--blue {
+    border-top: 6px solid var(--blue);
+    background: linear-gradient(180deg, var(--blue-soft), rgba(88, 133, 162, 0) 170px), var(--panel-bg);
+}
 
 .overlay-stats {
     width: 100%;
@@ -239,15 +257,18 @@
     border-radius: 16px;
 }
 
-/* Rouge à gauche, bleu en miroir à droite (accent côté centre). */
+/* Rouge à gauche, bleu en miroir à droite (accent côté centre) : liseré
+   soutenu + teinte d'équipe partant du bord accentué. */
 .overlay-medic--red {
-    border-left: 4px solid var(--red);
+    border-left: 6px solid var(--red);
     justify-content: flex-start;
+    background: linear-gradient(90deg, var(--red-soft), rgba(184, 56, 59, 0) 280px), var(--panel-bg);
 }
 
 .overlay-medic--blue {
-    border-right: 4px solid var(--blue);
+    border-right: 6px solid var(--blue);
     justify-content: flex-end;
+    background: linear-gradient(270deg, var(--blue-soft), rgba(88, 133, 162, 0) 280px), var(--panel-bg);
 }
 
 .overlay-medic__icon img {
