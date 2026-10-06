@@ -23,6 +23,9 @@ class SeriesOverlayTest extends TestCase
 
     private string $dataDir;
 
+    /** @var array<int, string> miniatures créées par un test, nettoyées en tearDown */
+    private array $thumbFiles = [];
+
     protected function setUp(): void
     {
         parent::setUp();
@@ -40,6 +43,11 @@ class SeriesOverlayTest extends TestCase
         }
         @rmdir($this->dataDir.'/series');
         @rmdir($this->dataDir);
+
+        foreach ($this->thumbFiles as $file) {
+            @unlink($file);
+        }
+        $this->thumbFiles = [];
 
         parent::tearDown();
     }
@@ -99,12 +107,73 @@ class SeriesOverlayTest extends TestCase
         $this->assertGreaterThan($initial, $updated);
     }
 
+    public function test_une_map_unique_decidee_sans_score_de_log_affiche_0_0(): void
+    {
+        // Point manuel (contestation, log manquant) : aucune trace de score
+        // de log, la ligne affiche 0-0 comme les maps à double attaque.
+        $this->seedSeries();
+        (new SeriesRepository)->appendEvent(self::TOKEN, [
+            'type' => 'manual',
+            'source' => 'manual',
+            'map' => 'koth_product_final',
+            'team' => 'red',
+            'note' => '',
+        ]);
+
+        $html = (string) $this->get('/series-overlay/'.self::TOKEN)->assertOk()->getContent();
+
+        $this->assertStringContainsString('series-map__score">0–0', $html);
+        $this->assertStringContainsString('series-map--won-red', $html);
+    }
+
+    public function test_les_maps_avec_miniature_l_affichent_en_fond(): void
+    {
+        // Miniatures de test aux noms uniques (le dossier public des miniatures
+        // n'est pas versionné, on ne touche pas aux vrais fichiers).
+        $dir = public_path('storage/etf2l-maps/thumbnails');
+        if (! is_dir($dir)) {
+            @mkdir($dir, 0755, true);
+        }
+
+        // Correspondance exacte, et repli par préfixe après suppression du
+        // suffixe de version (« pl_zzztest_f10 » → « pl_zzztest_f12.jpg »).
+        foreach (['koth_zzztest_final.jpg', 'pl_zzztest_f12.jpg'] as $name) {
+            file_put_contents($dir.'/'.$name, 'thumb');
+            $this->thumbFiles[] = $dir.'/'.$name;
+        }
+
+        $this->seedSeries([], [
+            ['name' => 'koth_zzztest_final', 'mode' => SeriesScoreService::MODE_SINGLE],
+            ['name' => 'pl_zzztest_f10', 'mode' => SeriesScoreService::MODE_DOUBLE],
+        ]);
+
+        $html = (string) $this->get('/series-overlay/'.self::TOKEN)->assertOk()->getContent();
+
+        $this->assertStringContainsString('series-map--has-thumb', $html);
+        $this->assertStringContainsString('etf2l-maps/thumbnails/koth_zzztest_final.jpg', $html);
+        $this->assertStringContainsString('etf2l-maps/thumbnails/pl_zzztest_f12.jpg', $html);
+    }
+
+    public function test_une_map_sans_miniature_n_a_pas_de_fond_image(): void
+    {
+        // Aucune miniature ne correspond : la ligne reste sans fond image,
+        // l'overlay ne casse pas si le dossier est vide.
+        $this->seedSeries([], [
+            ['name' => 'koth_yyytest_final', 'mode' => SeriesScoreService::MODE_SINGLE],
+        ]);
+
+        $html = (string) $this->get('/series-overlay/'.self::TOKEN)->assertOk()->getContent();
+
+        $this->assertStringNotContainsString('series-map--has-thumb', $html);
+    }
+
     /**
      * Série en direct avec un journal optionnel (événements « log » simplifiés).
      *
      * @param  array<string, array{map: string, winner: string}>  $journal
+     * @param  array<int, array{name: string, mode: string}>|null  $maps
      */
-    private function seedSeries(array $journal = []): void
+    private function seedSeries(array $journal = [], ?array $maps = null): void
     {
         $events = [];
         foreach ($journal as $id => $event) {
@@ -134,7 +203,7 @@ class SeriesOverlayTest extends TestCase
                 'red' => ['name' => 'Les Baguettes', 'players' => ['76561198000000001']],
                 'blue' => ['name' => 'Escouade 6', 'players' => ['76561198000000011']],
             ],
-            'maps' => [
+            'maps' => $maps ?? [
                 ['name' => 'pl_upward_f10', 'mode' => SeriesScoreService::MODE_DOUBLE],
                 ['name' => 'koth_product_final', 'mode' => SeriesScoreService::MODE_SINGLE],
             ],

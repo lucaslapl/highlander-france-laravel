@@ -64,6 +64,14 @@
             })
             .then(function (data) {
                 if (data && String(data.version) !== version) {
+                    /* Mise à jour statique : le drapeau posé ici coupe
+                       l'animation d'entrée au prochain rendu (voir la vue
+                       overlay/series et .series-no-enter dans le CSS). */
+                    try {
+                        sessionStorage.setItem('hlfr-series-refresh', '1');
+                    } catch (e) {
+                        /* Session inaccessible : l'animation se rejouera, sans gravité. */
+                    }
                     window.location.reload();
                 }
             })

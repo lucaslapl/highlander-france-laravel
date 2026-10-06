@@ -1,6 +1,6 @@
 /* Overlay OBS « scoreboard de série » (/series-overlay/{token}) — 1920x1080,
    fond transparent. Panneau ancré en haut à gauche : dans OBS, ciblez la
-   source navigateur sur la taille du panneau (~440x320) pour un placement
+   source navigateur sur la taille du panneau (~400x300) pour un placement
    précis, ou gardez 1920x1080 et laissez la transparence faire le reste. */
 
 .series-overlay-stage {
@@ -23,7 +23,7 @@
 }
 
 .series-scoreboard {
-    width: 440px;
+    width: 400px;
     box-sizing: border-box;
     background: var(--panel-bg);
     border: 1px solid rgba(255, 255, 255, 0.06);
@@ -31,6 +31,12 @@
     overflow: hidden;
 
     animation: series-enter 0.7s var(--enter-ease) both;
+}
+
+/* Rechargement automatique après une mise à jour de score (manuel ou cron
+   logs.tf) : le panneau se redessine sans rejouer l'animation d'entrée. */
+.series-no-enter .series-scoreboard {
+    animation: none;
 }
 
 @keyframes series-enter {
@@ -89,7 +95,7 @@
 }
 
 .series-scoreboard__score-value {
-    font-size: 42px;
+    font-size: 32px;
 }
 
 .series-scoreboard__score-value--red {
@@ -102,7 +108,7 @@
 
 .series-scoreboard__score-sep {
     color: var(--ink-dim);
-    font-size: 26px;
+    font-size: 20px;
     font-weight: 600;
 }
 
@@ -118,6 +124,7 @@
 }
 
 .series-map {
+    position: relative;
     display: flex;
     align-items: center;
     gap: 8px;
@@ -126,6 +133,26 @@
     font-size: 14px;
     background: rgba(255, 255, 255, 0.03);
     color: var(--ink-dim);
+}
+
+/* Miniature de map en fond (URL posée en variable inline par la vue) :
+   voile sombre par-dessus pour garder le texte lisible. */
+.series-map--has-thumb {
+    background: var(--map-thumb) center / cover no-repeat;
+}
+
+.series-map--has-thumb::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background-color: rgba(12, 14, 20, 0.6);
+}
+
+.series-map__name,
+.series-map__score,
+.series-map__gc {
+    position: relative;
+    z-index: 1;
 }
 
 .series-map__name {
@@ -152,7 +179,8 @@
     color: #d9a544;
 }
 
-/* Map gagnée : la ligne prend la couleur de l'équipe vainqueure. */
+/* Map gagnée : la ligne prend la couleur de l'équipe vainqueure. Avec
+   miniature, la teinte remplace le voile neutre (image + teinte équipe). */
 .series-map--won-red {
     background: var(--red-soft);
     color: #f0c7c2;
@@ -161,6 +189,19 @@
 .series-map--won-blue {
     background: var(--blue-soft);
     color: #c4d7e4;
+}
+
+.series-map--has-thumb.series-map--won-red::before {
+    background-color: rgba(184, 56, 59, 0.55);
+}
+
+.series-map--has-thumb.series-map--won-blue::before {
+    background-color: rgba(88, 133, 162, 0.55);
+}
+
+.series-map--has-thumb.series-map--won-red,
+.series-map--has-thumb.series-map--won-blue {
+    background: var(--map-thumb) center / cover no-repeat;
 }
 
 /* Map en cours : point d'attention léger, sans surcharger le stream. */

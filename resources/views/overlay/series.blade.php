@@ -8,6 +8,15 @@
     <meta charset="UTF-8">
     <meta name="robots" content="noindex, nofollow">
     <title>{{ $title }}</title>
+    <script>
+        /* Rechargement automatique après une mise à jour de score : on saute
+           l'animation d'entrée pour que le panneau reste statique (le drapeau
+           est posé par overlay_series.js juste avant le reload). */
+        if (sessionStorage.getItem('hlfr-series-refresh') === '1') {
+            sessionStorage.removeItem('hlfr-series-refresh');
+            document.documentElement.classList.add('series-no-enter');
+        }
+    </script>
     <link rel="stylesheet" href="{{ hlfr_asset('/_css/overlay_series.css') }}">
 </head>
 <body>
@@ -46,19 +55,22 @@
                 @php
                     // Score affiché par map : rounds pour la double attaque
                     // (2-0, 2-1…), score du log pour les maps à log unique.
+                    // Une map unique sans score en journal (point manuel, log
+                    // en cours) affiche 0-0 comme les autres lignes.
                     if ($map['mode'] === 'double') {
                         $mapScore = ((int) $map['rounds']['red']).'–'.((int) $map['rounds']['blue']);
                     } elseif ($map['scores'] !== null) {
                         $mapScore = ((int) $map['scores']['red']).'–'.((int) $map['scores']['blue']);
                     } else {
-                        $mapScore = null;
+                        $mapScore = '0–0';
                     }
                 @endphp
-                <li class="series-map series-map--{{ $map['status'] }}{{ $map['winner'] !== null ? ' series-map--won-'.$map['winner'] : '' }}{{ $i === $currentMapIndex ? ' series-map--current' : '' }}">
+                <li class="series-map series-map--{{ $map['status'] }}{{ $map['winner'] !== null ? ' series-map--won-'.$map['winner'] : '' }}{{ $i === $currentMapIndex ? ' series-map--current' : '' }}{{ $map['thumb'] !== null ? ' series-map--has-thumb' : '' }}"
+                    @if ($map['thumb'] !== null)
+                        style="--map-thumb: url('{{ $map['thumb'] }}')"
+                    @endif>
                     <span class="series-map__name">{{ e($map['display']) }}</span>
-                    @if ($mapScore !== null)
-                        <span class="series-map__score">{{ $mapScore }}</span>
-                    @endif
+                    <span class="series-map__score">{{ $mapScore }}</span>
                     @if ($map['golden_cap'] && $map['status'] !== 'decided')
                         <span class="series-map__gc">GC</span>
                     @endif
