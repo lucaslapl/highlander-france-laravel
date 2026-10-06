@@ -347,3 +347,40 @@
 .overlay-stage--no-anim * {
     animation: none !important;
 }
+
+/* ─── Tri interactif des stats (fenêtre « Interagir » d'OBS) ─────────────── */
+
+.overlay-stats thead th[data-key] {
+    cursor: pointer;
+    user-select: none;
+}
+
+.overlay-stats thead th[data-key]:hover {
+    color: rgba(255, 255, 255, 0.85);
+}
+
+.overlay-stats thead th.is-sorted {
+    color: var(--accent);
+}
+
+/* Indicateur de direction : petit triangle CSS après le libellé. */
+.overlay-stats thead th.is-sorted::after {
+    content: "";
+    display: inline-block;
+    margin-left: 6px;
+    vertical-align: middle;
+    border-left: 5px solid transparent;
+    border-right: 5px solid transparent;
+}
+
+.overlay-stats thead th.is-sorted--desc::after { border-top: 6px solid currentColor; }
+.overlay-stats thead th.is-sorted--asc::after { border-bottom: 6px solid currentColor; }
+
+/* Flash bref sur la colonne triée, au moment du tri. */
+@keyframes overlay-col-flash {
+    from { background: rgba(233, 127, 255, 0.28); }
+}
+
+.overlay-stats td.col-flash {
+    animation: overlay-col-flash 0.7s ease-out;
+}

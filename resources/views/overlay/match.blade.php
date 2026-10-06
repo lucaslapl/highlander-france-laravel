@@ -77,15 +77,15 @@
                     <thead>
                         <tr>
                             <th class="c-class"></th>
-                            <th class="c-name">Joueur</th>
-                            <th class="c-kad">K</th>
-                            <th class="c-kad">A</th>
-                            <th class="c-kad">D</th>
-                            <th class="c-dmg">DMG</th>
-                            <th class="c-dpm">DPM</th>
-                            <th class="c-hr">HEAL</th>
-                            <th class="c-dt">DT</th>
-                            <th class="c-kd">K/D</th>
+                            <th class="c-name" data-key="name">Joueur</th>
+                            <th class="c-kad" data-key="kills">K</th>
+                            <th class="c-kad" data-key="assists">A</th>
+                            <th class="c-kad" data-key="deaths">D</th>
+                            <th class="c-dmg" data-key="dmg">DMG</th>
+                            <th class="c-dpm" data-key="dapm">DPM</th>
+                            <th class="c-hr" data-key="hr">HEAL</th>
+                            <th class="c-dt" data-key="dt">DT</th>
+                            <th class="c-kd" data-key="kd">K/D</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -95,7 +95,17 @@
                                 $bestClass = static fn (string $stat): string => in_array($stat, $best, true) ? ' best' : '';
                                 $classIcon = '/_img/classes/'.e($player['class']).'.png';
                             @endphp
-                            <tr>
+                            {{-- Valeurs brutes en data-* : le JS de tri a besoin
+                                 de nombres, pas des cellules formatées. --}}
+                            <tr data-name="{{ e($player['name']) }}"
+                                data-kills="{{ (int) $player['kills'] }}"
+                                data-assists="{{ (int) $player['assists'] }}"
+                                data-deaths="{{ (int) $player['deaths'] }}"
+                                data-dmg="{{ (int) $player['dmg'] }}"
+                                data-dapm="{{ (int) $player['dapm'] }}"
+                                data-hr="{{ (int) $player['hr'] }}"
+                                data-dt="{{ (int) $player['dt'] }}"
+                                data-kd="{{ (float) $player['kd'] }}">
                                 <td class="c-class">
                                     @if (is_file(public_path('/_img/classes/').(string) $player['class'].'.png'))
                                         <img src="{{ $classIcon }}" alt="" title="{{ ucfirst(e($player['class'])) }}">
