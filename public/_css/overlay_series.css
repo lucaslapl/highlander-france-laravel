@@ -23,7 +23,7 @@
 }
 
 .series-scoreboard {
-    width: 400px;
+    width: 277px;
     box-sizing: border-box;
     background: var(--panel-bg);
     border: 1px solid rgba(255, 255, 255, 0.06);
@@ -111,7 +111,7 @@
     align-items: center;
     gap: 8px;
     padding: 15px 10px;
-    font-size: 16px;
+    font-size: 17px;
     font-weight: 800;
     border-radius: 8px;
     background: rgba(255, 255, 255, 0.03);
@@ -145,12 +145,10 @@
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
-    font-weight: 600;
 }
 
 .series-map__score {
     font-variant-numeric: tabular-nums;
-    font-weight: 700;
     opacity: 0.85;
 }
 
