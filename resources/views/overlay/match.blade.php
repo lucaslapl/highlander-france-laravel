@@ -83,7 +83,7 @@
                             <th class="c-kad">D</th>
                             <th class="c-dmg">DMG</th>
                             <th class="c-dpm">DPM</th>
-                            <th class="c-hr">HP</th>
+                            <th class="c-hr">HEAL</th>
                             <th class="c-dt">DT</th>
                             <th class="c-kd">K/D</th>
                         </tr>
@@ -130,7 +130,7 @@
                 @else
                     <div class="overlay-medic__stat">
                         <span class="overlay-medic__value">{{ $fmt((int) $medic['heal']) }}</span>
-                        <span class="overlay-medic__label">Heal</span>
+                        <span class="overlay-medic__label">Healing</span>
                     </div>
                     <div class="overlay-medic__stat">
                         <span class="overlay-medic__value">{{ $fmt((int) $medic['ubers']) }}</span>
@@ -142,7 +142,7 @@
                     </div>
                     <div class="overlay-medic__stat">
                         <span class="overlay-medic__value">{{ $medicLength($medic['avg_uber_length'] ?? null) }}</span>
-                        <span class="overlay-medic__label">Uber moyen</span>
+                        <span class="overlay-medic__label">Durée Uber</span>
                     </div>
                 @endif
             </section>
