@@ -58,11 +58,11 @@
                     // Une map unique sans score en journal (point manuel, log
                     // en cours) affiche 0-0 comme les autres lignes.
                     if ($map['mode'] === 'double') {
-                        $mapScore = ((int) $map['rounds']['red']).'–'.((int) $map['rounds']['blue']);
+                        $mapScore = ((int) $map['rounds']['red']).' – '.((int) $map['rounds']['blue']);
                     } elseif ($map['scores'] !== null) {
-                        $mapScore = ((int) $map['scores']['red']).'–'.((int) $map['scores']['blue']);
+                        $mapScore = ((int) $map['scores']['red']).' – '.((int) $map['scores']['blue']);
                     } else {
-                        $mapScore = '0–0';
+                        $mapScore = '0 – 0';
                     }
                 @endphp
                 <li class="series-map series-map--{{ $map['status'] }}{{ $map['winner'] !== null ? ' series-map--won-'.$map['winner'] : '' }}{{ $i === $currentMapIndex ? ' series-map--current' : '' }}{{ $map['thumb'] !== null ? ' series-map--has-thumb' : '' }}"
