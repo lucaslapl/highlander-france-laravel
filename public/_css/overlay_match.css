@@ -5,6 +5,8 @@
 .overlay-stage {
     --overlay-opacity: 70%;
     --overlay-blur: 6px;
+    --overlay-enter-delay: 1s;
+    --overlay-enter-ease: cubic-bezier(0.22, 1, 0.36, 1);
     --red: #b8383b;
     --red-soft: rgba(184, 56, 59, 0.18);
     --blue: #5885a2;
@@ -277,4 +279,71 @@
 .overlay-medic__empty {
     font-size: 19px;
     color: rgba(255, 255, 255, 0.6);
+}
+
+/* ─── Animation d'apparition ────────────────────────────────────────────── */
+
+/* Chaque bloc apparaît avec un décalage --overlay-enter-delay (1 s) après le
+   rendu : le temps que le stinger de transition OBS se termine. L'animation
+   est rejouée par overlay_match.js quand OBS rend la source à nouveau active
+   (API window.obsstudio), via .overlay-stage--no-anim. "backwards" maintient
+   les blocs invisibles pendant le délai ; l'état final est l'état naturel. */
+
+@keyframes overlay-enter-down {
+    from { opacity: 0; transform: translateY(-26px); }
+}
+
+@keyframes overlay-enter-up {
+    from { opacity: 0; transform: translateY(26px); }
+}
+
+@keyframes overlay-enter-left {
+    from { opacity: 0; transform: translateX(-48px); }
+}
+
+@keyframes overlay-enter-right {
+    from { opacity: 0; transform: translateX(48px); }
+}
+
+/* Enchaînement : en-tête, carte, panneaux latéraux (en miroir), lignes en
+   cascade, medics remontant du bas. */
+.overlay-header {
+    animation: overlay-enter-down 0.6s var(--overlay-enter-ease) var(--overlay-enter-delay) backwards;
+}
+
+.overlay-map {
+    animation: overlay-enter-down 0.6s var(--overlay-enter-ease) calc(var(--overlay-enter-delay) + 0.1s) backwards;
+}
+
+.overlay-panel--red {
+    animation: overlay-enter-left 0.7s var(--overlay-enter-ease) calc(var(--overlay-enter-delay) + 0.2s) backwards;
+}
+
+.overlay-panel--blue {
+    animation: overlay-enter-right 0.7s var(--overlay-enter-ease) calc(var(--overlay-enter-delay) + 0.2s) backwards;
+}
+
+.overlay-medic {
+    animation: overlay-enter-up 0.6s var(--overlay-enter-ease) calc(var(--overlay-enter-delay) + 0.35s) backwards;
+}
+
+/* Les lignes de stats se révèlent derrière leur panneau, une par une. */
+.overlay-stats tbody tr {
+    animation: overlay-enter-up 0.45s var(--overlay-enter-ease) calc(var(--overlay-enter-delay) + 0.45s) backwards;
+}
+
+.overlay-stats tbody tr:nth-child(2) { animation-delay: calc(var(--overlay-enter-delay) + 0.51s); }
+.overlay-stats tbody tr:nth-child(3) { animation-delay: calc(var(--overlay-enter-delay) + 0.57s); }
+.overlay-stats tbody tr:nth-child(4) { animation-delay: calc(var(--overlay-enter-delay) + 0.63s); }
+.overlay-stats tbody tr:nth-child(5) { animation-delay: calc(var(--overlay-enter-delay) + 0.69s); }
+.overlay-stats tbody tr:nth-child(6) { animation-delay: calc(var(--overlay-enter-delay) + 0.75s); }
+.overlay-stats tbody tr:nth-child(7) { animation-delay: calc(var(--overlay-enter-delay) + 0.81s); }
+.overlay-stats tbody tr:nth-child(8) { animation-delay: calc(var(--overlay-enter-delay) + 0.87s); }
+.overlay-stats tbody tr:nth-child(9) { animation-delay: calc(var(--overlay-enter-delay) + 0.93s); }
+
+/* Coupe toutes les animations : posé un bref instant par overlay_match.js
+   pour les relancer depuis le début quand la source redevient active. */
+.overlay-stage--no-anim,
+.overlay-stage--no-anim * {
+    animation: none !important;
 }
