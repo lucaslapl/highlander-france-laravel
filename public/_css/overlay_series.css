@@ -3,6 +3,10 @@
    source navigateur sur la taille du panneau (~400x300) pour un placement
    précis, ou gardez 1920x1080 et laissez la transparence faire le reste. */
 
+body {
+    margin: 0;
+}
+
 .series-overlay-stage {
     --red: #b8383b;
     --red-soft: rgba(184, 56, 59, 0.28);
@@ -25,9 +29,6 @@
 .series-scoreboard {
     width: 277px;
     box-sizing: border-box;
-    background: var(--panel-bg);
-    border: 1px solid rgba(255, 255, 255, 0.06);
-    border-radius: 10px;
     overflow: hidden;
 
     animation: series-enter 0.7s var(--enter-ease) both;
@@ -58,6 +59,7 @@
     align-items: center;
     gap: 12px;
     padding: 14px 18px 10px;
+    text-shadow: 2px 2px #000;
 }
 
 .series-scoreboard__team {
@@ -99,10 +101,10 @@
 .series-scoreboard__maps {
     list-style: none;
     margin: 0;
-    padding: 4px 12px 12px;
+    padding: 4px 0;
     display: flex;
     flex-direction: column;
-    gap: 4px;
+    gap: 6px;
 }
 
 .series-map {
@@ -113,7 +115,6 @@
     padding: 15px 10px;
     font-size: 17px;
     font-weight: 800;
-    border-radius: 8px;
     background: rgba(255, 255, 255, 0.03);
     color: var(--ink-dim);
 }
@@ -129,7 +130,6 @@
     position: absolute;
     inset: 0;
     background-color: rgba(12, 14, 20, 0.6);
-    border-radius: 8px;
 }
 
 .series-map__name,
