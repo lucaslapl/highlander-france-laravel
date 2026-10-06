@@ -66,24 +66,14 @@
 
 .series-scoreboard__name {
     display: block;
-    overflow: hidden;
-    text-overflow: ellipsis;
     white-space: nowrap;
-    font-size: 19px;
+    font-size: 22px;
     font-weight: 700;
     letter-spacing: 0.02em;
 }
 
-.series-scoreboard__team--red .series-scoreboard__name {
-    color: #e8a49d;
-}
-
 .series-scoreboard__team--blue {
     text-align: right;
-}
-
-.series-scoreboard__team--blue .series-scoreboard__name {
-    color: #a9c6d9;
 }
 
 .series-scoreboard__score {
@@ -96,14 +86,6 @@
 
 .series-scoreboard__score-value {
     font-size: 32px;
-}
-
-.series-scoreboard__score-value--red {
-    color: var(--red);
-}
-
-.series-scoreboard__score-value--blue {
-    color: var(--blue);
 }
 
 .series-scoreboard__score-sep {
@@ -128,9 +110,10 @@
     display: flex;
     align-items: center;
     gap: 8px;
-    padding: 6px 10px;
-    border-radius: 6px;
-    font-size: 14px;
+    padding: 15px 10px;
+    font-size: 16px;
+    font-weight: 800;
+    border-radius: 8px;
     background: rgba(255, 255, 255, 0.03);
     color: var(--ink-dim);
 }
@@ -146,6 +129,7 @@
     position: absolute;
     inset: 0;
     background-color: rgba(12, 14, 20, 0.6);
+    border-radius: 8px;
 }
 
 .series-map__name,
