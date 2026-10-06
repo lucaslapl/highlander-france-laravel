@@ -64,14 +64,14 @@
                         <tr>
                             <th class="c-class"></th>
                             <th class="c-name">Joueur</th>
-                            <th>K</th>
-                            <th>A</th>
-                            <th>D</th>
-                            <th>DMG</th>
-                            <th>DPM</th>
-                            <th>HP</th>
-                            <th>DT</th>
-                            <th>K/D</th>
+                            <th class="c-kad">K</th>
+                            <th class="c-kad">A</th>
+                            <th class="c-kad">D</th>
+                            <th class="c-dmg">DMG</th>
+                            <th class="c-dpm">DPM</th>
+                            <th class="c-hr">HP</th>
+                            <th class="c-dt">DT</th>
+                            <th class="c-kd">K/D</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -88,14 +88,14 @@
                                     @endif
                                 </td>
                                 <td class="c-name">{{ e($player['name']) }}</td>
-                                <td class="num{{ $bestClass('kills') }}">{{ $fmt((int) $player['kills']) }}</td>
-                                <td class="num{{ $bestClass('assists') }}">{{ $fmt((int) $player['assists']) }}</td>
-                                <td class="num{{ $bestClass('deaths') }}">{{ $fmt((int) $player['deaths']) }}</td>
-                                <td class="num{{ $bestClass('dmg') }}">{{ $fmt((int) $player['dmg']) }}</td>
-                                <td class="num{{ $bestClass('dapm') }}">{{ $fmt((int) $player['dapm']) }}</td>
-                                <td class="num{{ $bestClass('hr') }}">{{ $fmt((int) $player['hr']) }}</td>
-                                <td class="num{{ $bestClass('dt') }}">{{ $fmt((int) $player['dt']) }}</td>
-                                <td class="num{{ $bestClass('kd') }}">{{ number_format((float) $player['kd'], 2, ',', ' ') }}</td>
+                                <td class="num c-kad{{ $bestClass('kills') }}">{{ $fmt((int) $player['kills']) }}</td>
+                                <td class="num c-kad{{ $bestClass('assists') }}">{{ $fmt((int) $player['assists']) }}</td>
+                                <td class="num c-kad{{ $bestClass('deaths') }}">{{ $fmt((int) $player['deaths']) }}</td>
+                                <td class="num c-dmg{{ $bestClass('dmg') }}">{{ $fmt((int) $player['dmg']) }}</td>
+                                <td class="num c-dpm{{ $bestClass('dapm') }}">{{ $fmt((int) $player['dapm']) }}</td>
+                                <td class="num c-hr{{ $bestClass('hr') }}">{{ $fmt((int) $player['hr']) }}</td>
+                                <td class="num c-dt{{ $bestClass('dt') }}">{{ $fmt((int) $player['dt']) }}</td>
+                                <td class="num c-kd{{ $bestClass('kd') }}">{{ number_format((float) $player['kd'], 2, ',', ' ') }}</td>
                             </tr>
                         @endforeach
                     </tbody>
@@ -110,14 +110,26 @@
                 $medic = $overlay['medics'][$team] ?? null;
             @endphp
             <section class="overlay-medic overlay-medic--{{ $team }}">
-                <span class="overlay-medic__title"><img src="/_img/classes/medic.png" alt=""> Medic {{ e($overlay['teams'][$team]['name']) }}</span>
+                <span class="overlay-medic__icon"><img src="/_img/classes/medic.png" alt="Medic"></span>
                 @if ($medic === null || (int) ($medic['count'] ?? 0) === 0)
-                    <span class="overlay-medic__stat">Aucun medic</span>
+                    <span class="overlay-medic__empty">Aucun medic</span>
                 @else
-                    <span class="overlay-medic__stat"><strong>{{ $fmt((int) $medic['heal']) }}</strong> heal</span>
-                    <span class="overlay-medic__stat"><strong>{{ $fmt((int) $medic['ubers']) }}</strong> ubers</span>
-                    <span class="overlay-medic__stat"><strong>{{ $fmt((int) $medic['drops']) }}</strong> drop{{ (int) $medic['drops'] > 1 ? 's' : '' }}</span>
-                    <span class="overlay-medic__stat">uber moyen <strong>{{ $medicLength($medic['avg_uber_length'] ?? null) }}</strong></span>
+                    <div class="overlay-medic__stat">
+                        <span class="overlay-medic__value">{{ $fmt((int) $medic['heal']) }}</span>
+                        <span class="overlay-medic__label">Heal</span>
+                    </div>
+                    <div class="overlay-medic__stat">
+                        <span class="overlay-medic__value">{{ $fmt((int) $medic['ubers']) }}</span>
+                        <span class="overlay-medic__label">Ubers</span>
+                    </div>
+                    <div class="overlay-medic__stat">
+                        <span class="overlay-medic__value">{{ $fmt((int) $medic['drops']) }}</span>
+                        <span class="overlay-medic__label">Drop{{ (int) $medic['drops'] > 1 ? 's' : '' }}</span>
+                    </div>
+                    <div class="overlay-medic__stat">
+                        <span class="overlay-medic__value">{{ $medicLength($medic['avg_uber_length'] ?? null) }}</span>
+                        <span class="overlay-medic__label">Uber moyen</span>
+                    </div>
                 @endif
             </section>
         @endforeach

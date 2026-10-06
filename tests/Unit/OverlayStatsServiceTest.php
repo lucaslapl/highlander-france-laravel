@@ -126,29 +126,34 @@ class OverlayStatsServiceTest extends TestCase
         $this->assertSame(['scout', 'soldier', 'medic'], $classes);
     }
 
-    public function test_marque_la_meilleure_valeur_de_chaque_stat(): void
+    public function test_marque_la_meilleure_valeur_de_chaque_stat_par_equipe(): void
     {
         $fixture = $this->serviceWithFixture($this->logResponse());
         $payload = $fixture['service']->buildPayload(1, $fixture['fetcher']);
 
-        $byName = [];
+        $bests = [];
         foreach (['red', 'blue'] as $team) {
             foreach ($payload['players'][$team] as $player) {
-                $byName[$player['name']] = $player['best'];
+                $bests[$team][$player['name']] = $player['best'];
             }
         }
 
-        // Meilleur kills : ScoutFR (30), meilleures assists et dmg : SoldatFR,
-        // meilleur heal reçu : ScoutEN (6000), meilleur dmg pris : DocFR (5000),
-        // le plus de morts : ScoutEN (14).
-        $this->assertContains('kills', $byName['ScoutFR']);
-        $this->assertContains('kd', $byName['ScoutFR']);
-        $this->assertContains('assists', $byName['SoldatFR']);
-        $this->assertContains('dmg', $byName['SoldatFR']);
-        $this->assertContains('dapm', $byName['SoldatFR']);
-        $this->assertContains('hr', $byName['ScoutEN']);
-        $this->assertContains('deaths', $byName['ScoutEN']);
-        $this->assertContains('dt', $byName['DocFR']);
+        // Rouge : ScoutFR domine kills/kd/hr, SoldatFR assists/dmg/dapm/deaths.
+        $this->assertContains('kills', $bests['red']['ScoutFR']);
+        $this->assertContains('kd', $bests['red']['ScoutFR']);
+        $this->assertContains('hr', $bests['red']['ScoutFR']);
+        $this->assertContains('assists', $bests['red']['SoldatFR']);
+        $this->assertContains('dmg', $bests['red']['SoldatFR']);
+        $this->assertContains('dapm', $bests['red']['SoldatFR']);
+        $this->assertContains('deaths', $bests['red']['SoldatFR']);
+        $this->assertContains('dt', $bests['red']['DocFR']);
+
+        // Bleu : ScoutEN domine kills/deaths/dmg/dapm/hr/kd, DocEN assists/dt.
+        foreach (['kills', 'deaths', 'dmg', 'dapm', 'hr', 'kd'] as $stat) {
+            $this->assertContains($stat, $bests['blue']['ScoutEN']);
+        }
+        $this->assertContains('assists', $bests['blue']['DocEN']);
+        $this->assertContains('dt', $bests['blue']['DocEN']);
     }
 
     public function test_agrege_les_stats_medics_par_equipe(): void

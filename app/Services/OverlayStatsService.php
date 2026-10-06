@@ -155,30 +155,29 @@ final class OverlayStatsService
     }
 
     /**
-     * Marque la meilleure valeur de chaque stat (les deux équipes confondues).
+     * Marque la meilleure valeur de chaque stat, pour chaque équipe
+     * indépendamment (rouge et bleu).
      *
      * @param  array<string, array<int, array<string, mixed>>>  $players
      */
     private function markBestStats(array &$players): void
     {
-        foreach (self::BEST_STATS as $stat) {
-            $bestTeam = null;
-            $bestIndex = null;
-            $bestValue = null;
+        foreach (['red', 'blue'] as $team) {
+            foreach (self::BEST_STATS as $stat) {
+                $bestIndex = null;
+                $bestValue = null;
 
-            foreach (['red', 'blue'] as $team) {
                 foreach ($players[$team] as $index => $player) {
                     $value = $player[$stat];
-                    if ($bestValue === null || (is_float($value) || is_int($value)) && $value > $bestValue) {
+                    if ((is_int($value) || is_float($value)) && ($bestValue === null || $value > $bestValue)) {
                         $bestValue = $value;
-                        $bestTeam = $team;
                         $bestIndex = $index;
                     }
                 }
-            }
 
-            if ($bestTeam !== null && $bestIndex !== null && (float) $bestValue > 0) {
-                $players[$bestTeam][$bestIndex]['best'][] = $stat;
+                if ($bestIndex !== null && (float) $bestValue > 0) {
+                    $players[$team][$bestIndex]['best'][] = $stat;
+                }
             }
         }
     }

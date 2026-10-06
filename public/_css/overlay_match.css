@@ -30,9 +30,9 @@
 /* ─── En-tête : avatars, noms d'équipes, scores ──────────────────────────── */
 
 .overlay-header {
-    display: flex;
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
     align-items: center;
-    justify-content: space-between;
     gap: 40px;
     padding: 14px 34px;
     background: var(--panel-bg);
@@ -55,6 +55,13 @@
     display: flex;
     align-items: center;
     gap: 16px;
+    justify-self: start;
+}
+
+/* Équipe bleue en miroir : score à gauche du nom, avatar à droite. */
+.overlay-team--blue {
+    flex-direction: row-reverse;
+    justify-self: end;
 }
 
 .overlay-team__avatar {
@@ -158,6 +165,7 @@
 
 .overlay-stats td.c-class {
     width: 42px;
+    padding-right: 0;
     text-align: left;
 }
 
@@ -167,7 +175,28 @@
     vertical-align: middle;
 }
 
+/* K / A / D resserrés : pseudos et icônes proches, chiffres compacts. */
+.overlay-stats th.c-kad,
+.overlay-stats td.c-kad {
+    width: 46px;
+    padding-left: 4px;
+    padding-right: 4px;
+}
+
+.overlay-stats th.c-dmg,
+.overlay-stats td.c-dmg { width: 68px; }
+.overlay-stats th.c-dpm,
+.overlay-stats td.c-dpm { width: 58px; }
+.overlay-stats th.c-hr,
+.overlay-stats td.c-hr { width: 62px; }
+.overlay-stats th.c-dt,
+.overlay-stats td.c-dt { width: 62px; }
+.overlay-stats th.c-kd,
+.overlay-stats td.c-kd { width: 58px; }
+
 .overlay-stats td.c-name {
+    width: auto;
+    padding-left: 8px;
     text-align: left;
     font-weight: 500;
     overflow: hidden;
@@ -198,38 +227,53 @@
     flex: 1;
     display: flex;
     align-items: center;
-    gap: 28px;
-    padding: 12px 22px;
+    gap: 34px;
+    padding: 12px 26px;
     background: var(--panel-bg);
     -webkit-backdrop-filter: blur(var(--overlay-blur));
     backdrop-filter: blur(var(--overlay-blur));
     border: 1px solid rgba(255, 255, 255, 0.09);
     border-radius: 16px;
-    font-size: 21px;
 }
 
-.overlay-medic--red { border-left: 4px solid var(--red); }
-.overlay-medic--blue { border-left: 4px solid var(--blue); }
-
-.overlay-medic__title {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    font-weight: 700;
-    white-space: nowrap;
+/* Rouge à gauche, bleu en miroir à droite (accent côté centre). */
+.overlay-medic--red {
+    border-left: 4px solid var(--red);
+    justify-content: flex-start;
 }
 
-.overlay-medic__title img {
-    width: 30px;
-    height: 30px;
+.overlay-medic--blue {
+    border-right: 4px solid var(--blue);
+    justify-content: flex-end;
+}
+
+.overlay-medic__icon img {
+    width: 34px;
+    height: 34px;
+    display: block;
 }
 
 .overlay-medic__stat {
-    color: rgba(255, 255, 255, 0.82);
-    white-space: nowrap;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    line-height: 1.2;
 }
 
-.overlay-medic__stat strong {
-    color: #fff;
+.overlay-medic__value {
+    font-size: 25px;
     font-weight: 800;
+    font-variant-numeric: tabular-nums;
+}
+
+.overlay-medic__label {
+    font-size: 13px;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    color: rgba(255, 255, 255, 0.55);
+}
+
+.overlay-medic__empty {
+    font-size: 19px;
+    color: rgba(255, 255, 255, 0.6);
 }
