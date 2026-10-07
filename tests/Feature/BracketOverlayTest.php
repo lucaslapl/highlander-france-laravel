@@ -307,7 +307,6 @@ class BracketOverlayTest extends TestCase
             'accent' => 'Playoffs',
             'columns' => [],
             'live' => null,
-            'etf2l' => null,
             'created_at' => time() - 100,
         ], $overrides));
     }

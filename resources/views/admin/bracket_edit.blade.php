@@ -10,7 +10,6 @@
     $isBracket = ($bracket['kind'] ?? 'bracket') === 'table' ? false : true;
     $live = $bracket['live'] ?? null;
     $liveValue = is_array($live) ? ((string) ($live['column'] ?? '')).':'.((string) ($live['match'] ?? '')) : '';
-    $etf2l = $bracket['etf2l'] ?? null;
 @endphp
 
 <div class="admin-header" style="--accent:#9b6dff;">
@@ -134,15 +133,6 @@
 
 <h3 class="admin-section-title"><i class="fa-solid fa-rotate"></i> Actions</h3>
 <div style="display:flex; gap:12px; flex-wrap:wrap;">
-    @if (! empty($etf2l))
-        <form method="POST" action="/admin/overlay/bracket/{{ $bracket['token'] }}/resync"
-              onsubmit="return confirm('Re-synchroniser depuis l\'API ETF2L ? {{ $isBracket ? 'Les colonnes et scores seront remplacés (vos éditions manuelles depuis l\'import seront perdues) et le match « EN DIRECT » réinitialisé.' : 'Les lignes seront remplacées.' }}');">
-            @csrf
-            <button type="submit" class="admin-btn">
-                <i class="fa-solid fa-arrows-rotate"></i> Re-synchroniser depuis ETF2L
-            </button>
-        </form>
-    @endif
     <a href="/admin/overlay/bracket" class="admin-btn"><i class="fa-solid fa-arrow-left"></i> Retour à la liste</a>
     <form method="POST" action="/admin/overlay/bracket/{{ $bracket['token'] }}/delete"
           onsubmit="return confirm('Supprimer cet overlay ?');">

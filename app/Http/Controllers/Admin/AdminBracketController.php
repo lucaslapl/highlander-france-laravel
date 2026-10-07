@@ -9,7 +9,6 @@ use App\Models\BracketRepository;
 use App\Models\SeriesRepository;
 use App\Services\AdminLogger;
 use App\Services\Auth;
-use App\Services\Etf2lCompetitionService;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -20,13 +19,12 @@ use Illuminate\Http\Request;
  * Accessible aux admins et aux rôles caster / prod, aux côtés des autres
  * outils overlay (middleware overlay-tools).
  *
- * Deux formats, même cycle de vie : création à la main ou import depuis
- * l'API ETF2L v2 (compétition → résultats groupés par round pour un
- * bracket, compétition → table d'une division pour un classement), puis
- * tout reste éditable à la main — colonnes, labels de round, équipes,
- * avatars, scores. Le bouton « re-synchroniser » relit l'API ETF2L en
- * contournant le cache (les éditions manuelles post-import sont
- * conservées jusqu'au prochain import).
+ * Deux formats, même cycle de vie : création à la main d'un overlay
+ * vide (un bracket démarre avec une colonne et une case, un classement
+ * sans ligne), puis tout se construit et se renomme dans l'éditeur —
+ * colonnes, labels de round, équipes, avatars, scores. Pas d'import
+ * automatique : les brackets et classements sont saisis à la main pour
+ * éviter les erreurs de données externes.
  *
  * Le match diffusé en direct est désigné dans l'éditeur et peut être
  * attaché à une série (outil séries) : son score suit alors la série en
@@ -48,38 +46,23 @@ final class AdminBracketController extends Controller
 
     private SeriesRepository $series;
 
-    private Etf2lCompetitionService $etf2l;
-
     public function __construct()
     {
         $this->brackets = new BracketRepository;
         $this->series = new SeriesRepository;
-        $this->etf2l = new Etf2lCompetitionService;
     }
 
     /**
-     * GET /admin/overlay/bracket — liste des overlays + création manuelle
-     * + import ETF2L. La liste des compétitions est chargée côté serveur
-     * (cache 6 h) ; l'indisponibilité de l'API n'empêche pas d'utiliser
-     * le reste de la page.
+     * GET /admin/overlay/bracket — liste des overlays + création manuelle.
      */
     public function index(): View
     {
         Auth::requireOverlayTools();
 
-        $competitions = [];
-        try {
-            $competitions = $this->etf2l->competitions();
-        } catch (\Throwable) {
-            // API indisponible : le formulaire d'import affichera un champ
-            // d'identifiant libre, le reste de la page reste utilisable.
-        }
-
         return view('admin.bracket', [
             'title' => 'Admin - Overlay Bracket (OBS)',
             'description' => 'Overlays de brackets de playoffs et de classements pour les broadcasts OBS de Highlander France.',
             'brackets' => $this->brackets->all(),
-            'competitions' => $competitions,
         ]);
     }
 
@@ -106,7 +89,6 @@ final class AdminBracketController extends Controller
             'eyebrow' => trim((string) ($data['eyebrow'] ?? '')),
             'title' => trim((string) $data['title']),
             'accent' => trim((string) ($data['accent'] ?? '')),
-            'etf2l' => null,
             'created_at' => time(),
         ];
 
@@ -123,98 +105,6 @@ final class AdminBracketController extends Controller
 
         return redirect('/admin/overlay/bracket/'.$bracket['token'])
             ->with('success', 'Overlay créé. Ajoutez maintenant vos colonnes / lignes ci-dessous.');
-    }
-
-    /**
-     * POST /admin/overlay/bracket/import — import ETF2L : les résultats
-     * d'une compétition deviennent les colonnes du bracket (une par
-     * round), ou la table d'une division devient le classement. Pour un
-     * classement multi-divisions, un second pas propose le choix de la
-     * division.
-     */
-    public function import(Request $request): RedirectResponse
-    {
-        Auth::requireOverlayTools();
-
-        $data = $request->validate([
-            'kind' => ['required', 'in:bracket,table'],
-            'competition_id' => ['required', 'integer', 'min:1'],
-            'division' => ['nullable', 'string', 'max:64'],
-        ]);
-
-        $kind = (string) $data['kind'];
-        $competitionId = (int) $data['competition_id'];
-
-        if ($kind === 'bracket') {
-            $results = $this->etf2l->results($competitionId);
-            if ($results === []) {
-                return back()->with('error', "Aucun résultat exploitable pour la compétition ETF2L #$competitionId (peut-être pas encore jouée).");
-            }
-
-            $columns = [];
-            foreach (Etf2lCompetitionService::bracketColumns($results) as $column) {
-                $column['id'] = $this->newId('c');
-                $column['matches'] = array_map(
-                    fn (array $match): array => array_merge($match, [
-                        'id' => $this->newId('m'),
-                        'series_token' => null,
-                        'manual_scores' => false,
-                    ]),
-                    $column['matches'],
-                );
-                $columns[] = $column;
-            }
-
-            $bracket = [
-                'token' => bin2hex(random_bytes(8)),
-                'kind' => 'bracket',
-                'eyebrow' => 'ETF2L Highlander',
-                'title' => $this->competitionTitle($competitionId),
-                'accent' => '',
-                'columns' => $columns,
-                'live' => null,
-                'etf2l' => ['competition_id' => $competitionId],
-                'created_at' => time(),
-            ];
-        } else {
-            $tables = $this->etf2l->tables($competitionId);
-            $division = trim((string) ($data['division'] ?? ''));
-            $divisionNames = array_keys($tables);
-
-            if ($division === '' && count($divisionNames) > 1) {
-                // Second pas : proposer le choix de la division.
-                return back()
-                    ->with('bracket_divisions', ['competition_id' => $competitionId, 'divisions' => $divisionNames])
-                    ->withInput();
-            }
-
-            if ($division === '') {
-                $division = $divisionNames[0] ?? '';
-            }
-
-            $rows = $tables[$division] ?? [];
-            if ($rows === []) {
-                return back()->with('error', "Aucune table de classement trouvée pour la compétition ETF2L #$competitionId.");
-            }
-
-            $bracket = [
-                'token' => bin2hex(random_bytes(8)),
-                'kind' => 'table',
-                'eyebrow' => 'ETF2L Highlander',
-                'title' => trim($this->competitionTitle($competitionId).' — Division '.$division),
-                'accent' => '',
-                'rows' => $rows,
-                'top_x' => 0,
-                'etf2l' => ['competition_id' => $competitionId, 'division' => $division],
-                'created_at' => time(),
-            ];
-        }
-
-        $this->brackets->save($bracket);
-        AdminLogger::log('admin_bracket_import', null, 'SUCCESS ('.$kind.' '.$bracket['token'].' depuis ETF2L #'.$competitionId.')');
-
-        return redirect('/admin/overlay/bracket/'.$bracket['token'])
-            ->with('success', 'Overlay importé depuis l\'API ETF2L. Vérifiez les titres et ajustez à la main si besoin.');
     }
 
     /**
@@ -276,64 +166,6 @@ final class AdminBracketController extends Controller
         AdminLogger::log('admin_bracket_update', null, 'SUCCESS ('.$kind.' '.$token.')');
 
         return back()->with('success', 'Overlay enregistré — l\'overlay OBS se rafraîchit aussitôt.');
-    }
-
-    /**
-     * POST /admin/overlay/bracket/{token}/resync — relit l'API ETF2L
-     * (cache contourné) depuis la provenance de l'overlay : colonnes du
-     * bracket ou lignes du classement remplacées, titres, token et type
-     * conservés. Les identifiants étant régénérés, le match « EN DIRECT »
-     * est réinitialisé.
-     */
-    public function resync(Request $request, string $token): RedirectResponse
-    {
-        Auth::requireOverlayTools();
-
-        $bracket = $this->requireBracket($token);
-        $kind = (string) ($bracket['kind'] ?? 'bracket');
-        $competitionId = (int) ($bracket['etf2l']['competition_id'] ?? 0);
-
-        if ($competitionId === 0) {
-            return back()->with('error', 'Cet overlay n\'a pas été importé depuis l\'API ETF2L : rien à re-synchroniser.');
-        }
-
-        if ($kind === 'bracket') {
-            $results = $this->etf2l->results($competitionId, true);
-            if ($results === []) {
-                return back()->with('error', 'Aucun résultat exploitable côté ETF2L, réessayez plus tard.');
-            }
-
-            $columns = [];
-            foreach (Etf2lCompetitionService::bracketColumns($results) as $column) {
-                $column['id'] = $this->newId('c');
-                $column['matches'] = array_map(
-                    fn (array $match): array => array_merge($match, [
-                        'id' => $this->newId('m'),
-                        'series_token' => null,
-                        'manual_scores' => false,
-                    ]),
-                    $column['matches'],
-                );
-                $columns[] = $column;
-            }
-
-            $bracket['columns'] = $columns;
-            $bracket['live'] = null;
-        } else {
-            $division = (string) ($bracket['etf2l']['division'] ?? '');
-            $tables = $this->etf2l->tables($competitionId, true);
-            $rows = $tables[$division] ?? [];
-            if ($rows === []) {
-                return back()->with('error', 'Table introuvable côté ETF2L (division renommée ?), réessayez plus tard.');
-            }
-
-            $bracket['rows'] = $rows;
-        }
-
-        $this->brackets->save($bracket);
-        AdminLogger::log('admin_bracket_resync', null, 'SUCCESS ('.$kind.' '.$token.' depuis ETF2L #'.$competitionId.')');
-
-        return back()->with('success', 'Données re-synchronisées depuis l\'API ETF2L. Le match « EN DIRECT » a été réinitialisé (identifiants régénérés).');
     }
 
     /**
@@ -525,20 +357,6 @@ final class AdminBracketController extends Controller
                 'manual_scores' => false,
             ]],
         ];
-    }
-
-    /**
-     * Titre lisible d'une compétition pour préremplir l'overlay importé.
-     */
-    private function competitionTitle(int $competitionId): string
-    {
-        foreach ($this->etf2l->competitions() as $competition) {
-            if ($competition['id'] === $competitionId) {
-                return $competition['name'];
-            }
-        }
-
-        return 'ETF2L #'.$competitionId;
     }
 
     /**

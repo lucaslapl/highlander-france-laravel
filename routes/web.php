@@ -113,10 +113,8 @@ Route::middleware('overlay-tools')->prefix('admin')->group(function (): void {
     Route::post('/overlay/{token}/delete', [AdminOverlayController::class, 'delete'])->where('token', '[a-z0-9]{16}');
     Route::get('/overlay/bracket', [AdminBracketController::class, 'index'])->name('admin.bracket');
     Route::post('/overlay/bracket/create', [AdminBracketController::class, 'create']);
-    Route::post('/overlay/bracket/import', [AdminBracketController::class, 'import']);
     Route::get('/overlay/bracket/{token}', [AdminBracketController::class, 'edit'])->where('token', '[a-z0-9]{16}');
     Route::post('/overlay/bracket/{token}/update', [AdminBracketController::class, 'update'])->where('token', '[a-z0-9]{16}');
-    Route::post('/overlay/bracket/{token}/resync', [AdminBracketController::class, 'resync'])->where('token', '[a-z0-9]{16}');
     Route::post('/overlay/bracket/{token}/delete', [AdminBracketController::class, 'delete'])->where('token', '[a-z0-9]{16}');
     Route::get('/series', [AdminSeriesController::class, 'index'])->name('admin.series');
     Route::post('/series/create', [AdminSeriesController::class, 'create']);
