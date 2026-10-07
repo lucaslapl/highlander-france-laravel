@@ -223,7 +223,7 @@ h1 {
 }
 
 .action-pick .card-action {
-    color: var(--pick);
+    color: white;
     background: linear-gradient(90deg, rgba(90, 30, 110, 0.25), var(--pick-line), rgba(90, 30, 110, 0.25));
 }
 
