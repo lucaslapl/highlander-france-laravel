@@ -30,6 +30,9 @@
                 <label class="admin-form-label" style="margin-top:10px;" for="series-{{ $team }}-players">Roster (SteamIDs, un par ligne)</label>
                 <textarea id="series-{{ $team }}-players" name="{{ $team }}_players" class="form-control" rows="5"
                           placeholder="76561198012345678&#10;STEAM_1:0:12345&#10;[U:1:24680]" required></textarea>
+                <label class="admin-form-label" style="margin-top:10px;" for="series-{{ $team }}-avatar-url">Avatar par URL externe (optionnel)</label>
+                <input type="url" id="series-{{ $team }}-avatar-url" name="{{ $team }}_avatar_url" class="form-control"
+                       placeholder="https://…/logo.png">
                 <p style="color:#777; font-size:12px; margin:6px 0 0;">
                     Formats acceptés : SteamID64, STEAM_1:X:Y ou [U:1:N]. Les mercs sont tolérés (3 max par équipe).
                 </p>

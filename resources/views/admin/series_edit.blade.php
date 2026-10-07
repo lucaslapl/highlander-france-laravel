@@ -77,6 +77,59 @@
     <a class="admin-link-btn" href="/series-overlay/{{ $series['token'] }}" target="_blank">Prévisualiser</a>
 </p>
 
+<h3 class="admin-section-title"><i class="fa-solid fa-table-list"></i> Overlay stats de match (automatique)</h3>
+<p style="color:#aaa; font-size:13px;">
+    Chaque log logs.tf rattaché à la série régénère automatiquement les stats de la map terminée sur cette page —
+    aucun copier-coller d'URL logs.tf, aucune action à faire pendant le cast. Avant le premier log, la page affiche
+    les équipes à 0-0 sans stats.
+</p>
+<p style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+    <code style="background:#111; border:1px solid #333; border-radius:6px; padding:8px 12px; font-size:14px;">
+        {{ url('/series-overlay/'.$series['token'].'/match') }}
+    </code>
+    <a class="admin-link-btn" href="/series-overlay/{{ $series['token'] }}/match" target="_blank">Prévisualiser</a>
+</p>
+
+<h4 style="margin:16px 0 8px;">Avatars d'équipes</h4>
+<form method="POST" action="/admin/series/{{ $series['token'] }}/overlay" class="admin-form-stack">
+    @csrf
+    <div style="display:flex; gap:16px; flex-wrap:wrap;">
+        @foreach (['red' => 'Rouge', 'blue' => 'Bleue'] as $team => $label)
+            <div style="border:1px solid #333; border-radius:8px; padding:14px; flex:1; min-width:300px;">
+                <h4 style="margin:0 0 10px; color: {{ $team === 'red' ? '#e06c5a' : '#5885a2' }};">Équipe {{ $label }} — {{ e($series['teams'][$team]['name']) }}</h4>
+                <label class="admin-form-label">Avatar par URL externe (optionnel)</label>
+                <input type="url" name="{{ $team }}_avatar_url" class="form-control"
+                       value="{{ e($series['teams'][$team]['avatar_url'] ?? '') }}"
+                       placeholder="https://…/logo.png">
+            </div>
+        @endforeach
+    </div>
+    <button type="submit" class="admin-btn" style="margin-top:10px;"><i class="fa-solid fa-floppy-disk"></i> Enregistrer les URL</button>
+</form>
+<div style="display:flex; gap:16px; flex-wrap:wrap; margin-top:16px;">
+    @foreach (['red' => 'Rouge', 'blue' => 'Bleue'] as $team => $label)
+        <div style="border:1px solid #333; border-radius:8px; padding:14px; flex:1; min-width:300px;">
+            <h4 style="margin:0 0 10px;">Avatar équipe {{ $label }} (upload)</h4>
+            @if ($has_avatar[$team])
+                <img src="/series-overlay/{{ $series['token'] }}/avatar/{{ $team }}" alt="Avatar {{ $label }}"
+                     style="max-width:96px; max-height:96px; display:block; margin-bottom:10px;">
+                <form method="POST" action="/admin/series/{{ $series['token'] }}/avatar/delete" style="margin-bottom:8px;">
+                    @csrf
+                    <input type="hidden" name="team" value="{{ $team }}">
+                    <button type="submit" class="admin-btn admin-btn--danger">Supprimer l'avatar</button>
+                </form>
+            @endif
+            <form method="POST" action="/admin/series/{{ $series['token'] }}/avatar" enctype="multipart/form-data">
+                @csrf
+                <input type="hidden" name="team" value="{{ $team }}">
+                <input type="file" name="avatar" accept=".jpeg,.jpg,.png,.webp" required style="font-size:13px;">
+                <button type="submit" class="admin-btn" style="margin-top:8px;">Envoyer</button>
+            </form>
+            <p style="color:#777; font-size:12px; margin:8px 0 0;">jpeg, png ou webp — 2 Mo max. L'URL externe, si renseignée, prime sur l'upload.</p>
+        </div>
+    @endforeach
+</div>
+
 <h3 class="admin-section-title"><i class="fa-solid fa-map"></i> Maps de la série</h3>
 <div class="admin-table-scroll">
     <table class="admin-table">

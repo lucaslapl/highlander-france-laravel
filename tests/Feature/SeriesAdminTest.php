@@ -105,8 +105,8 @@ class SeriesAdminTest extends TestCase
         $this->assertSame('Finale playoffs — Les Baguettes vs Escouade 6', $series['title']);
         $this->assertSame('upcoming', $series['status']);
         $this->assertSame(2, $series['wins_needed']);
-        $this->assertSame(['name' => 'Les Baguettes', 'players' => ['76561198000000001', '76561197960290419']], $series['teams']['red']);
-        $this->assertSame(['name' => 'Escouade 6', 'players' => ['76561198000000011', '76561197960364493']], $series['teams']['blue']);
+        $this->assertSame(['name' => 'Les Baguettes', 'players' => ['76561198000000001', '76561197960290419'], 'avatar_url' => null], $series['teams']['red']);
+        $this->assertSame(['name' => 'Escouade 6', 'players' => ['76561198000000011', '76561197960364493'], 'avatar_url' => null], $series['teams']['blue']);
         // pl_upward : double attaque ; steel : double attaque (A/D connu).
         $this->assertSame('double', $series['maps'][0]['mode']);
         $this->assertSame('double', $series['maps'][1]['mode']);

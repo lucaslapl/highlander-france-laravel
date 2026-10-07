@@ -92,6 +92,8 @@ Route::get('/overlay/{token}/version', [OverlayController::class, 'version'])->w
 Route::get('/overlay/{token}/avatar/{team}', [OverlayController::class, 'avatar'])->where('token', '[a-z0-9]{16}')->whereIn('team', ['red', 'blue']);
 Route::get('/series-overlay/{token}', [SeriesOverlayController::class, 'show'])->where('token', '[a-z0-9]{16}');
 Route::get('/series-overlay/{token}/version', [SeriesOverlayController::class, 'version'])->where('token', '[a-z0-9]{16}');
+Route::get('/series-overlay/{token}/match', [SeriesOverlayController::class, 'match'])->where('token', '[a-z0-9]{16}');
+Route::get('/series-overlay/{token}/avatar/{team}', [SeriesOverlayController::class, 'avatar'])->where('token', '[a-z0-9]{16}')->whereIn('team', ['red', 'blue']);
 
 // ─── Outils overlay OBS (admins + rôles caster / prod) ───────────────────────
 // Panel restreint : les casters et prod n'ont accès qu'aux deux outils
@@ -113,6 +115,9 @@ Route::middleware('overlay-tools')->prefix('admin')->group(function (): void {
     Route::post('/series/{token}/status', [AdminSeriesController::class, 'status'])->where('token', '[a-z0-9]{16}');
     Route::post('/series/{token}/point', [AdminSeriesController::class, 'point'])->where('token', '[a-z0-9]{16}');
     Route::post('/series/{token}/void', [AdminSeriesController::class, 'void'])->where('token', '[a-z0-9]{16}');
+    Route::post('/series/{token}/avatar', [AdminSeriesController::class, 'avatar'])->where('token', '[a-z0-9]{16}');
+    Route::post('/series/{token}/avatar/delete', [AdminSeriesController::class, 'avatarDelete'])->where('token', '[a-z0-9]{16}');
+    Route::post('/series/{token}/overlay', [AdminSeriesController::class, 'overlay'])->where('token', '[a-z0-9]{16}');
     Route::post('/series/{token}/delete', [AdminSeriesController::class, 'delete'])->where('token', '[a-z0-9]{16}');
 });
 

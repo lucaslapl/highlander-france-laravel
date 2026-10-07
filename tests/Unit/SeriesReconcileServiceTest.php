@@ -6,6 +6,8 @@ namespace Tests\Unit;
 
 use App\Models\SeriesRepository;
 use App\Services\Crons\SeriesReconcileService;
+use App\Services\Etf2lNameResolver;
+use App\Services\OverlayStatsService;
 use App\Services\SeriesScoreService;
 use App\Services\SteamId;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -58,7 +60,8 @@ class SeriesReconcileServiceTest extends TestCase
 
         $service = new SeriesReconcileService(
             $this->searcher([101]),
-            $this->fetcher([101 => $this->detail(['Red' => 1, 'Blue' => 0])])
+            $this->fetcher([101 => $this->detail(['Red' => 1, 'Blue' => 0])]),
+            $this->offlineStats()
         );
 
         $result = $service->run();
@@ -88,7 +91,8 @@ class SeriesReconcileServiceTest extends TestCase
 
         $service = new SeriesReconcileService(
             $this->searcher([101]),
-            $this->fetcher([101 => $this->detail(['Red' => 0, 'Blue' => 1], reversed: true)])
+            $this->fetcher([101 => $this->detail(['Red' => 0, 'Blue' => 1], reversed: true)]),
+            $this->offlineStats()
         );
 
         $service->run();
@@ -111,7 +115,7 @@ class SeriesReconcileServiceTest extends TestCase
             return $this->detail(['Red' => 1, 'Blue' => 0]);
         };
 
-        $service = new SeriesReconcileService($this->searcher([101]), $fetcher);
+        $service = new SeriesReconcileService($this->searcher([101]), $fetcher, $this->offlineStats());
         $service->run();
         $this->assertSame(1, $detailCalls['count']);
 
@@ -135,7 +139,8 @@ class SeriesReconcileServiceTest extends TestCase
 
         $service = new SeriesReconcileService(
             $this->searcher([101]),
-            $this->fetcher([101 => $this->detail(['Red' => 4, 'Blue' => 2], map: 'koth_product_final')])
+            $this->fetcher([101 => $this->detail(['Red' => 4, 'Blue' => 2], map: 'koth_product_final')]),
+            $this->offlineStats()
         );
 
         $service->run();
@@ -146,6 +151,76 @@ class SeriesReconcileServiceTest extends TestCase
         $state = (new SeriesScoreService)->compute($series);
         $this->assertSame('red', $state['winner']);
         $this->assertSame(1, $state['score']['red']);
+    }
+
+    // ─── Stats d'overlay match de la série ───────────────────────────────
+
+    public function test_un_log_applique_alimente_les_stats_de_la_derniere_map(): void
+    {
+        $this->seedSeries(['76561198000000001', '76561198000000002'], ['76561198000000011', '76561198000000012']);
+
+        $service = new SeriesReconcileService(
+            $this->searcher([101]),
+            $this->fetcher([101 => $this->detail(['Red' => 2, 'Blue' => 0])]),
+            $this->offlineStats()
+        );
+
+        $service->run();
+
+        $series = (new SeriesRepository)->find(self::TOKEN);
+        $stats = $series['stats'] ?? null;
+
+        $this->assertIsArray($stats);
+        $this->assertSame(101, $stats['log_id']);
+        $this->assertSame('cp_steel_f12', $stats['map']);
+
+        // Couleurs non intervertis sur ce log : l'équipe rouge de série est
+        // restée côté Red, son joueur et son score sont à gauche.
+        $this->assertSame(2, $stats['teams']['red']['score']);
+        $this->assertSame(0, $stats['teams']['blue']['score']);
+        $this->assertContains(SteamId::toSteamId3('76561198000000001'), array_column($stats['players']['red'], 'steamid3'));
+        $this->assertContains(SteamId::toSteamId3('76561198000000011'), array_column($stats['players']['blue'], 'steamid3'));
+    }
+
+    public function test_les_stats_sont_realignees_quand_le_rouge_de_serie_jouait_blu(): void
+    {
+        // L'équipe « red » de la série joue BLU sur ce log : le payload de
+        // stats doit porter ses joueurs côté red et le score de BLU à gauche —
+        // sinon noms et avatars de la série ne colleraient pas aux joueurs.
+        $this->seedSeries(['76561198000000001', '76561198000000002'], ['76561198000000011', '76561198000000012']);
+
+        $service = new SeriesReconcileService(
+            $this->searcher([101]),
+            $this->fetcher([101 => $this->detail(['Red' => 0, 'Blue' => 1], reversed: true)]),
+            $this->offlineStats()
+        );
+
+        $service->run();
+
+        $series = (new SeriesRepository)->find(self::TOKEN);
+        $stats = $series['stats'] ?? null;
+
+        $this->assertIsArray($stats);
+        $this->assertContains(SteamId::toSteamId3('76561198000000001'), array_column($stats['players']['red'], 'steamid3'));
+        $this->assertContains(SteamId::toSteamId3('76561198000000011'), array_column($stats['players']['blue'], 'steamid3'));
+        $this->assertSame(1, $stats['teams']['red']['score']);
+        $this->assertSame(0, $stats['teams']['blue']['score']);
+    }
+
+    public function test_un_log_rejete_n_alimente_pas_les_stats(): void
+    {
+        $this->seedSeries(['76561198000000001'], ['76561198000000011']);
+
+        $service = new SeriesReconcileService(
+            $this->searcher([101]),
+            $this->fetcher([101 => $this->detail(['Red' => 1, 'Blue' => 0], map: 'pl_badwater')]),
+            $this->offlineStats()
+        );
+
+        $service->run();
+
+        $series = (new SeriesRepository)->find(self::TOKEN);
+        $this->assertArrayNotHasKey('stats', $series);
     }
 
     // ─── Rejets ──────────────────────────────────────────────────────────
@@ -194,7 +269,8 @@ class SeriesReconcileServiceTest extends TestCase
 
         $service = new SeriesReconcileService(
             $this->searcher([101]),
-            $this->fetcher([101 => $this->detail(['Red' => 3, 'Blue' => 3], map: 'koth_product_final')])
+            $this->fetcher([101 => $this->detail(['Red' => 3, 'Blue' => 3], map: 'koth_product_final')]),
+            $this->offlineStats()
         );
 
         $service->run();
@@ -256,6 +332,17 @@ class SeriesReconcileServiceTest extends TestCase
     }
 
     // ─── Fixtures ─────────────────────────────────────────────────────────
+
+    /**
+     * OverlayStatsService hors réseau : la résolution des pseudos ETF2L
+     * n'appelle jamais l'API (fetcher qui échoue), les joueurs conservent
+     * le pseudo du log — indispensable ici, le réconciliateur construit
+     * maintenant le payload de stats depuis les détails déjà téléchargés.
+     */
+    private function offlineStats(): OverlayStatsService
+    {
+        return new OverlayStatsService(new Etf2lNameResolver(static fn (): ?array => null));
+    }
 
     /**
      * @param  array<int, string>  $red

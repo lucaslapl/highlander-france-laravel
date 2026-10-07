@@ -1,7 +1,9 @@
-/* Overlay OBS (/overlay/{token}) : auto-rafraîchissement.
-   La page interroge /overlay/{token}/version toutes les 5 s ; si l'admin a
-   régénéré ou modifié l'overlay depuis le panel, la page se recharge
-   entièrement — OBS n'a donc jamais besoin d'être touché en direct. */
+/* Overlay OBS (/overlay/{token} et /series-overlay/{token}/match) :
+   auto-rafraîchissement. La page interroge son endpoint de version toutes
+   les 5 s (URL fournie via data-version-url pour l'overlay de série) ; si
+   le payload a été régénéré ou modifié depuis le panel ou par le
+   réconciliateur de séries, la page se recharge entièrement — OBS n'a donc
+   jamais besoin d'être touché en direct. */
 (function () {
     'use strict';
 
@@ -12,6 +14,7 @@
 
     var token = script.dataset.token;
     var version = String(script.dataset.version);
+    var versionUrl = script.dataset.versionUrl || ('/overlay/' + token + '/version');
 
     /* Animation d'apparition : rejouée quand OBS rend la source visible/active
        (API window.obsstudio exposée par obs-browser). Dans un navigateur
@@ -194,7 +197,7 @@
     }
 
     setInterval(function () {
-        fetch('/overlay/' + token + '/version', { cache: 'no-store' })
+        fetch(versionUrl, { cache: 'no-store' })
             .then(function (response) {
                 return response.ok ? response.json() : null;
             })

@@ -161,6 +161,7 @@
 </div>
 
 <script src="{{ hlfr_asset('/_js/overlay_match.js') }}" defer
-        data-token="{{ $overlay['token'] }}" data-version="{{ (int) ($overlay['version'] ?? 0) }}"></script>
+        data-token="{{ $overlay['token'] }}" data-version="{{ (int) ($overlay['version'] ?? 0) }}"
+        @if (! empty($versionUrl)) data-version-url="{{ $versionUrl }}" @endif></script>
 </body>
 </html>

@@ -56,6 +56,8 @@ class SeriesOverlayTest extends TestCase
     {
         $this->get('/series-overlay/'.self::TOKEN)->assertNotFound();
         $this->get('/series-overlay/'.self::TOKEN.'/version')->assertNotFound();
+        $this->get('/series-overlay/'.self::TOKEN.'/match')->assertNotFound();
+        $this->get('/series-overlay/'.self::TOKEN.'/avatar/red')->assertNotFound();
     }
 
     public function test_l_overlay_affiche_equipes_score_et_maps(): void
@@ -167,6 +169,48 @@ class SeriesOverlayTest extends TestCase
         $this->assertStringNotContainsString('series-map--has-thumb', $html);
     }
 
+    public function test_l_overlay_de_stats_affiche_les_stats_de_la_derniere_map(): void
+    {
+        $this->seedSeries();
+        $this->seedStats($this->matchStats());
+
+        $html = (string) $this->get('/series-overlay/'.self::TOKEN.'/match')->assertOk()->getContent();
+
+        // Noms d'équipes de la série, jamais les RED/BLU génériques du log.
+        $this->assertStringContainsString('Les Baguettes', $html);
+        $this->assertStringContainsString('Escouade 6', $html);
+        $this->assertStringNotContainsString('>RED<', $html);
+
+        // Score du log et joueur de la map terminée.
+        $this->assertStringContainsString('overlay-team__score--red">3', $html);
+        $this->assertStringContainsString('Joueur Rouge', $html);
+
+        // Nom de map raccourci et polling sur l'endpoint de version de série.
+        $this->assertStringContainsString('Product', $html);
+        $this->assertStringContainsString('data-version-url="/series-overlay/'.self::TOKEN.'/version"', $html);
+    }
+
+    public function test_l_overlay_de_stats_sans_log_affiche_les_equipes_a_zero(): void
+    {
+        // Avant le premier log rattaché : page transparente avec les équipes
+        // à 0-0, la source OBS peut être ajoutée en amont du stream.
+        $this->seedSeries();
+
+        $html = (string) $this->get('/series-overlay/'.self::TOKEN.'/match')->assertOk()->getContent();
+
+        $this->assertStringContainsString('Les Baguettes', $html);
+        $this->assertStringContainsString('Escouade 6', $html);
+        $this->assertStringContainsString('overlay-team__score--red">0', $html);
+        $this->assertStringContainsString('overlay-team__score--blue">0', $html);
+    }
+
+    public function test_l_avatar_d_une_equipe_sans_upload_renvoie_404(): void
+    {
+        $this->seedSeries();
+        $this->get('/series-overlay/'.self::TOKEN.'/avatar/red')->assertNotFound();
+        $this->get('/series-overlay/'.self::TOKEN.'/avatar/blue')->assertNotFound();
+    }
+
     /**
      * Série en direct avec un journal optionnel (événements « log » simplifiés).
      *
@@ -210,5 +254,60 @@ class SeriesOverlayTest extends TestCase
             'journal' => $events,
             'seen_logs' => [],
         ]);
+    }
+
+    /**
+     * Écrit un payload « stats » dans la série (comme le ferait le
+     * réconciliateur logs.tf après un log rattaché).
+     *
+     * @param  array<string, mixed>  $stats
+     */
+    private function seedStats(array $stats): void
+    {
+        $repo = new SeriesRepository;
+        $series = $repo->find(self::TOKEN);
+        $series['stats'] = $stats;
+        $repo->save($series);
+    }
+
+    /**
+     * Payload de stats au format OverlayStatsService::buildPayload().
+     *
+     * @return array<string, mixed>
+     */
+    private function matchStats(): array
+    {
+        return [
+            'log_id' => 4242,
+            'title' => 'HLFR : Les Baguettes vs Escouade 6',
+            'map' => 'koth_product_final',
+            'date' => time() - 120,
+            'length' => 1800,
+            'teams' => [
+                'red' => ['name' => 'RED', 'score' => 3],
+                'blue' => ['name' => 'BLU', 'score' => 1],
+            ],
+            'players' => [
+                'red' => [[
+                    'steamid3' => '[U:1:11101]',
+                    'name' => 'Joueur Rouge',
+                    'class' => 'soldier',
+                    'kills' => 10,
+                    'assists' => 2,
+                    'deaths' => 3,
+                    'dmg' => 4000,
+                    'dapm' => 400,
+                    'hr' => 0,
+                    'dt' => 900,
+                    'kd' => 3.33,
+                    'best' => [],
+                ]],
+                'blue' => [],
+            ],
+            'medics' => [
+                'red' => ['heal' => 9000, 'ubers' => 4, 'drops' => 0, 'avg_uber_length' => 6.5, 'count' => 1],
+                'blue' => ['heal' => 0, 'ubers' => 0, 'drops' => 0, 'avg_uber_length' => null, 'count' => 0],
+            ],
+        ];
     }
 }

@@ -7,6 +7,7 @@ namespace App\Services\Crons;
 use App\Models\SeriesRepository;
 use App\Services\AdminLogger;
 use App\Services\JsonClient;
+use App\Services\OverlayStatsService;
 use App\Services\SeriesScoreService;
 use App\Services\SteamId;
 
@@ -19,6 +20,11 @@ use App\Services\SteamId;
  * puis applique au journal de la série chaque log qui remonte à cette
  * série. Le score (par map puis de série) est déduit du journal par
  * SeriesScoreService : ce service n'écrit que des faits bruts.
+ *
+ * Chaque log appliqué alimente aussi le payload « stats » de la série
+ * (clé `stats`, rendue par /series-overlay/{token}/match) : stats de la
+ * map qui vient de se terminer, alignées sur les équipes de série, sans
+ * action manuelle du caster.
  *
  * Identification d'un log de la série (tous les filtres doivent passer) :
  *  - le log est postérieur au lancement du suivi de la série ;
@@ -58,15 +64,22 @@ final class SeriesReconcileService
     /** Détail d'un log logs.tf : fn(log_id): ?array. */
     private $fetcher;
 
+    /** Construction du payload de stats d'overlay (injectable pour les tests). */
+    private OverlayStatsService $stats;
+
     /** Raison du dernier rejet d'un log (diagnostics, mémorisée par série). */
     private string $lastReject = '';
 
-    public function __construct(?callable $searcher = null, ?callable $fetcher = null)
+    /** Couleurs du dernier log validé : clé d'équipe de série → couleur du log. */
+    private ?array $lastColors = null;
+
+    public function __construct(?callable $searcher = null, ?callable $fetcher = null, ?OverlayStatsService $stats = null)
     {
         $this->searcher = $searcher ?? static fn (string $steamid64): ?array => JsonClient::get(
             self::SEARCH_URL.'?player='.urlencode($steamid64).'&limit=50'
         );
         $this->fetcher = $fetcher ?? static fn (int $logId): ?array => JsonClient::get(self::DETAIL_URL.$logId);
+        $this->stats = $stats ?? new OverlayStatsService;
     }
 
     /**
@@ -142,6 +155,7 @@ final class SeriesReconcileService
 
         $applied = [];
         $seenUpdates = [];
+        $matchStats = null;
 
         foreach ($candidates as $logId) {
             $details = ($this->fetcher)((int) $logId);
@@ -156,6 +170,13 @@ final class SeriesReconcileService
             $repo->appendEvent($token, $event);
             $seenUpdates[(string) $logId] = 'applied';
             $applied[] = 'log #'.$logId.' → '.$event['map'].' ('.$event['winner'].')';
+
+            // Payload de stats de l'overlay match de la série, construit
+            // depuis le détail déjà téléchargé (aucun appel réseau en plus)
+            // et réaligné sur les équipes de série (couleurs du log ↔ clés
+            // red/blue de la série). Le dernier log appliqué l'emporte :
+            // le golden cap remplace la moitié, la map suivante la précédente.
+            $matchStats = $this->buildMatchStats((int) $logId, $details);
         }
 
         if ($seenUpdates !== []) {
@@ -163,17 +184,60 @@ final class SeriesReconcileService
         }
 
         // Une série arrivée à son terme (score atteint ou toutes maps décidées)
-        // repasse en statut « finished » : le suivi cesse tout seul.
+        // repasse en statut « finished » : le suivi cesse tout seul. Le payload
+        // de stats, lui, est persisté dans la foulée — son écriture bump la
+        // version, ce que les overlays OBS (scoreboard et stats) interrogent.
         $fresh = $repo->find($token);
-        if ($fresh !== null && ($fresh['status'] ?? '') === 'live') {
-            $state = (new SeriesScoreService)->compute($fresh);
-            if ($state['finished']) {
-                $fresh['status'] = 'finished';
+        if ($fresh !== null) {
+            $changed = false;
+
+            if ($matchStats !== null) {
+                $fresh['stats'] = $matchStats;
+                $changed = true;
+            }
+
+            if (($fresh['status'] ?? '') === 'live') {
+                $state = (new SeriesScoreService)->compute($fresh);
+                if ($state['finished']) {
+                    $fresh['status'] = 'finished';
+                    $changed = true;
+                }
+            }
+
+            if ($changed) {
                 $repo->save($fresh);
             }
         }
 
         return ['applied' => count($applied), 'message' => implode(', ', $applied)];
+    }
+
+    /**
+     * Payload de stats d'overlay match pour un log appliqué, construit
+     * depuis le détail logs.tf déjà téléchargé pour la validation, puis
+     * réaligné sur les équipes de série : si l'équipe rouge de la série
+     * jouait BLU sur ce log, les côtés du payload sont intervertis pour
+     * que noms et avatars de la série collent aux joueurs affichés.
+     *
+     * @return array<string, mixed>|null Payload, ou null si le log ne
+     *                                   contient aucune donnée de joueurs.
+     */
+    private function buildMatchStats(int $logId, ?array $details): ?array
+    {
+        if ($details === null) {
+            return null;
+        }
+
+        $payload = $this->stats->buildPayload($logId, static fn (): ?array => $details);
+        if ($payload === null) {
+            return null;
+        }
+
+        if (($this->lastColors['red'] ?? 'Red') === 'Blue') {
+            $payload = OverlayStatsService::swapTeams($payload);
+        }
+
+        return $payload;
     }
 
     /**
@@ -298,6 +362,10 @@ final class SeriesReconcileService
 
             return null;
         }
+
+        // Couleurs mémorisées pour l'alignement du payload de stats (voir
+        // buildMatchStats) : uniquement pour un log validé.
+        $this->lastColors = $colors;
 
         $teamsRaw = is_array($details['teams'] ?? null) ? $details['teams'] : [];
         $colorScores = [

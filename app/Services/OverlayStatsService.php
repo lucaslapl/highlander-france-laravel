@@ -122,6 +122,27 @@ final class OverlayStatsService
     }
 
     /**
+     * Intervertit les côtés Rouge et Bleue d'un payload déjà construit :
+     * équipes (noms et scores), joueurs et stats medics. Utilisé par le
+     * réconciliateur de séries (SeriesReconcileService) pour réaligner les
+     * couleurs du log logs.tf sur les équipes de série — les équipes
+     * s'échangent RED/BLU entre les moitiés d'un payload.
+     *
+     * @param  array<string, mixed>  $payload
+     * @return array<string, mixed>
+     */
+    public static function swapTeams(array $payload): array
+    {
+        foreach (['teams', 'players', 'medics'] as $key) {
+            if (isset($payload[$key]['red'], $payload[$key]['blue'])) {
+                [$payload[$key]['red'], $payload[$key]['blue']] = [$payload[$key]['blue'], $payload[$key]['red']];
+            }
+        }
+
+        return $payload;
+    }
+
+    /**
      * Remplace, quand il est résoluble, le pseudo en jeu de chaque joueur
      * par son pseudo ETF2L (les joueurs sans compte ETF2L — mercs, etc. —
      * conservent le pseudo du log).

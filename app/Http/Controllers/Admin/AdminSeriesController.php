@@ -13,6 +13,7 @@ use App\Services\SteamId;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Str;
 
 /**
  * Outil « Séries de matchs » : suivi automatique du score d'une série
@@ -66,6 +67,8 @@ final class AdminSeriesController extends Controller
             'red_players' => ['required', 'string', 'max:5000'],
             'blue_players' => ['required', 'string', 'max:5000'],
             'maps' => ['required', 'string', 'max:2000'],
+            'red_avatar_url' => ['nullable', 'url:http,https', 'max:500'],
+            'blue_avatar_url' => ['nullable', 'url:http,https', 'max:500'],
         ]);
 
         $red = $this->parsePlayers((string) $data['red_players']);
@@ -99,8 +102,8 @@ final class AdminSeriesController extends Controller
             'started_at' => null,
             'created_at' => time(),
             'teams' => [
-                'red' => ['name' => trim((string) $data['red_name']), 'players' => $red['players']],
-                'blue' => ['name' => trim((string) $data['blue_name']), 'players' => $blue['players']],
+                'red' => ['name' => trim((string) $data['red_name']), 'players' => $red['players'], 'avatar_url' => $this->cleanUrl($data['red_avatar_url'] ?? null)],
+                'blue' => ['name' => trim((string) $data['blue_name']), 'players' => $blue['players'], 'avatar_url' => $this->cleanUrl($data['blue_avatar_url'] ?? null)],
             ],
             'maps' => $maps,
             'journal' => [],
@@ -131,7 +134,81 @@ final class AdminSeriesController extends Controller
             'description' => 'Suivi du score d\'une série de playoffs avec ajustements manuels.',
             'series' => $series,
             'state' => $state,
+            'has_avatar' => [
+                'red' => $this->series->hasAvatar($token, 'red'),
+                'blue' => $this->series->hasAvatar($token, 'blue'),
+            ],
         ]);
+    }
+
+    /**
+     * POST /admin/series/{token}/avatar — upload de l'avatar d'une équipe
+     * (affiché par l'overlay de stats de la série ; l'URL externe, si
+     * renseignée, prime sur l'upload).
+     */
+    public function avatar(Request $request, string $token): RedirectResponse
+    {
+        Auth::requireOverlayTools();
+
+        if ($this->series->find($token) === null) {
+            abort(404);
+        }
+
+        $data = $request->validate([
+            'team' => ['required', 'string', 'in:red,blue'],
+            'avatar' => ['required', 'image', 'mimes:jpeg,png,webp', 'max:'.$this->series->maxAvatarKb()],
+        ]);
+
+        if (! $this->series->saveAvatar($token, (string) $data['team'], $data['avatar'])) {
+            return back()->with('error', 'Format d\'avatar non autorisé (jpeg, png, webp).');
+        }
+
+        return back()->with('success', 'Avatar enregistré.');
+    }
+
+    /**
+     * POST /admin/series/{token}/avatar/delete — supprime l'avatar uploadé.
+     */
+    public function avatarDelete(Request $request, string $token): RedirectResponse
+    {
+        Auth::requireOverlayTools();
+
+        if ($this->series->find($token) === null) {
+            abort(404);
+        }
+
+        $data = $request->validate([
+            'team' => ['required', 'string', 'in:red,blue'],
+        ]);
+
+        $this->series->deleteAvatar($token, (string) $data['team']);
+
+        return back()->with('success', 'Avatar supprimé.');
+    }
+
+    /**
+     * POST /admin/series/{token}/overlay — avatars d'équipes par URL externe,
+     * affichés par les overlays de la série (scoreboard et stats de match).
+     */
+    public function overlay(Request $request, string $token): RedirectResponse
+    {
+        Auth::requireOverlayTools();
+
+        $series = $this->series->find($token);
+        if ($series === null) {
+            abort(404);
+        }
+
+        $data = $request->validate([
+            'red_avatar_url' => ['nullable', 'url:http,https', 'max:500'],
+            'blue_avatar_url' => ['nullable', 'url:http,https', 'max:500'],
+        ]);
+
+        $series['teams']['red']['avatar_url'] = $this->cleanUrl($data['red_avatar_url'] ?? null);
+        $series['teams']['blue']['avatar_url'] = $this->cleanUrl($data['blue_avatar_url'] ?? null);
+        $this->series->save($series);
+
+        return back()->with('success', 'Avatars par URL enregistrés.');
     }
 
     /**
@@ -299,6 +376,19 @@ final class AdminSeriesController extends Controller
         }
 
         return SteamId::toSteamId64($item);
+    }
+
+    /**
+     * Normalise une URL d'avatar saisie (vide => null).
+     */
+    private function cleanUrl(mixed $value): ?string
+    {
+        $value = trim((string) ($value ?? ''));
+        if ($value === '' || ! Str::startsWith($value, ['http://', 'https://'])) {
+            return null;
+        }
+
+        return $value;
     }
 
     /**

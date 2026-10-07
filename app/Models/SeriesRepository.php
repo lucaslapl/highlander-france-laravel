@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Models;
 
+use Illuminate\Http\UploadedFile;
+
 /**
  * Persistance des séries de matchs (playoffs) pour le suivi automatique des
  * scores via logs.tf (outil admin « Séries de matchs »).
@@ -19,6 +21,12 @@ namespace App\Models;
  */
 final class SeriesRepository
 {
+    /** Extensions d'avatar d'équipe autorisées (upload). */
+    private const AVATAR_EXTENSIONS = ['jpg', 'png', 'webp'];
+
+    /** Taille maximale d'un avatar en Ko. */
+    private const MAX_AVATAR_KB = 2048;
+
     private string $dir;
 
     public function __construct()
@@ -127,7 +135,7 @@ final class SeriesRepository
     }
 
     /**
-     * Supprime une série : payload et entrée d'index.
+     * Supprime une série : payload, entrée d'index et avatars uploadés.
      */
     public function delete(string $token): void
     {
@@ -136,6 +144,8 @@ final class SeriesRepository
         }
 
         @unlink($this->payloadFile($token));
+        $this->deleteAvatar($token, 'red');
+        $this->deleteAvatar($token, 'blue');
 
         $index = array_values(array_filter(
             $this->readIndex(),
@@ -206,6 +216,87 @@ final class SeriesRepository
     }
 
     /**
+     * Enregistre l'avatar d'équipe uploadé d'une série (remplace l'ancien),
+     * sur le même modèle que OverlayRepository. Retourne false si
+     * l'extension n'est pas autorisée.
+     */
+    public function saveAvatar(string $token, string $team, UploadedFile $file): bool
+    {
+        $ext = strtolower((string) $file->getClientOriginalExtension());
+        if ($ext === 'jpeg') {
+            $ext = 'jpg';
+        }
+
+        if (! in_array($ext, self::AVATAR_EXTENSIONS, true)) {
+            return false;
+        }
+
+        $this->deleteAvatar($token, $team);
+
+        $dir = $this->avatarDir($token);
+        if (! is_dir($dir)) {
+            @mkdir($dir, 0755, true);
+        }
+
+        $target = $dir.'/'.$team.'.'.$ext;
+        move_uploaded_file((string) $file->getRealPath(), $target)
+            ?: @copy((string) $file->getRealPath(), $target);
+
+        return is_file($target);
+    }
+
+    /**
+     * Supprime l'avatar uploadé d'une équipe (silencieux s'il n'existe pas).
+     */
+    public function deleteAvatar(string $token, string $team): void
+    {
+        if (! in_array($team, ['red', 'blue'], true)) {
+            return;
+        }
+
+        foreach (self::AVATAR_EXTENSIONS as $ext) {
+            @unlink($this->avatarDir($token).'/'.$team.'.'.$ext);
+        }
+    }
+
+    /**
+     * Chemin absolu de l'avatar uploadé d'une équipe, ou null.
+     *
+     * @return array{path: string, ext: string}|null
+     */
+    public function avatar(string $token, string $team): ?array
+    {
+        if (! in_array($team, ['red', 'blue'], true)) {
+            return null;
+        }
+
+        foreach (self::AVATAR_EXTENSIONS as $ext) {
+            $path = $this->avatarDir($token).'/'.$team.'.'.$ext;
+            if (is_file($path)) {
+                return ['path' => $path, 'ext' => $ext];
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Indique si une équipe dispose d'un avatar uploadé (pour le rendu).
+     */
+    public function hasAvatar(string $token, string $team): bool
+    {
+        return $this->avatar($token, $team) !== null;
+    }
+
+    /**
+     * Taille maximale d'un avatar en Ko (exposée à la validation).
+     */
+    public function maxAvatarKb(): int
+    {
+        return self::MAX_AVATAR_KB;
+    }
+
+    /**
      * @return array<int, array<string, mixed>>
      */
     private function readIndex(): array
@@ -235,5 +326,10 @@ final class SeriesRepository
     private function payloadFile(string $token): string
     {
         return $this->dir.'/'.$token.'.json';
+    }
+
+    private function avatarDir(string $token): string
+    {
+        return storage_path('app/public/series-avatars/'.$token);
     }
 }
