@@ -98,11 +98,11 @@ h1 {
 
 .card {
     width: 258px;
+    height: 550px;
     border-radius: 12px;
     overflow: hidden;
     box-shadow: 0 12px 34px rgba(0, 0, 0, .45);
     background: var(--surface-dark);
-    border: 2px solid var(--violet-line);
     display: flex;
     flex-direction: column;
 }
@@ -135,11 +135,19 @@ h1 {
     text-overflow: ellipsis;
 }
 
+.action-ban .map-name {
+    color: rgba(255, 255, 255, 0.5);
+    text-shadow: none;
+}
+
 .map-unknown { color: rgba(255, 255, 255, 0.35); }
+
+/* Capture : occupe toute la hauteur restante de la carte. */
 
 .map-shot {
     position: relative;
-    height: 145px;
+    flex: 1;
+    min-height: 0;
     background: #1c1c1f;
     overflow: hidden;
 }
@@ -150,6 +158,10 @@ h1 {
     object-fit: cover;
     display: block;
 }
+
+/* Carte BAN : capture éteinte (opacité réduite). */
+
+.action-ban .map-shot img { opacity: .3; }
 
 /* Équipe : avatar + tag, sur la bande du bas de la capture. */
 
