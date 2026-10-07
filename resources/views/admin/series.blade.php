@@ -7,8 +7,8 @@
 @include('admin.partials.panel_back_link')
 
 <div class="admin-header" style="--accent:#4cc46a;">
-    <h2><i class="fa-solid fa-trophy"></i> Séries de matchs (playoffs)</h2>
-    <p>Suivi automatique du score des séries via logs.tf : lancez le suivi, et chaque log uploadé par le serveur de match met à jour les maps gagnées — sans aucun alt-tab pendant le cast. Les ajustements manuels (contestation, log manquant) restent possibles dans le détail de chaque série.</p>
+    <h2><i class="fa-solid fa-trophy"></i> Overlay Scores</h2>
+    <p>Overlay de score de série (playoffs) avec suivi automatique via logs.tf : lancez le suivi et chaque log uploadé par le serveur de match met à jour les maps gagnées — sans aucun alt-tab pendant le cast. L'overlay n'est actif et les logs ne sont récupérés qu'après avoir cliqué sur « Lancer le suivi » dans le détail de la série. Les ajustements manuels (contestation, log manquant) restent possibles dans le détail de chaque série.</p>
 </div>
 
 <h3 class="admin-section-title"><i class="fa-solid fa-plus"></i> Créer une série</h3>
@@ -18,24 +18,38 @@
         <label class="admin-form-label" for="series-title">Titre de la série</label>
         <input type="text" id="series-title" name="title" class="form-control"
                placeholder="Ex : Demi-finale playoffs HLFR — Les Baguettes vs Escouade 6" required>
+        <p style="color:#777; font-size:12px; margin:6px 0 0;">
+            Sans importance sur l'overlay produit : le titre ne s'affiche nulle part dans OBS, il sert uniquement de repère visuel sur le site.
+        </p>
     </div>
 
     <div class="admin-form-row" style="display:flex; gap:24px; flex-wrap:wrap;">
-        @foreach (['red' => 'Rouge', 'blue' => 'Bleue'] as $team => $label)
+        @foreach (['red' => 'A', 'blue' => 'B'] as $team => $label)
             <div style="flex:1; min-width:300px; border:1px solid #333; border-radius:8px; padding:14px;">
                 <h4 style="margin:0 0 10px; color: {{ $team === 'red' ? '#e06c5a' : '#5885a2' }};">Équipe {{ $label }}</h4>
-                <label class="admin-form-label" for="series-{{ $team }}-name">Nom de l'équipe</label>
+                <p style="color:#777; font-size:12px; margin:0 0 10px;">
+                    La couleur n'a aucune importance sur le match : elle ne fait que fixer l'ordre d'affichage
+                    {{ $team === 'red' ? 'à gauche' : 'à droite' }} sur l'overlay — ensuite les logs font le travail,
+                    quel que soit le côté où le jeu place réellement les équipes.
+                </p>
+                <label class="admin-form-label" for="series-{{ $team }}-name">Nom de l'équipe (acronyme)</label>
                 <input type="text" id="series-{{ $team }}-name" name="{{ $team }}_name" class="form-control"
-                       placeholder="Ex : Les Baguettes" maxlength="64" required>
-                <label class="admin-form-label" style="margin-top:10px;" for="series-{{ $team }}-players">Roster (SteamIDs, un par ligne)</label>
-                <textarea id="series-{{ $team }}-players" name="{{ $team }}_players" class="form-control" rows="5"
-                          placeholder="76561198012345678&#10;STEAM_1:0:12345&#10;[U:1:24680]" required></textarea>
+                       placeholder="Ex : IG" maxlength="64" required>
+                <p style="color:#777; font-size:12px; margin:6px 0 0;">
+                    Utilisez l'acronyme de l'équipe (ex : Inglorious Gamblers devient IG) : l'espace disponible sur
+                    l'overlay est très réduit, un nom complet ne tiendra pas.
+                </p>
+                <label class="admin-form-label" style="margin-top:10px;" for="series-{{ $team }}-players">Joueurs du match (SteamIDs)</label>
+                <textarea id="series-{{ $team }}-players" name="{{ $team }}_players" class="form-control" rows="3"
+                          placeholder="76561198012345678&#10;STEAM_1:0:12345" required></textarea>
+                <p style="color:#777; font-size:12px; margin:6px 0 0;">
+                    Un à deux SteamIDs de joueurs qui vont jouer le match suffisent : ils servent uniquement à
+                    retrouver avec suffisamment de fiabilité les logs correspondant aux matchs joués.
+                    Formats acceptés : SteamID64, STEAM_1:X:Y ou [U:1:N].
+                </p>
                 <label class="admin-form-label" style="margin-top:10px;" for="series-{{ $team }}-avatar-url">Avatar par URL externe (optionnel)</label>
                 <input type="url" id="series-{{ $team }}-avatar-url" name="{{ $team }}_avatar_url" class="form-control"
                        placeholder="https://…/logo.png">
-                <p style="color:#777; font-size:12px; margin:6px 0 0;">
-                    Formats acceptés : SteamID64, STEAM_1:X:Y ou [U:1:N]. Les mercs sont tolérés (3 max par équipe).
-                </p>
             </div>
         @endforeach
     </div>
@@ -46,7 +60,7 @@
             <select id="series-format" name="format" class="form-control">
                 <option value="bo3">BO3 (première à 2 maps)</option>
                 <option value="bo5">BO5 (première à 3 maps)</option>
-                <option value="fixed">Maps fixes (toutes jouées)</option>
+                <option value="fixed">Classique (deux maps)</option>
             </select>
         </div>
         <div style="flex:1; min-width:280px;">

@@ -17,9 +17,9 @@
     </div>
 
     <div class="admin-action-card" style="--accent: #4cc46a;">
-        <h4 class="admin-action-card__title"><i class="fa-solid fa-trophy"></i> Séries de matchs (playoffs)</h4>
-        <p class="admin-action-card__desc">Suivi du score d'une série de playoffs via logs.tf, rafraîchi automatiquement pendant le cast, avec ajustements manuels.</p>
-        <a href="/admin/series" class="admin-link-btn">Gérer les séries</a>
+        <h4 class="admin-action-card__title"><i class="fa-solid fa-trophy"></i> Overlay Scores</h4>
+        <p class="admin-action-card__desc">Overlay de score de série (playoffs) avec suivi logs.tf automatique pendant le cast, et ajustements manuels.</p>
+        <a href="/admin/series" class="admin-link-btn">Gérer les overlays de scores</a>
     </div>
 </div>
 @endsection

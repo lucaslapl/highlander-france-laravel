@@ -62,7 +62,34 @@
         Suivi actif depuis le {{ date('d/m/Y H:i', (int) ($series['started_at'] ?? $series['created_at'])) }} :
         chaque nouveau log logs.tf des deux rosters met à jour les maps automatiquement (vérification chaque minute).
     </p>
+@elseif ($series['status'] !== 'finished')
+    <p style="color:#d9a544; font-size:13px;">
+        <i class="fa-solid fa-triangle-exclamation"></i>
+        Le suivi n'est pas lancé : l'overlay n'est pas actif et aucun log n'est récupéré.
+        Cliquez sur « Lancer le suivi » pour que l'overlay se mette à jour et que la récupération des logs soit effective.
+    </p>
 @endif
+
+<h3 class="admin-section-title"><i class="fa-solid fa-trophy"></i> Équipes</h3>
+<p style="color:#aaa; font-size:13px;">
+    Les noms s'affichent tels quels sur l'overlay : utilisez l'acronyme de l'équipe (ex : Inglorious Gamblers → IG),
+    l'espace y est très réduit. Modifiables à tout moment, y compris après la création (erreur d'acronyme, alias).
+    La couleur (A = côté gauche de l'overlay, B = côté droit) n'a aucune importance sur le match : elle ne fixe
+    que l'ordre d'affichage, les logs font ensuite le travail.
+</p>
+<form method="POST" action="/admin/series/{{ $series['token'] }}/teams" class="admin-form-stack">
+    @csrf
+    <div style="display:flex; gap:16px; flex-wrap:wrap;">
+        @foreach (['red' => 'A', 'blue' => 'B'] as $team => $label)
+            <div style="border:1px solid #333; border-radius:8px; padding:14px; flex:1; min-width:280px;">
+                <label class="admin-form-label" for="team-{{ $team }}-name">Nom équipe {{ $label }} (acronyme)</label>
+                <input type="text" id="team-{{ $team }}-name" name="{{ $team }}_name" class="form-control"
+                       value="{{ e($series['teams'][$team]['name']) }}" maxlength="64" required>
+            </div>
+        @endforeach
+    </div>
+    <button type="submit" class="admin-btn" style="margin-top:10px;"><i class="fa-solid fa-floppy-disk"></i> Renommer les équipes</button>
+</form>
 
 <h3 class="admin-section-title"><i class="fa-solid fa-tv"></i> Overlay OBS</h3>
 <p style="color:#aaa; font-size:13px;">
@@ -94,7 +121,7 @@
 <form method="POST" action="/admin/series/{{ $series['token'] }}/overlay" class="admin-form-stack">
     @csrf
     <div style="display:flex; gap:16px; flex-wrap:wrap;">
-        @foreach (['red' => 'Rouge', 'blue' => 'Bleue'] as $team => $label)
+        @foreach (['red' => 'A', 'blue' => 'B'] as $team => $label)
             <div style="border:1px solid #333; border-radius:8px; padding:14px; flex:1; min-width:300px;">
                 <h4 style="margin:0 0 10px; color: {{ $team === 'red' ? '#e06c5a' : '#5885a2' }};">Équipe {{ $label }} — {{ e($series['teams'][$team]['name']) }}</h4>
                 <label class="admin-form-label">Avatar par URL externe (optionnel)</label>
@@ -107,7 +134,7 @@
     <button type="submit" class="admin-btn" style="margin-top:10px;"><i class="fa-solid fa-floppy-disk"></i> Enregistrer les URL</button>
 </form>
 <div style="display:flex; gap:16px; flex-wrap:wrap; margin-top:16px;">
-    @foreach (['red' => 'Rouge', 'blue' => 'Bleue'] as $team => $label)
+    @foreach (['red' => 'A', 'blue' => 'B'] as $team => $label)
         <div style="border:1px solid #333; border-radius:8px; padding:14px; flex:1; min-width:300px;">
             <h4 style="margin:0 0 10px;">Avatar équipe {{ $label }} (upload)</h4>
             @if ($has_avatar[$team])

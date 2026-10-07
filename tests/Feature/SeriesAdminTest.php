@@ -76,6 +76,7 @@ class SeriesAdminTest extends TestCase
         $this->post('/admin/series/create', $this->createInput())->assertForbidden();
         $this->get('/admin/series/'.self::TOKEN)->assertForbidden();
         $this->post('/admin/series/'.self::TOKEN.'/status', ['status' => 'live'])->assertForbidden();
+        $this->post('/admin/series/'.self::TOKEN.'/teams', ['red_name' => 'LB', 'blue_name' => 'E6'])->assertForbidden();
         $this->post('/admin/series/'.self::TOKEN.'/point', ['map' => 'pl_upward_f10', 'team' => 'red'])->assertForbidden();
         $this->post('/admin/series/'.self::TOKEN.'/void', ['event' => 'e1'])->assertForbidden();
         $this->post('/admin/series/'.self::TOKEN.'/delete')->assertForbidden();
@@ -155,6 +156,42 @@ class SeriesAdminTest extends TestCase
         $this->assertSame('live', $series['status']);
         $this->assertNotNull($series['started_at']);
         $this->assertGreaterThanOrEqual(time() - 10, (int) $series['started_at']);
+    }
+
+    public function test_les_equipes_peuvent_etre_renommees_apres_creation(): void
+    {
+        $this->seedSeries();
+
+        $this->withSession($this->adminSession())
+            ->post('/admin/series/'.self::TOKEN.'/teams', [
+                'red_name' => 'LB',
+                'blue_name' => 'E6',
+            ])
+            ->assertRedirect();
+
+        $series = (new SeriesRepository)->find(self::TOKEN);
+        $this->assertSame('LB', $series['teams']['red']['name']);
+        $this->assertSame('E6', $series['teams']['blue']['name']);
+        // Le reste de la série est intact.
+        $this->assertSame(['76561198000000001', '76561198000000002'], $series['teams']['red']['players']);
+        $this->assertSame('bo3', $series['format']);
+        $this->assertSame([], $series['journal']);
+    }
+
+    public function test_le_renommage_des_equipes_rejette_un_nom_vide(): void
+    {
+        $this->seedSeries();
+
+        $this->withSession($this->adminSession())
+            ->post('/admin/series/'.self::TOKEN.'/teams', [
+                'red_name' => '',
+                'blue_name' => 'E6',
+            ])
+            ->assertRedirect();
+
+        $series = (new SeriesRepository)->find(self::TOKEN);
+        $this->assertSame('Les Baguettes', $series['teams']['red']['name']);
+        $this->assertSame('Escouade 6', $series['teams']['blue']['name']);
     }
 
     public function test_un_point_de_map_manuel_decide_une_map_unique(): void

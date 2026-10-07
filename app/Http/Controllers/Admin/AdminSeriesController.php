@@ -16,11 +16,12 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 
 /**
- * Outil « Séries de matchs » : suivi automatique du score d'une série
- * de playoffs via logs.tf (réconciliateur app:series-reconcile), avec ajustements
- * manuels (point de map, annulation d'un événement) pour les contestations et
- * les cas que l'automatisme ne couvre pas. Accessible aux admins et aux rôles
- * caster / prod (panel restreint /admin/panel).
+ * Outil « Overlay Scores » : overlay de score d'une série de playoffs avec
+ * suivi automatique via logs.tf (réconciliateur app:series-reconcile), et
+ * ajustements manuels (point de map, annulation d'un événement, renommage
+ * des équipes) pour les contestations et les cas que l'automatisme ne couvre
+ * pas. Accessible aux admins et aux rôles caster / prod (panel restreint
+ * /admin/panel).
  */
 final class AdminSeriesController extends Controller
 {
@@ -41,19 +42,22 @@ final class AdminSeriesController extends Controller
         Auth::requireOverlayTools();
 
         return view('admin.series', [
-            'title' => 'Admin - Séries de matchs (playoffs)',
-            'description' => 'Suivi automatique du score des séries de playoffs via logs.tf, avec ajustements manuels.',
+            'title' => 'Admin - Overlay Scores',
+            'description' => 'Overlay de score des séries de playoffs avec suivi logs.tf automatique et ajustements manuels.',
             'seriesList' => $this->series->all(),
         ]);
     }
 
     /**
-     * POST /admin/series/create — crée une série (équipes, rosters, maps).
+     * POST /admin/series/create — crée une série (équipes, joueurs, maps).
      *
-     * Les SteamIDs acceptés : SteamID64, « STEAM_1:X:Y » ou « [U:1:N] », un
-     * par ligne ou séparés par des virgules. Les maps acceptent un mode
-     * explicite (« double » / « single ») en second mot de la ligne, sinon
-     * le mode est déduit (pl_ et A/D connus en double attaque).
+     * Les noms d'équipes sont attendus sous forme d'acronyme (peu d'espace
+     * sur l'overlay). Un à deux SteamIDs de joueurs du match par équipe
+     * suffisent à retrouver les logs. Les SteamIDs acceptés : SteamID64,
+     * « STEAM_1:X:Y » ou « [U:1:N] », un par ligne ou séparés par des
+     * virgules. Les maps acceptent un mode explicite (« double » /
+     * « single ») en second mot de la ligne, sinon le mode est déduit
+     * (pl_ et A/D connus en double attaque).
      */
     public function create(Request $request): RedirectResponse
     {
@@ -112,7 +116,7 @@ final class AdminSeriesController extends Controller
 
         AdminLogger::log('admin_series_create', null, 'SUCCESS (série '.$token.' : '.trim((string) $data['title']).')');
 
-        return redirect('/admin/series/'.$token)->with('success', 'Série créée. Lancez le suivi quand le match démarre.');
+        return redirect('/admin/series/'.$token)->with('success', 'Série créée. Attention : cliquez sur « Lancer le suivi » pour que l\'overlay soit actif et que la récupération des logs soit effective.');
     }
 
     /**
@@ -130,8 +134,8 @@ final class AdminSeriesController extends Controller
         $state = (new SeriesScoreService)->compute($series);
 
         return view('admin.series_edit', [
-            'title' => 'Admin - Série : '.($series['title'] ?? ''),
-            'description' => 'Suivi du score d\'une série de playoffs avec ajustements manuels.',
+            'title' => 'Admin - Overlay Scores : '.($series['title'] ?? ''),
+            'description' => 'Overlay de score d\'une série de playoffs avec suivi logs.tf et ajustements manuels.',
             'series' => $series,
             'state' => $state,
             'has_avatar' => [
@@ -209,6 +213,34 @@ final class AdminSeriesController extends Controller
         $this->series->save($series);
 
         return back()->with('success', 'Avatars par URL enregistrés.');
+    }
+
+    /**
+     * POST /admin/series/{token}/teams — renomme les équipes après création
+     * (correction d'un acronyme erroné). Le nom s'affiche tel quel sur
+     * l'overlay, d'où la forme d'acronyme attendue.
+     */
+    public function teams(Request $request, string $token): RedirectResponse
+    {
+        Auth::requireOverlayTools();
+
+        $series = $this->series->find($token);
+        if ($series === null) {
+            abort(404);
+        }
+
+        $data = $request->validate([
+            'red_name' => ['required', 'string', 'max:'.self::MAX_NAME_LEN],
+            'blue_name' => ['required', 'string', 'max:'.self::MAX_NAME_LEN],
+        ]);
+
+        $series['teams']['red']['name'] = trim((string) $data['red_name']);
+        $series['teams']['blue']['name'] = trim((string) $data['blue_name']);
+        $this->series->save($series);
+
+        AdminLogger::log('admin_series_teams', null, 'SUCCESS (série '.$token.' : renommage en '.$data['red_name'].' / '.$data['blue_name'].')');
+
+        return back()->with('success', 'Noms d\'équipes mis à jour — l\'overlay se rafraîchit tout seul.');
     }
 
     /**

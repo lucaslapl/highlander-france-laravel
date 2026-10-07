@@ -111,6 +111,7 @@ Route::middleware('overlay-tools')->prefix('admin')->group(function (): void {
     Route::post('/series/create', [AdminSeriesController::class, 'create']);
     Route::get('/series/{token}', [AdminSeriesController::class, 'show'])->where('token', '[a-z0-9]{16}');
     Route::post('/series/{token}/status', [AdminSeriesController::class, 'status'])->where('token', '[a-z0-9]{16}');
+    Route::post('/series/{token}/teams', [AdminSeriesController::class, 'teams'])->where('token', '[a-z0-9]{16}');
     Route::post('/series/{token}/point', [AdminSeriesController::class, 'point'])->where('token', '[a-z0-9]{16}');
     Route::post('/series/{token}/void', [AdminSeriesController::class, 'void'])->where('token', '[a-z0-9]{16}');
     Route::post('/series/{token}/avatar', [AdminSeriesController::class, 'avatar'])->where('token', '[a-z0-9]{16}');

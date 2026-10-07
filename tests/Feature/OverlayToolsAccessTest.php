@@ -81,7 +81,7 @@ class OverlayToolsAccessTest extends TestCase
         $response->assertOk()
             ->assertSee('Panel admin')
             ->assertSee('Overlay Logs (OBS)')
-            ->assertSee('Séries de matchs (playoffs)')
+            ->assertSee('Overlay Scores')
             // Aucune statistique du site ne doit fuiter sur ce panel.
             ->assertDontSee('Nombre de joueurs dans la base de données')
             ->assertDontSee('Joueurs enregistrés')
