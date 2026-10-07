@@ -1,0 +1,278 @@
+/* Overlay bracket de playoffs (/bracket-overlay/{token}) — page 1920x1080
+   entièrement transparente pour OBS, palette et style repris de la maquette
+   playoffs-bracket.html (thème rose/violet du site). */
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+:root {
+    --accent: #fbb7fb;
+    --accent-soft: #ffc9ec;
+    --border: #38193d;
+    --border-strong: #5f235f;
+    --surface-dark: rgba(21, 10, 24, 0.92);
+    --surface-raised: rgba(122, 62, 138, 0.55);
+    --mauve: #b06ab8;
+    --violet-bright: #e97fff;
+    --violet-line: rgba(186, 53, 215, 0.57);
+    --dim: rgba(255, 255, 255, 0.6);
+    --playoff-won-bg: rgba(42, 74, 42, 0.55);
+    --playoff-won: #8c8;
+    --lose: #f35f5f;
+    --live: #ff3c3c;
+    --live-border: rgba(255, 90, 90, 0.65);
+}
+
+html, body {
+    width: 1920px;
+    height: 1080px;
+    overflow: hidden;
+    background: transparent;
+    font-family: "Montserrat", "Segoe UI", Roboto, Arial, sans-serif;
+    color: white;
+    cursor: default;
+}
+
+#scene {
+    position: relative;
+    width: 1920px;
+    height: 1080px;
+}
+
+/* ---------- Apparition des éléments ---------- */
+
+.anim {
+    opacity: 0;
+    animation: rise .7s cubic-bezier(.22, 1, .36, 1) forwards;
+    animation-delay: var(--d, 0s);
+}
+
+@keyframes rise {
+    from { opacity: 0; transform: translateY(26px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ---------- Titre ---------- */
+
+header {
+    position: absolute;
+    top: 42px;
+    left: 0;
+    width: 100%;
+    text-align: center;
+}
+
+.eyebrow {
+    font-size: 21px;
+    font-weight: 800;
+    letter-spacing: .45em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 10px;
+}
+
+h1 {
+    font-size: 58px;
+    font-weight: 900;
+    letter-spacing: .06em;
+    text-transform: uppercase;
+    color: white;
+    text-shadow: 0 4px 24px rgba(0, 0, 0, .6);
+}
+
+h1 em {
+    font-style: normal;
+    color: var(--accent-soft);
+}
+
+.title-bar {
+    width: 260px;
+    height: 4px;
+    margin: 18px auto 0;
+    border-radius: 2px;
+    background: linear-gradient(90deg, transparent, var(--accent), transparent);
+}
+
+/* ---------- Étiquettes de round ---------- */
+
+.label {
+    position: absolute;
+    font-size: 15px;
+    font-weight: 800;
+    letter-spacing: .22em;
+    text-transform: uppercase;
+    color: var(--accent);
+    text-shadow: 0 2px 8px rgba(0, 0, 0, .6);
+    white-space: nowrap;
+}
+
+.label.lower { color: var(--violet-bright); }
+
+/* ---------- Cartes de match ---------- */
+
+.card {
+    position: absolute;
+    display: flex;
+    flex-direction: column;
+    background: linear-gradient(180deg, var(--surface-raised), var(--surface-dark));
+    border: 1px solid var(--border);
+    border-left: 4px solid var(--accent);
+    border-radius: 10px;
+    box-shadow: 0 12px 34px rgba(0, 0, 0, .45);
+    overflow: visible;
+}
+
+.card.lower {
+    border-left-color: var(--violet-bright);
+}
+
+.team {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 0 18px;
+    font-size: 24px;
+    font-weight: 700;
+    white-space: nowrap;
+}
+
+.card .team { height: 56px; }
+
+.team + .team { border-top: 1px solid rgba(186, 53, 215, 0.25); }
+
+.team .avatar {
+    width: 34px;
+    height: 34px;
+    border-radius: 6px;
+    object-fit: cover;
+    flex: none;
+    background: rgba(0, 0, 0, .3);
+}
+
+.team .name {
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.team .score {
+    font-size: 28px;
+    font-weight: 900;
+    font-variant-numeric: tabular-nums;
+    min-width: 34px;
+    text-align: right;
+}
+
+.team.win { background: linear-gradient(90deg, var(--playoff-won-bg), transparent); }
+.team.win .score { color: var(--playoff-won); }
+
+.team.lose { color: var(--dim); }
+.team.lose .score { color: var(--lose); }
+
+.team.pending .score { color: var(--dim); font-weight: 700; }
+
+/* ---------- Grand Final ---------- */
+
+.card.gf {
+    border: 1px solid rgba(251, 183, 251, .5);
+    border-left: 4px solid var(--accent);
+    box-shadow: 0 0 40px rgba(135, 0, 227, .25), 0 14px 40px rgba(0, 0, 0, .55);
+}
+
+.gf-head {
+    padding: 14px 0 12px;
+    text-align: center;
+    font-size: 22px;
+    font-weight: 900;
+    letter-spacing: .3em;
+    text-transform: uppercase;
+    color: var(--accent-soft);
+    border-bottom: 1px solid var(--border-strong);
+}
+
+.gf .team {
+    justify-content: center;
+    font-size: 30px;
+    height: 78px;
+    gap: 16px;
+}
+
+.gf .team .score { font-size: 34px; }
+
+.gf .team.pending .name { color: var(--mauve); font-style: italic; }
+
+/* ---------- Badge « EN DIRECT ! » ---------- */
+
+.live {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 20px;
+    border-radius: 999px;
+    font-size: 17px;
+    font-weight: bold;
+    letter-spacing: .16em;
+    color: white;
+    background: rgba(255, 60, 60, .16);
+    border: 1px solid var(--live-border);
+    white-space: nowrap;
+}
+
+.live .dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: var(--live);
+    box-shadow: 0 0 12px var(--live);
+    animation: blink 1s ease-in-out infinite;
+}
+
+@keyframes blink {
+    0%, 100% { opacity: 1; }
+    50%      { opacity: .25; }
+}
+
+/* Dans une grande finale : le badge vit dans la carte. */
+.gf .live {
+    align-self: center;
+    margin: 12px auto 16px;
+}
+
+/* Dans une case standard : le badge flotte sous la carte. */
+.card:not(.gf) .live {
+    position: absolute;
+    left: 50%;
+    top: 100%;
+    transform: translateX(-50%);
+    margin-top: 8px;
+}
+
+/* ---------- Connecteurs ---------- */
+
+.hl, .vl {
+    position: absolute;
+    border-radius: 2px;
+    background: linear-gradient(90deg, var(--violet-line), rgba(151, 124, 225, .3));
+    box-shadow: 0 0 8px rgba(135, 0, 227, .3);
+}
+
+.hl {
+    height: 3px;
+    transform: scaleX(0);
+    transform-origin: left center;
+    animation: growX .45s ease-out forwards;
+    animation-delay: var(--d, 0s);
+}
+
+.vl {
+    width: 3px;
+    transform: scaleY(0);
+    transform-origin: top center;
+    animation: growY .45s ease-out forwards;
+    animation-delay: var(--d, 0s);
+}
+
+.vl.up { transform-origin: bottom center; }
+
+@keyframes growX { to { transform: scaleX(1); } }
+@keyframes growY { to { transform: scaleY(1); } }

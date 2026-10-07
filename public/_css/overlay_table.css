@@ -1,0 +1,197 @@
+/* Overlay classement (/bracket-overlay/{token}, type table) — page
+   1920x1080 entièrement transparente pour OBS : tableau de classement
+   « poule » avec drapeaux, avatars, surlignage du top X. */
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+:root {
+    --accent: #fbb7fb;
+    --accent-soft: #ffc9ec;
+    --border: #38193d;
+    --border-strong: #5f235f;
+    --surface-dark: rgba(21, 10, 24, 0.92);
+    --surface-raised: rgba(122, 62, 138, 0.55);
+    --violet-bright: #e97fff;
+    --violet-line: rgba(186, 53, 215, 0.57);
+    --dim: rgba(255, 255, 255, 0.6);
+    --playoff-won-bg: rgba(42, 74, 42, 0.55);
+    --playoff-won: #8c8;
+}
+
+html, body {
+    width: 1920px;
+    height: 1080px;
+    overflow: hidden;
+    background: transparent;
+    font-family: "Montserrat", "Segoe UI", Roboto, Arial, sans-serif;
+    color: white;
+}
+
+#scene {
+    position: relative;
+    width: 1920px;
+    height: 1080px;
+}
+
+/* ---------- Apparition des éléments ---------- */
+
+.anim {
+    opacity: 0;
+    animation: rise .7s cubic-bezier(.22, 1, .36, 1) forwards;
+    animation-delay: var(--d, 0s);
+}
+
+@keyframes rise {
+    from { opacity: 0; transform: translateY(26px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ---------- Titre (même tête que le bracket) ---------- */
+
+header {
+    position: absolute;
+    top: 42px;
+    left: 0;
+    width: 100%;
+    text-align: center;
+}
+
+.eyebrow {
+    font-size: 21px;
+    font-weight: 800;
+    letter-spacing: .45em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 10px;
+}
+
+h1 {
+    font-size: 58px;
+    font-weight: 900;
+    letter-spacing: .06em;
+    text-transform: uppercase;
+    color: white;
+    text-shadow: 0 4px 24px rgba(0, 0, 0, .6);
+}
+
+h1 em {
+    font-style: normal;
+    color: var(--accent-soft);
+}
+
+.title-bar {
+    width: 260px;
+    height: 4px;
+    margin: 18px auto 0;
+    border-radius: 2px;
+    background: linear-gradient(90deg, transparent, var(--accent), transparent);
+}
+
+/* ---------- Tableau de classement ---------- */
+
+.standings {
+    position: absolute;
+    top: 250px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 1000px;
+    background: linear-gradient(180deg, var(--surface-raised), var(--surface-dark));
+    border: 1px solid var(--border);
+    border-left: 4px solid var(--accent);
+    border-radius: 10px;
+    box-shadow: 0 12px 34px rgba(0, 0, 0, .45);
+    overflow: hidden;
+}
+
+.standings table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.standings th {
+    padding: 16px 12px;
+    font-size: 15px;
+    font-weight: 800;
+    letter-spacing: .22em;
+    text-transform: uppercase;
+    color: var(--accent);
+    border-bottom: 1px solid var(--border-strong);
+    text-align: center;
+}
+
+.standings th.team-col { text-align: left; }
+
+.standings td {
+    padding: 10px 12px;
+    font-size: 22px;
+    font-weight: 700;
+    text-align: center;
+    border-bottom: 1px solid rgba(186, 53, 215, 0.25);
+    font-variant-numeric: tabular-nums;
+}
+
+.standings tr:last-child td { border-bottom: none; }
+
+.standings td.rank {
+    width: 64px;
+    font-size: 24px;
+    font-weight: 900;
+    color: var(--accent-soft);
+}
+
+.standings td.team-col {
+    text-align: left;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.standings .team-cell {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+}
+
+.standings img.flag {
+    width: 28px;
+    height: 20px;
+    object-fit: cover;
+    border-radius: 3px;
+    flex: none;
+}
+
+.standings img.avatar {
+    width: 38px;
+    height: 38px;
+    border-radius: 6px;
+    object-fit: cover;
+    flex: none;
+    background: rgba(0, 0, 0, .3);
+}
+
+.standings .team-name {
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.standings td.numeric { width: 86px; }
+
+.standings td.points {
+    width: 110px;
+    font-size: 26px;
+    font-weight: 900;
+    color: var(--accent-soft);
+}
+
+.standings td.penalty { color: var(--dim); width: 86px; }
+
+/* Ligne qualifiée (top X) : teinte verte de victoire, comme les cases
+   gagnantes du bracket. */
+.standings tr.qualified td {
+    background: linear-gradient(90deg, var(--playoff-won-bg), transparent 70%);
+}
+
+.standings tr.qualified td.rank {
+    color: var(--playoff-won);
+}

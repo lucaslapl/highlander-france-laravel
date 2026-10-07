@@ -21,5 +21,11 @@
         <p class="admin-action-card__desc">Overlay de score de série (playoffs) avec suivi logs.tf automatique pendant le cast, et ajustements manuels.</p>
         <a href="/admin/series" class="admin-link-btn">Gérer les overlays de scores</a>
     </div>
+
+    <div class="admin-action-card" style="--accent: #e97fff;">
+        <h4 class="admin-action-card__title"><i class="fa-solid fa-sitemap"></i> Overlay Bracket</h4>
+        <p class="admin-action-card__desc">Brackets de playoffs et classements (poules) importés de l'API ETF2L, éditables, avec match « EN DIRECT » rattachable à une série.</p>
+        <a href="/admin/overlay/bracket" class="admin-link-btn">Gérer les brackets</a>
+    </div>
 </div>
 @endsection

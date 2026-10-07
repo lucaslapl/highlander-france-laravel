@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Http\Controllers\Admin\AdminApiController;
 use App\Http\Controllers\Admin\AdminApiTestController;
+use App\Http\Controllers\Admin\AdminBracketController;
 use App\Http\Controllers\Admin\AdminController;
 use App\Http\Controllers\Admin\AdminCronController;
 use App\Http\Controllers\Admin\AdminGuideController;
@@ -14,6 +15,7 @@ use App\Http\Controllers\Admin\AdminSeriesController;
 use App\Http\Controllers\Admin\AdminTeamController;
 use App\Http\Controllers\ApiController;
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\BracketOverlayController;
 use App\Http\Controllers\DownloadController;
 use App\Http\Controllers\GuideController;
 use App\Http\Controllers\ManagedTeamController;
@@ -94,6 +96,8 @@ Route::get('/series-overlay/{token}', [SeriesOverlayController::class, 'show'])-
 Route::get('/series-overlay/{token}/version', [SeriesOverlayController::class, 'version'])->where('token', '[a-z0-9]{16}');
 Route::get('/series-overlay/{token}/match', [SeriesOverlayController::class, 'match'])->where('token', '[a-z0-9]{16}');
 Route::get('/series-overlay/{token}/avatar/{team}', [SeriesOverlayController::class, 'avatar'])->where('token', '[a-z0-9]{16}')->whereIn('team', ['red', 'blue']);
+Route::get('/bracket-overlay/{token}', [BracketOverlayController::class, 'show'])->where('token', '[a-z0-9]{16}');
+Route::get('/bracket-overlay/{token}/version', [BracketOverlayController::class, 'version'])->where('token', '[a-z0-9]{16}');
 
 // ─── Outils overlay OBS (admins + rôles caster / prod) ───────────────────────
 // Panel restreint : les casters et prod n'ont accès qu'aux deux outils
@@ -107,6 +111,13 @@ Route::middleware('overlay-tools')->prefix('admin')->group(function (): void {
     Route::post('/overlay/{token}/refresh', [AdminOverlayController::class, 'refresh'])->where('token', '[a-z0-9]{16}');
     Route::post('/overlay/{token}/swap', [AdminOverlayController::class, 'swap'])->where('token', '[a-z0-9]{16}');
     Route::post('/overlay/{token}/delete', [AdminOverlayController::class, 'delete'])->where('token', '[a-z0-9]{16}');
+    Route::get('/overlay/bracket', [AdminBracketController::class, 'index'])->name('admin.bracket');
+    Route::post('/overlay/bracket/create', [AdminBracketController::class, 'create']);
+    Route::post('/overlay/bracket/import', [AdminBracketController::class, 'import']);
+    Route::get('/overlay/bracket/{token}', [AdminBracketController::class, 'edit'])->where('token', '[a-z0-9]{16}');
+    Route::post('/overlay/bracket/{token}/update', [AdminBracketController::class, 'update'])->where('token', '[a-z0-9]{16}');
+    Route::post('/overlay/bracket/{token}/resync', [AdminBracketController::class, 'resync'])->where('token', '[a-z0-9]{16}');
+    Route::post('/overlay/bracket/{token}/delete', [AdminBracketController::class, 'delete'])->where('token', '[a-z0-9]{16}');
     Route::get('/series', [AdminSeriesController::class, 'index'])->name('admin.series');
     Route::post('/series/create', [AdminSeriesController::class, 'create']);
     Route::get('/series/{token}', [AdminSeriesController::class, 'show'])->where('token', '[a-z0-9]{16}');
