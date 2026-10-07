@@ -14,7 +14,7 @@
 </head>
 <body>
 <div id="scene">
-    <header class="anim" style="--d:.2s;">
+    <header class="anim" style="--d:1s;">
         @if (trim($data['eyebrow']) !== '')
             <div class="eyebrow">{{ e($data['eyebrow']) }}</div>
         @endif
@@ -22,9 +22,9 @@
         <div class="title-bar"></div>
     </header>
 
-    <div id="cards" class="anim" style="--d:.45s;">
+    <div id="cards">
         @foreach ($data['cards'] as $card)
-            <div class="card action-{{ $card['action'] }}">
+            <div class="card anim action-{{ $card['action'] }}">
                 <div class="map-name">
                     @if (trim($card['map']) !== '')
                         {{ e(strtoupper($card['map'])) }}

@@ -48,6 +48,13 @@ html, body {
     to   { opacity: 1; transform: translateY(0); }
 }
 
+/* Les cartes BAN apparaissent d'abord (à partir d'1 s), les cartes PICK
+   ensuite une fois les bannies posées (animation de .7 s). */
+
+.card.action-ban { --d: 1s; }
+
+.card.action-pick { --d: 1.9s; }
+
 /* ---------- Titre ---------- */
 
 header {
