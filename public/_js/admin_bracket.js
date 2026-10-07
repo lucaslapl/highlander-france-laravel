@@ -2,9 +2,10 @@
    sans rechargement — ajout / suppression / déplacement des colonnes du
    bracket, des cases de match et des lignes de classement. Les indices des
    noms de champs (columns[i][matches[j]…], rows[k]…) sont réécrits à la
-   volée : l'ordre d'affichage suit l'ordre du formulaire, le serveur trie
-   par index numérique (ksort) à l'enregistrement, les trous d'indexation
-   ne posent donc aucun problème.
+   volée après chaque ajout / suppression / déplacement : l'ordre visuel
+   du formulaire fait l'ordre enregistré, le serveur trie par index
+   numérique (ksort), les trous d'indexation ne posent donc aucun
+   problème.
 
    Remplissage assisté : partagé avec les autres outils overlay
    (admin_etf2l_teams.js) — les blocs équipe ajoutés ensuite reçoivent
@@ -32,7 +33,11 @@
                 name = name.replace(/rows\[__RIDX__\]/g, 'rows[' + cIdx + ']');
             }
             if (mIdx !== null) {
-                name = name.replace(/matches\[__MIDX__\]/g, 'matches[' + mIdx + ']');
+                /* Le jeton apparaît comme segment d'index de case
+                   ([matches][__MIDX__]) : on cible [__MIDX__] seul, le
+                   préfixe « matches » est suivi d'un crochet fermant dans
+                   les noms réels. */
+                name = name.replace(/\[__MIDX__\]/g, '[' + mIdx + ']');
             }
             el.setAttribute('name', name);
         });
@@ -119,6 +124,41 @@
         row: '.table-row'
     };
 
+    /* Remplace l'index numérique d'un segment de nom de champ (columns[i] /
+       matches][j] / rows[k]) dans les attributs name d'un fragment du
+       formulaire. */
+    function setNameIndex(root, pattern, replacement) {
+        root.querySelectorAll('[name]').forEach(function (el) {
+            el.setAttribute('name', (el.getAttribute('name') || '').replace(pattern, replacement));
+        });
+    }
+
+    /* Réécrit tous les indices du formulaire pour qu'ils suivent l'ordre
+       courant du DOM : le serveur trie colonnes, cases et lignes par index
+       numérique (ksort), l'ordre enregistré après un déplacement est donc
+       bien l'ordre visuel de l'éditeur. Les <template> ne sont pas
+       traversés par querySelectorAll : leurs jetons restent intacts. */
+    function renumberForm() {
+        var columnsHost = document.getElementById('bracket-columns');
+        var rowsHost = document.getElementById('table-rows');
+
+        if (columnsHost) {
+            Array.prototype.forEach.call(columnsHost.querySelectorAll(':scope > .bracket-column'), function (column, c) {
+                setNameIndex(column, /columns\[\d+\]/g, 'columns[' + c + ']');
+                column.setAttribute('data-index', String(c));
+                Array.prototype.forEach.call(column.querySelectorAll(':scope > .bracket-matches > .bracket-match'), function (match, m) {
+                    setNameIndex(match, /\[matches\]\[\d+\]/g, '[matches][' + m + ']');
+                });
+            });
+        }
+
+        if (rowsHost) {
+            Array.prototype.forEach.call(rowsHost.querySelectorAll(':scope > .table-row'), function (row, k) {
+                setNameIndex(row, /rows\[\d+\]/g, 'rows[' + k + ']');
+            });
+        }
+    }
+
     document.addEventListener('click', function (event) {
         var move = event.target.closest('.js-move');
         if (move) {
@@ -131,6 +171,7 @@
                 } else {
                     item.parentNode.insertBefore(sibling, item);
                 }
+                renumberForm();
             }
             return;
         }
@@ -141,6 +182,7 @@
             var target = remove.closest(sel);
             if (target && target.parentNode.children.length > 0) {
                 target.remove();
+                renumberForm();
             }
         }
     });
