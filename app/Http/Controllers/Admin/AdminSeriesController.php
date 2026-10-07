@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\OverlayRepository;
 use App\Models\SeriesRepository;
 use App\Services\AdminLogger;
 use App\Services\Auth;
@@ -19,9 +20,9 @@ use Illuminate\Support\Str;
  * Outil « Overlay Scores » : overlay de score d'une série de playoffs avec
  * suivi automatique via logs.tf (réconciliateur app:series-reconcile), et
  * ajustements manuels (point de map, annulation d'un événement, renommage
- * des équipes) pour les contestations et les cas que l'automatisme ne couvre
- * pas. Accessible aux admins et aux rôles caster / prod (panel restreint
- * /admin/panel).
+ * des équipes et avatars par URL mémorisés pour réutilisation) pour les
+ * contestations et les cas que l'automatisme ne couvre pas. Accessible aux
+ * admins et aux rôles caster / prod (panel restreint /admin/panel).
  */
 final class AdminSeriesController extends Controller
 {
@@ -29,9 +30,12 @@ final class AdminSeriesController extends Controller
 
     private SeriesRepository $series;
 
+    private OverlayRepository $overlays;
+
     public function __construct()
     {
         $this->series = new SeriesRepository;
+        $this->overlays = new OverlayRepository;
     }
 
     /**
@@ -45,6 +49,7 @@ final class AdminSeriesController extends Controller
             'title' => 'Admin - Overlay Scores',
             'description' => 'Overlay de score des séries de playoffs avec suivi logs.tf automatique et ajustements manuels.',
             'seriesList' => $this->series->all(),
+            'memorizedAvatars' => $this->overlays->memorizedAvatars(),
         ]);
     }
 
@@ -93,6 +98,12 @@ final class AdminSeriesController extends Controller
         }
 
         $token = bin2hex(random_bytes(8));
+        $teams = [
+            'red' => ['name' => trim((string) $data['red_name']), 'players' => $red['players'], 'avatar_url' => $this->cleanUrl($data['red_avatar_url'] ?? null)],
+            'blue' => ['name' => trim((string) $data['blue_name']), 'players' => $blue['players'], 'avatar_url' => $this->cleanUrl($data['blue_avatar_url'] ?? null)],
+        ];
+        $this->rememberAvatars($teams);
+
         $this->series->save([
             'token' => $token,
             'title' => trim((string) $data['title']),
@@ -105,10 +116,7 @@ final class AdminSeriesController extends Controller
             'status' => 'upcoming',
             'started_at' => null,
             'created_at' => time(),
-            'teams' => [
-                'red' => ['name' => trim((string) $data['red_name']), 'players' => $red['players'], 'avatar_url' => $this->cleanUrl($data['red_avatar_url'] ?? null)],
-                'blue' => ['name' => trim((string) $data['blue_name']), 'players' => $blue['players'], 'avatar_url' => $this->cleanUrl($data['blue_avatar_url'] ?? null)],
-            ],
+            'teams' => $teams,
             'maps' => $maps,
             'journal' => [],
             'seen_logs' => [],
@@ -142,6 +150,7 @@ final class AdminSeriesController extends Controller
                 'red' => $this->series->hasAvatar($token, 'red'),
                 'blue' => $this->series->hasAvatar($token, 'blue'),
             ],
+            'memorizedAvatars' => $this->overlays->memorizedAvatars(),
         ]);
     }
 
@@ -191,34 +200,11 @@ final class AdminSeriesController extends Controller
     }
 
     /**
-     * POST /admin/series/{token}/overlay — avatars d'équipes par URL externe,
-     * affichés par les overlays de la série (scoreboard et stats de match).
-     */
-    public function overlay(Request $request, string $token): RedirectResponse
-    {
-        Auth::requireOverlayTools();
-
-        $series = $this->series->find($token);
-        if ($series === null) {
-            abort(404);
-        }
-
-        $data = $request->validate([
-            'red_avatar_url' => ['nullable', 'url:http,https', 'max:500'],
-            'blue_avatar_url' => ['nullable', 'url:http,https', 'max:500'],
-        ]);
-
-        $series['teams']['red']['avatar_url'] = $this->cleanUrl($data['red_avatar_url'] ?? null);
-        $series['teams']['blue']['avatar_url'] = $this->cleanUrl($data['blue_avatar_url'] ?? null);
-        $this->series->save($series);
-
-        return back()->with('success', 'Avatars par URL enregistrés.');
-    }
-
-    /**
      * POST /admin/series/{token}/teams — renomme les équipes après création
-     * (correction d'un acronyme erroné). Le nom s'affiche tel quel sur
-     * l'overlay, d'où la forme d'acronyme attendue.
+     * (correction d'un acronyme erroné) et met à jour leur avatar par URL.
+     * Chaque équipe saisie avec son avatar est mémorisée (visuel + nom)
+     * pour être proposée en un clic aux prochaines créations et générations
+     * d'overlay (cache partagé avec l'outil Overlay Logs).
      */
     public function teams(Request $request, string $token): RedirectResponse
     {
@@ -232,11 +218,16 @@ final class AdminSeriesController extends Controller
         $data = $request->validate([
             'red_name' => ['required', 'string', 'max:'.self::MAX_NAME_LEN],
             'blue_name' => ['required', 'string', 'max:'.self::MAX_NAME_LEN],
+            'red_avatar_url' => ['nullable', 'url:http,https', 'max:500'],
+            'blue_avatar_url' => ['nullable', 'url:http,https', 'max:500'],
         ]);
 
         $series['teams']['red']['name'] = trim((string) $data['red_name']);
         $series['teams']['blue']['name'] = trim((string) $data['blue_name']);
+        $series['teams']['red']['avatar_url'] = $this->cleanUrl($data['red_avatar_url'] ?? null);
+        $series['teams']['blue']['avatar_url'] = $this->cleanUrl($data['blue_avatar_url'] ?? null);
         $this->series->save($series);
+        $this->rememberAvatars($series['teams']);
 
         AdminLogger::log('admin_series_teams', null, 'SUCCESS (série '.$token.' : renommage en '.$data['red_name'].' / '.$data['blue_name'].')');
 
@@ -408,6 +399,22 @@ final class AdminSeriesController extends Controller
         }
 
         return SteamId::toSteamId64($item);
+    }
+
+    /**
+     * Mémorise les équipes saisies avec un avatar par URL (nom affiché +
+     * visuel) pour les proposer en un clic aux prochaines créations.
+     *
+     * @param  array<string, array<string, mixed>>  $teams
+     */
+    private function rememberAvatars(array $teams): void
+    {
+        foreach (['red', 'blue'] as $team) {
+            $url = (string) ($teams[$team]['avatar_url'] ?? '');
+            if ($url !== '') {
+                $this->overlays->rememberAvatar($url, (string) ($teams[$team]['name'] ?? ''));
+            }
+        }
     }
 
     /**

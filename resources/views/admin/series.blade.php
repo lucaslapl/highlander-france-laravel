@@ -50,9 +50,14 @@
                 <label class="admin-form-label" style="margin-top:10px;" for="series-{{ $team }}-avatar-url">Avatar par URL externe (optionnel)</label>
                 <input type="url" id="series-{{ $team }}-avatar-url" name="{{ $team }}_avatar_url" class="form-control"
                        placeholder="https://…/logo.png">
+                @include('admin.partials.avatar_memory', ['team' => $team, 'label' => $label])
             </div>
         @endforeach
     </div>
+
+    <p style="color:#777; font-size:13px; margin:6px 0 0;">
+        Chaque équipe saisie avec son avatar est mémorisée (visuel + nom) et proposée en un clic lors des prochaines créations — la même mémoire que l'outil Overlay Logs.
+    </p>
 
     <div class="admin-form-row" style="display:flex; gap:24px; flex-wrap:wrap;">
         <div style="min-width:180px;">
@@ -117,4 +122,12 @@
         </table>
     </div>
 @endif
+
+@push('styles')
+<link rel="stylesheet" href="{{ hlfr_asset('/_css/admin_overlay.css') }}">
+@endpush
+
+@push('scripts')
+<script src="{{ hlfr_asset('/_js/admin_overlay.js') }}" defer></script>
+@endpush
 @endsection

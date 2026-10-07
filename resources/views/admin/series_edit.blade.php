@@ -85,10 +85,19 @@
                 <label class="admin-form-label" for="team-{{ $team }}-name">Nom équipe {{ $label }} (acronyme)</label>
                 <input type="text" id="team-{{ $team }}-name" name="{{ $team }}_name" class="form-control"
                        value="{{ e($series['teams'][$team]['name']) }}" maxlength="64" required>
+                <label class="admin-form-label" style="margin-top:10px;" for="team-{{ $team }}-avatar-url">Avatar par URL externe (optionnel)</label>
+                <input type="url" id="team-{{ $team }}-avatar-url" name="{{ $team }}_avatar_url" class="form-control"
+                       value="{{ e($series['teams'][$team]['avatar_url'] ?? '') }}"
+                       placeholder="https://…/logo.png">
+                @include('admin.partials.avatar_memory', ['team' => $team, 'label' => $label])
             </div>
         @endforeach
     </div>
-    <button type="submit" class="admin-btn" style="margin-top:10px;"><i class="fa-solid fa-floppy-disk"></i> Renommer les équipes</button>
+    <p style="color:#777; font-size:13px; margin:6px 0 0;">
+        Chaque équipe enregistrée avec son avatar est mémorisée (visuel + nom) et proposée en un clic lors des
+        prochaines créations — la même mémoire que l'outil Overlay Logs.
+    </p>
+    <button type="submit" class="admin-btn" style="margin-top:10px;"><i class="fa-solid fa-floppy-disk"></i> Enregistrer les équipes</button>
 </form>
 
 <h3 class="admin-section-title"><i class="fa-solid fa-tv"></i> Overlay OBS</h3>
@@ -117,22 +126,7 @@
     <a class="admin-link-btn" href="/series-overlay/{{ $series['token'] }}/match" target="_blank">Prévisualiser</a>
 </p>
 
-<h4 style="margin:16px 0 8px;">Avatars d'équipes</h4>
-<form method="POST" action="/admin/series/{{ $series['token'] }}/overlay" class="admin-form-stack">
-    @csrf
-    <div style="display:flex; gap:16px; flex-wrap:wrap;">
-        @foreach (['red' => 'A', 'blue' => 'B'] as $team => $label)
-            <div style="border:1px solid #333; border-radius:8px; padding:14px; flex:1; min-width:300px;">
-                <h4 style="margin:0 0 10px; color: {{ $team === 'red' ? '#e06c5a' : '#5885a2' }};">Équipe {{ $label }} — {{ e($series['teams'][$team]['name']) }}</h4>
-                <label class="admin-form-label">Avatar par URL externe (optionnel)</label>
-                <input type="url" name="{{ $team }}_avatar_url" class="form-control"
-                       value="{{ e($series['teams'][$team]['avatar_url'] ?? '') }}"
-                       placeholder="https://…/logo.png">
-            </div>
-        @endforeach
-    </div>
-    <button type="submit" class="admin-btn" style="margin-top:10px;"><i class="fa-solid fa-floppy-disk"></i> Enregistrer les URL</button>
-</form>
+<h4 style="margin:16px 0 8px;">Avatars d'équipes (upload)</h4>
 <div style="display:flex; gap:16px; flex-wrap:wrap; margin-top:16px;">
     @foreach (['red' => 'A', 'blue' => 'B'] as $team => $label)
         <div style="border:1px solid #333; border-radius:8px; padding:14px; flex:1; min-width:300px;">
@@ -299,4 +293,12 @@
 <p style="margin-top:24px;">
     <a class="admin-link-btn" href="/admin/series"><i class="fa-solid fa-arrow-left"></i> Retour aux séries</a>
 </p>
+
+@push('styles')
+<link rel="stylesheet" href="{{ hlfr_asset('/_css/admin_overlay.css') }}">
+@endpush
+
+@push('scripts')
+<script src="{{ hlfr_asset('/_js/admin_overlay.js') }}" defer></script>
+@endpush
 @endsection

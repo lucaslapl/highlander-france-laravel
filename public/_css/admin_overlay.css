@@ -1,5 +1,6 @@
-/* Outil admin « Overlay Logs » (/admin/overlay) : champs d'URL, équipes
-   mémorisées (vignettes avatar + nom) et aperçu. */
+/* Outils admin « Overlay Logs » (/admin/overlay) et « Overlay Scores »
+   (/admin/series) : champs d'URL, équipes mémorisées (vignettes avatar +
+   nom) et aperçu. */
 
 .overlay-url-input {
     font-family: monospace;

@@ -42,21 +42,7 @@
                 <input type="url" name="{{ $team }}_avatar_url" class="form-control"
                        value="{{ e($overlay['teams'][$team]['avatar_url'] ?? '') }}"
                        placeholder="https://…/logo.png">
-                @if (! empty($memorized_avatars))
-                    <div class="overlay-avatar-memory" data-team="{{ $team }}" style="margin-top:10px;">
-                        <span class="overlay-avatar-memory__label">Équipes déjà castées — un clic applique nom + avatar :</span>
-                        <div class="overlay-avatar-memory__tiles">
-                            @foreach ($memorized_avatars as $entry)
-                                <button type="button" class="overlay-avatar-memory__tile"
-                                        data-name="{{ e($entry['name']) }}" data-url="{{ e($entry['url']) }}"
-                                        title="Appliquer « {{ e($entry['name'] !== '' ? $entry['name'] : $entry['url']) }} » à l'équipe {{ $label }}">
-                                    <img src="{{ e($entry['url']) }}" alt="" loading="lazy">
-                                    <span>{{ e($entry['name'] !== '' ? $entry['name'] : '(sans nom)') }}</span>
-                                </button>
-                            @endforeach
-                        </div>
-                    </div>
-                @endif
+                @include('admin.partials.avatar_memory', ['memorizedAvatars' => $memorized_avatars])
             </div>
         @endforeach
     </div>

@@ -1,6 +1,7 @@
-/* Outil admin « Overlay Logs » : application en un clic d'une équipe
-   mémorisée (nom affiché + URL d'avatar) aux champs du formulaire, depuis
-   les vignettes « équipes déjà castées » de chaque carte équipe. */
+/* Outils admin « Overlay Logs » et « Overlay Scores » : application en un
+   clic d'une équipe mémorisée (nom affiché + URL d'avatar) aux champs du
+   formulaire, depuis les vignettes « équipes déjà castées » de chaque carte
+   équipe (partial admin/partials/avatar_memory). */
 
 (function () {
     'use strict';

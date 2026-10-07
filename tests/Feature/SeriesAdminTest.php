@@ -4,15 +4,18 @@ declare(strict_types=1);
 
 namespace Tests\Feature;
 
+use App\Models\OverlayRepository;
 use App\Models\SeriesRepository;
 use App\Services\SeriesScoreService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
 /**
- * Outil admin « Séries de matchs » : accès strictement réservé aux admins,
+ * Outil admin « Overlay Scores » : accès strictement réservé aux admins,
  * création d'une série (rosters SteamIDs, maps, format), lancement du suivi,
- * point de map manuel, annulation d'un événement et suppression.
+ * point de map manuel, annulation d'un événement, renommage des équipes
+ * (nom + avatar par URL, mémorisés comme pour l'outil Overlay Logs) et
+ * suppression.
  */
 class SeriesAdminTest extends TestCase
 {
@@ -38,6 +41,10 @@ class SeriesAdminTest extends TestCase
             @unlink($file);
         }
         @rmdir($this->dataDir.'/series');
+        foreach (glob($this->dataDir.'/overlays/*') ?: [] as $file) {
+            @unlink($file);
+        }
+        @rmdir($this->dataDir.'/overlays');
         @unlink($this->dataDir.'/series_reconcile.lock');
         @rmdir($this->dataDir);
 
@@ -176,6 +183,62 @@ class SeriesAdminTest extends TestCase
         $this->assertSame(['76561198000000001', '76561198000000002'], $series['teams']['red']['players']);
         $this->assertSame('bo3', $series['format']);
         $this->assertSame([], $series['journal']);
+    }
+
+    public function test_le_renommage_met_a_jour_les_avatars_et_memorise_les_equipes(): void
+    {
+        $this->seedSeries();
+
+        $this->withSession($this->adminSession())
+            ->post('/admin/series/'.self::TOKEN.'/teams', [
+                'red_name' => 'LB',
+                'blue_name' => 'E6',
+                'red_avatar_url' => 'https://example.com/lb.png',
+                'blue_avatar_url' => 'https://example.com/e6.png',
+            ])
+            ->assertRedirect();
+
+        $series = (new SeriesRepository)->find(self::TOKEN);
+        $this->assertSame('https://example.com/lb.png', $series['teams']['red']['avatar_url']);
+        $this->assertSame('https://example.com/e6.png', $series['teams']['blue']['avatar_url']);
+
+        // Les deux équipes sont mémorisées (visuel + nom) pour les prochaines créations.
+        $memorized = (new OverlayRepository)->memorizedAvatars();
+        $this->assertSame(['url' => 'https://example.com/lb.png', 'name' => 'LB'], $memorized[1]);
+        $this->assertSame(['url' => 'https://example.com/e6.png', 'name' => 'E6'], $memorized[0]);
+    }
+
+    public function test_la_creation_memorise_les_equipes_avec_avatar(): void
+    {
+        $input = $this->createInput();
+        $input['red_avatar_url'] = 'https://example.com/lb.png';
+        $input['blue_avatar_url'] = 'https://example.com/e6.png';
+
+        $this->withSession($this->adminSession())
+            ->post('/admin/series/create', $input)
+            ->assertRedirect();
+
+        $memorized = (new OverlayRepository)->memorizedAvatars();
+        $this->assertSame(['url' => 'https://example.com/lb.png', 'name' => 'Les Baguettes'], $memorized[1]);
+        $this->assertSame(['url' => 'https://example.com/e6.png', 'name' => 'Escouade 6'], $memorized[0]);
+    }
+
+    public function test_les_pages_serie_proposent_les_equipes_memorisees_en_un_clic(): void
+    {
+        (new OverlayRepository)->rememberAvatar('https://example.com/ig.png', 'IG');
+
+        $this->withSession($this->adminSession())
+            ->get('/admin/series')
+            ->assertOk()
+            ->assertSee('Équipes déjà castées')
+            ->assertSee('https://example.com/ig.png');
+
+        $this->seedSeries();
+        $this->withSession($this->adminSession())
+            ->get('/admin/series/'.self::TOKEN)
+            ->assertOk()
+            ->assertSee('Équipes déjà castées')
+            ->assertSee('https://example.com/ig.png');
     }
 
     public function test_le_renommage_des_equipes_rejette_un_nom_vide(): void

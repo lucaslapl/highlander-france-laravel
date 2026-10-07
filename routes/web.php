@@ -116,7 +116,6 @@ Route::middleware('overlay-tools')->prefix('admin')->group(function (): void {
     Route::post('/series/{token}/void', [AdminSeriesController::class, 'void'])->where('token', '[a-z0-9]{16}');
     Route::post('/series/{token}/avatar', [AdminSeriesController::class, 'avatar'])->where('token', '[a-z0-9]{16}');
     Route::post('/series/{token}/avatar/delete', [AdminSeriesController::class, 'avatarDelete'])->where('token', '[a-z0-9]{16}');
-    Route::post('/series/{token}/overlay', [AdminSeriesController::class, 'overlay'])->where('token', '[a-z0-9]{16}');
     Route::post('/series/{token}/delete', [AdminSeriesController::class, 'delete'])->where('token', '[a-z0-9]{16}');
 });
 
