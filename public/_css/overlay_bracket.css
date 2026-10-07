@@ -113,7 +113,7 @@ h1 em {
     position: absolute;
     display: flex;
     flex-direction: column;
-    background: #474747;
+    background: #5600511a;
     border-left: 4px solid var(--accent);
     border-radius: 10px;
     box-shadow: 0 12px 34px rgba(0, 0, 0, .45);
@@ -164,7 +164,7 @@ h1 em {
 
 /* Équipe victorieuse : fond rose/violet ; perdant et score inconnu
    restent sur le fond sombre neutre de la carte. */
-.team.win { background: linear-gradient(90deg, var(--win-bg), rgba(233, 127, 255, 0.08) 60%, transparent); }
+.team.win { background: linear-gradient(90deg, var(--win-bg), rgba(233, 127, 255, 0.08) 100%, transparent); }
 .team.win .score { color: var(--win); }
 .team.win .name { color: white; }
 
