@@ -282,9 +282,25 @@ class SeriesAdminTest extends TestCase
         $this->assertSame('Escouade 6', $series['teams']['blue']['name']);
     }
 
-    public function test_un_point_de_map_manuel_decide_une_map_unique(): void
+    public function test_des_points_manuels_decident_une_map_koth_au_winlimit(): void
     {
+        // KOTH, mp_winlimit 3 : un point marqué en direct n'emporte pas la
+        // map — la première équipe à 3 points la gagne.
         $this->seedSeries(['koth_product_final']);
+
+        foreach ([1, 2] as $i) {
+            $this->withSession($this->adminSession())
+                ->post('/admin/series/'.self::TOKEN.'/point', [
+                    'map' => 'koth_product_final',
+                    'team' => 'blue',
+                    'note' => 'scoring live depuis l\'admin',
+                ])
+                ->assertRedirect();
+        }
+
+        $ongoing = (new SeriesScoreService)->compute((new SeriesRepository)->find(self::TOKEN));
+        $this->assertSame('pending', $ongoing['maps'][0]['status']);
+        $this->assertSame(2, $ongoing['maps'][0]['scores']['blue']);
 
         $this->withSession($this->adminSession())
             ->post('/admin/series/'.self::TOKEN.'/point', [
@@ -295,7 +311,7 @@ class SeriesAdminTest extends TestCase
             ->assertRedirect();
 
         $series = (new SeriesRepository)->find(self::TOKEN);
-        $this->assertCount(1, $series['journal']);
+        $this->assertCount(3, $series['journal']);
         $this->assertSame('manual', $series['journal'][0]['type']);
 
         $state = (new SeriesScoreService)->compute($series);

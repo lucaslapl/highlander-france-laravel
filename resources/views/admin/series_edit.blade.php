@@ -186,9 +186,12 @@
                     <td>{{ e($map['name']) }}</td>
                     <td>{{ $map['mode'] === 'double' ? 'Double attaque' : 'Log unique' }}</td>
                     <td>
-                        {{ (int) $map['rounds']['red'] }} - {{ (int) $map['rounds']['blue'] }}
-                        @if ($map['mode'] === 'single' && $map['scores'] !== null)
-                            <span style="color:#777;">(score du log : {{ (int) $map['scores']['red'] }}-{{ (int) $map['scores']['blue'] }})</span>
+                        @if ($map['mode'] === 'double')
+                            {{ (int) $map['rounds']['red'] }} - {{ (int) $map['rounds']['blue'] }}
+                            <span style="color:#777;">(2 rounds pour décider la map)</span>
+                        @else
+                            {{ $map['scores'] !== null ? ((int) $map['scores']['red']).' - '.((int) $map['scores']['blue']) : '0 - 0' }}
+                            <span style="color:#777;">(première équipe à {{ (int) $map['winlimit'] }} points ; score final ramené par le log en fin de map)</span>
                         @endif
                         @if ($map['golden_cap'])
                             <span style="color:#d9a544;">golden cap en attente</span>

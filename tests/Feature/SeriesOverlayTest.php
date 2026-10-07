@@ -76,12 +76,14 @@ class SeriesOverlayTest extends TestCase
         $this->assertStringContainsString('Escouade 6', $html);
 
         // Score de série 1-1 : payload 2-0 rouge, koth perdu.
-        $this->assertStringContainsString('series-scoreboard__score-value--red">1', $html);
-        $this->assertStringContainsString('series-scoreboard__score-value--blue">1', $html);
+        $this->assertStringContainsString('series-scoreboard__score-value">1', $html);
 
-        // Maps décidées avec la couleur de l'équipe vainqueure.
-        $this->assertStringContainsString('series-map--won-red', $html);
-        $this->assertStringContainsString('series-map--won-blue', $html);
+        // Maps décidées : aucune teinte d'équipe — le nom de l'équipe
+        // vainqueure identifie la map remportée.
+        $this->assertStringContainsString('series-map--decided', $html);
+        $this->assertStringNotContainsString('series-map--won-', $html);
+        $this->assertStringContainsString('series-map__winner">Les Baguettes', $html);
+        $this->assertStringContainsString('series-map__winner">Escouade 6', $html);
 
         // Le JS d'auto-rafraîchissement porte bien le token et la version.
         $this->assertStringContainsString('overlay_series.js', $html);
@@ -109,12 +111,30 @@ class SeriesOverlayTest extends TestCase
         $this->assertGreaterThan($initial, $updated);
     }
 
-    public function test_une_map_unique_decidee_sans_score_de_log_affiche_0_0(): void
+    public function test_des_points_manuels_comptent_le_score_live_d_une_map_koth(): void
     {
-        // Point manuel (contestation, log manquant) : aucune trace de score
-        // de log, la ligne affiche 0-0 comme les maps à double attaque.
+        // Scoring live d'un KOTH (mp_winlimit 3) par points manuels : le
+        // score s'affiche au fil du match, la map n'est décidée qu'à 3
+        // points — le score final du log la remplace en fin de map.
         $this->seedSeries();
-        (new SeriesRepository)->appendEvent(self::TOKEN, [
+        $repo = new SeriesRepository;
+        foreach ([1, 2] as $i) {
+            $repo->appendEvent(self::TOKEN, [
+                'type' => 'manual',
+                'source' => 'manual',
+                'map' => 'koth_product_final',
+                'team' => 'red',
+                'note' => '',
+            ]);
+        }
+
+        $html = (string) $this->get('/series-overlay/'.self::TOKEN)->assertOk()->getContent();
+
+        $this->assertStringContainsString('series-map__score">2 – 0', $html);
+        $this->assertStringNotContainsString('series-map--decided', $html);
+        $this->assertStringNotContainsString('series-map__winner', $html);
+
+        $repo->appendEvent(self::TOKEN, [
             'type' => 'manual',
             'source' => 'manual',
             'map' => 'koth_product_final',
@@ -124,8 +144,9 @@ class SeriesOverlayTest extends TestCase
 
         $html = (string) $this->get('/series-overlay/'.self::TOKEN)->assertOk()->getContent();
 
-        $this->assertStringContainsString('series-map__score">0 – 0', $html);
-        $this->assertStringContainsString('series-map--won-red', $html);
+        $this->assertStringContainsString('series-map__score">3 – 0', $html);
+        $this->assertStringContainsString('series-map--decided', $html);
+        $this->assertStringContainsString('series-map__winner">Les Baguettes', $html);
     }
 
     public function test_les_maps_avec_miniature_l_affichent_en_fond(): void

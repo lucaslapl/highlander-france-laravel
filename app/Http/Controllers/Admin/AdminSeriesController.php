@@ -296,9 +296,15 @@ final class AdminSeriesController extends Controller
     }
 
     /**
-     * POST /admin/series/{token}/point — point de map manuel (contestation,
-     * log manquant, rattrapage). Prioritaire sur l'automatique par construction :
+     * POST /admin/series/{token}/point — point marqué manuel (scoring live
+     * d'une map à log unique en attendant son log, contestation, log
+     * manquant, rattrapage). Prioritaire sur l'automatique par construction :
      * c'est un événement du journal comme les autres, visible et annulable.
+     *
+     * Sur une map à log unique, le point s'accumule en score live : la map
+     * n'est décidée qu'au winlimit (KOTH : 3 points, 5cp : 5), sauf golden
+     * cap en attente que le point tranche. Le log de fin de map remplace
+     * ensuite ce score par le score final.
      */
     public function point(Request $request, string $token): RedirectResponse
     {

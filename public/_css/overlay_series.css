@@ -8,13 +8,10 @@ body {
 }
 
 .series-overlay-stage {
-    --red: #b8383b;
-    --red-soft: rgba(184, 56, 59, 0.28);
-    --blue: #5885a2;
-    --blue-soft: rgba(88, 133, 162, 0.28);
     --ink: #f5f5f5;
     --ink-dim: #9aa0a6;
     --panel-bg: rgba(12, 14, 20, 0.72);
+    --gold: #d9a544;
     --enter-ease: cubic-bezier(0.22, 1, 0.36, 1);
 
     width: 1920px;
@@ -74,7 +71,7 @@ body {
     letter-spacing: 0.02em;
 }
 
-.series-scoreboard__team--blue {
+.series-scoreboard__team--right {
     text-align: right;
 }
 
@@ -135,6 +132,7 @@ body {
 
 .series-map__name,
 .series-map__score,
+.series-map__winner,
 .series-map__gc {
     position: relative;
     z-index: 1;
@@ -164,29 +162,28 @@ body {
     color: #d9a544;
 }
 
-/* Map gagnée : la ligne prend la couleur de l'équipe vainqueure. Avec
-   miniature, la teinte remplace le voile neutre (image + teinte équipe). */
-.series-map--won-red {
-    background: var(--red-soft);
-    color: #f0c7c2;
+/* Map remportée : aucun code couleur d'équipe (les couleurs en jeu changent
+   plusieurs fois par map) — la ligne ressort de façon neutre et c'est le
+   badge « series-map__winner » qui nomme l'équipe vainqueure. */
+.series-map--decided {
+    background: rgba(255, 255, 255, 0.09);
+    color: var(--ink);
 }
 
-.series-map--won-blue {
-    background: var(--blue-soft);
-    color: #c4d7e4;
+.series-map--has-thumb.series-map--decided::before {
+    background-color: rgba(12, 14, 20, 0.5);
 }
 
-.series-map--has-thumb.series-map--won-red::before {
-    background-color: rgba(184, 56, 59, 0.55);
-}
-
-.series-map--has-thumb.series-map--won-blue::before {
-    background-color: rgba(88, 133, 162, 0.55);
-}
-
-.series-map--has-thumb.series-map--won-red,
-.series-map--has-thumb.series-map--won-blue {
-    background: var(--map-thumb) center / cover no-repeat;
+.series-map__winner {
+    font-size: 11px;
+    font-weight: 800;
+    padding: 1px 6px;
+    border-radius: 4px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    background: rgba(255, 255, 255, 0.16);
+    color: var(--ink);
+    white-space: nowrap;
 }
 
 /* Map en cours : point d'attention léger, sans surcharger le stream. */
@@ -208,12 +205,5 @@ body {
     font-weight: 800;
     text-transform: uppercase;
     letter-spacing: 0.14em;
-}
-
-.series-scoreboard__winner--red {
-    color: #e8a49d;
-}
-
-.series-scoreboard__winner--blue {
-    color: #a9c6d9;
+    color: var(--gold);
 }

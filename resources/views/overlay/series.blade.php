@@ -37,15 +37,15 @@
     <div class="series-scoreboard{{ ! empty($state['finished']) ? ' series-scoreboard--over' : '' }}">
 
         <header class="series-scoreboard__header">
-            <div class="series-scoreboard__team series-scoreboard__team--red">
+            <div class="series-scoreboard__team series-scoreboard__team--left">
                 <span class="series-scoreboard__name">{{ e($series['teams']['red']['name']) }}</span>
             </div>
             <div class="series-scoreboard__score">
-                <span class="series-scoreboard__score-value series-scoreboard__score-value--red">{{ (int) $state['score']['red'] }}</span>
+                <span class="series-scoreboard__score-value">{{ (int) $state['score']['red'] }}</span>
                 <span class="series-scoreboard__score-sep">–</span>
-                <span class="series-scoreboard__score-value series-scoreboard__score-value--blue">{{ (int) $state['score']['blue'] }}</span>
+                <span class="series-scoreboard__score-value">{{ (int) $state['score']['blue'] }}</span>
             </div>
-            <div class="series-scoreboard__team series-scoreboard__team--blue">
+            <div class="series-scoreboard__team series-scoreboard__team--right">
                 <span class="series-scoreboard__name">{{ e($series['teams']['blue']['name']) }}</span>
             </div>
         </header>
@@ -54,9 +54,9 @@
             @foreach ($state['maps'] as $i => $map)
                 @php
                     // Score affiché par map : rounds pour la double attaque
-                    // (2-0, 2-1…), score du log pour les maps à log unique.
-                    // Une map unique sans score en journal (point manuel, log
-                    // en cours) affiche 0-0 comme les autres lignes.
+                    // (2-0, 2-1…), points pour les maps à log unique — score
+                    // live des points manuels, remplacé par le score final du
+                    // log au moment de son fetch (fin de map).
                     if ($map['mode'] === 'double') {
                         $mapScore = ((int) $map['rounds']['red']).' – '.((int) $map['rounds']['blue']);
                     } elseif ($map['scores'] !== null) {
@@ -65,12 +65,18 @@
                         $mapScore = '0 – 0';
                     }
                 @endphp
-                <li class="series-map series-map--{{ $map['status'] }}{{ $map['winner'] !== null ? ' series-map--won-'.$map['winner'] : '' }}{{ $i === $currentMapIndex ? ' series-map--current' : '' }}{{ $map['thumb'] !== null ? ' series-map--has-thumb' : '' }}"
+                {{-- Aucune teinte d'équipe : la couleur en jeu change plusieurs
+                     fois par map, c'est le nom du vainqueur qui identifie la
+                     map remportée, pas une couleur. --}}
+                <li class="series-map series-map--{{ $map['status'] }}{{ $i === $currentMapIndex ? ' series-map--current' : '' }}{{ $map['thumb'] !== null ? ' series-map--has-thumb' : '' }}"
                     @if ($map['thumb'] !== null)
                         style="--map-thumb: url('{{ $map['thumb'] }}')"
                     @endif>
                     <span class="series-map__name">{{ e($map['display']) }}</span>
                     <span class="series-map__score">{{ $mapScore }}</span>
+                    @if ($map['winner'] !== null)
+                        <span class="series-map__winner">{{ e($series['teams'][$map['winner']]['name']) }}</span>
+                    @endif
                     @if ($map['golden_cap'] && $map['status'] !== 'decided')
                         <span class="series-map__gc">GC</span>
                     @endif
@@ -81,7 +87,7 @@
         @if (! empty($state['finished']))
             <footer class="series-scoreboard__footer">
                 @if ($state['winner'] !== null)
-                    <span class="series-scoreboard__winner series-scoreboard__winner--{{ $state['winner'] }}">
+                    <span class="series-scoreboard__winner">
                         {{ e($series['teams'][$state['winner']]['name']) }}
                     </span>
                 @else

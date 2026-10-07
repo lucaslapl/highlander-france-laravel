@@ -15,7 +15,8 @@ namespace App\Services;
  *                 gagnant normalisé en équipe de série (« red »/« blue »,
  *                 indépendamment de la couleur en jeu) — événements produits
  *                 par le réconciliateur logs.tf (SeriesReconcileService) ;
- *  - « manual » : un point de map saisi à la main par un admin (contestation,
+ *  - « manual » : un point marqué saisi à la main par un admin (scoring live
+ *                 d'une map à log unique en attendant son log, contestation,
  *                 log manquant, rattrapage) ;
  *  - « void »   : annulation d'un événement (cible « target ») — l'événement
  *                 annulé reste dans le journal pour l'audit mais ne compte plus.
@@ -26,9 +27,14 @@ namespace App\Services;
  *    équipe) : chaque log = un round gagné (1-0 / 0-1). La map est décidée à
  *    2 rounds pour une équipe ; 1-1 reste en attente de golden cap (3e log) ;
  *    le score final d'une telle map est donc 2-0, 2-1 ou 1-1 (non décidée).
- *  - « single » (5cp, KOTH : un seul log) : la map est décidée par le log au
- *    score de rounds le plus élevé ; une égalité (stalemate) laisse la map en
- *    attente jusqu'à un log de départage (golden cap) ou un point manuel.
+ *  - « single » (KOTH, 5cp, payload race : un seul log) : le log ne remonte
+ *    qu'à la fin de la map et porte son score final — score inégal → map
+ *    décidée pour le meneur (winlimit atteint ou timelimit écoulé), égalité
+ *    au timelimit (ex. 2-2 en 5cp à 30 min) → golden cap à jouer, map en
+ *    attente du log de départage. En attendant le log, les points manuels
+ *    s'accumulent en score live : la map n'est décidée qu'au winlimit
+ *    atteint — 3 points en KOTH et payload race (mp_winlimit 3, pas de
+ *    golden cap possible), 5 en 5cp (mp_winlimit 5, mp_timelimit 30).
  *
  * Toute équipe étant susceptible de changer de couleur entre les logs (les
  * équipes s'échangent RED/BLU d'une moitié à l'autre d'un payload), les
@@ -62,6 +68,26 @@ final class SeriesScoreService
         }
 
         return self::MODE_SINGLE;
+    }
+
+    /**
+     * Nombre de points qui décident une map à log unique (mp_winlimit du
+     * serveur de match, configs ETF2L 9v9) : 3 en KOTH et payload race
+     * (koth_/plr_/tow_, timelimit 0 — une égalité y est impossible), 5 en
+     * 5cp et assimilés (mp_timelimit 30 : au timelimit, le meneur l'emporte
+     * et une égalité part en golden cap, voir compute).
+     */
+    public static function deriveWinlimit(string $map): int
+    {
+        $map = strtolower(trim($map));
+
+        foreach (['koth_', 'plr_', 'tow_'] as $prefix) {
+            if (str_starts_with($map, $prefix)) {
+                return 3;
+            }
+        }
+
+        return 5;
     }
 
     /**
@@ -103,6 +129,7 @@ final class SeriesScoreService
             $maps[$declared['name']] = [
                 'name' => $declared['name'],
                 'mode' => $declared['mode'],
+                'winlimit' => $declared['winlimit'],
                 'status' => 'pending',
                 'winner' => null,
                 'rounds' => ['red' => 0, 'blue' => 0],
@@ -134,10 +161,11 @@ final class SeriesScoreService
 
             if ($type === 'log') {
                 $map['log_ids'][] = (int) ($event['log_id'] ?? 0);
-                $map['scores'] = $this->seriesScores($event);
+                $logScores = $this->seriesScores($event);
                 $winner = (string) ($event['winner'] ?? '');
 
                 if ($map['mode'] === self::MODE_DOUBLE) {
+                    $map['scores'] = $logScores;
                     if ($winner === 'red' || $winner === 'blue') {
                         $map['rounds'][$winner]++;
                     }
@@ -147,12 +175,28 @@ final class SeriesScoreService
                     } elseif ($map['rounds']['red'] === 1 && $map['rounds']['blue'] === 1) {
                         $map['golden_cap'] = true;
                     }
-                } elseif ($winner !== '') {
-                    // Log unique : le gagnant au score de rounds décide la map.
-                    // Une égalité laisse la map en attente de départage.
-                    $map['rounds'][$winner] = 1;
-                    $map['status'] = 'decided';
-                    $map['winner'] = $winner;
+                } else {
+                    // Log unique : le log ne remonte qu'à la fin de la map et
+                    // porte son score final — le meneur (winlimit atteint ou
+                    // timelimit écoulé) l'emporte. Une égalité au timelimit
+                    // (ex. 2-2 en 5cp à 30 min) laisse la map en attente de
+                    // golden cap : celui-ci se joue après rechargement de la
+                    // map (config ETF2L mp_winlimit 1), son log ne porte donc
+                    // que le point du départage et s'ajoute à l'égalité.
+                    if ($map['golden_cap'] && $map['scores'] !== null && $logScores !== null) {
+                        $map['scores']['red'] += $logScores['red'];
+                        $map['scores']['blue'] += $logScores['blue'];
+                    } else {
+                        $map['scores'] = $logScores;
+                    }
+
+                    if ($winner !== '') {
+                        $map['status'] = 'decided';
+                        $map['winner'] = $winner;
+                        $map['golden_cap'] = false;
+                    } elseif ($map['scores'] !== null && $map['scores']['red'] === $map['scores']['blue']) {
+                        $map['golden_cap'] = true;
+                    }
                 }
             } elseif ($type === 'manual') {
                 $team = (string) ($event['team'] ?? '');
@@ -169,9 +213,20 @@ final class SeriesScoreService
                         $map['golden_cap'] = true;
                     }
                 } else {
-                    $map['rounds'][$team] = 1;
-                    $map['status'] = 'decided';
-                    $map['winner'] = $team;
+                    // Log unique : le point manuel est un point marqué en
+                    // direct (le score du log ne remonte qu'à la fin de la
+                    // map). Il s'accumule en score live et la map n'est
+                    // décidée qu'au winlimit (KOTH : 3, 5cp : 5) — sauf golden
+                    // cap en attente, que le point tranche.
+                    if ($map['scores'] === null) {
+                        $map['scores'] = ['red' => 0, 'blue' => 0];
+                    }
+                    $map['scores'][$team]++;
+
+                    if ($map['golden_cap'] || $map['scores'][$team] >= $map['winlimit']) {
+                        $map['status'] = 'decided';
+                        $map['winner'] = $team;
+                    }
                 }
             }
             unset($map);
@@ -233,9 +288,11 @@ final class SeriesScoreService
 
     /**
      * Maps déclarées de la série, mode explicite ou déduit par préfixe.
+     * Le winlimit ne concerne que les maps à log unique (nombre de points
+     * qui décident la map) ; en double attaque, il vaut les 2 rounds requis.
      *
      * @param  array<string, mixed>  $series
-     * @return array<int, array{name: string, mode: string}>
+     * @return array<int, array{name: string, mode: string, winlimit: int}>
      */
     private function declaredMaps(array $series): array
     {
@@ -251,7 +308,9 @@ final class SeriesScoreService
                 $mode = self::deriveMode($name);
             }
 
-            $declared[] = ['name' => $name, 'mode' => $mode];
+            $winlimit = $mode === self::MODE_SINGLE ? self::deriveWinlimit($name) : 2;
+
+            $declared[] = ['name' => $name, 'mode' => $mode, 'winlimit' => $winlimit];
         }
 
         return $declared;
