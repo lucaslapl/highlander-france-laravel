@@ -4,22 +4,22 @@
 @php
     $rIdx = (string) $index;
 @endphp
-<div class="table-row"
+<div class="table-row js-etf2l-team"
      style="border:1px solid #444; border-radius:8px; padding:12px; margin-bottom:10px; background:rgba(0,0,0,0.15);">
     <div style="display:flex; gap:12px; flex-wrap:wrap; align-items:flex-end;">
         <div style="flex:2; min-width:220px;">
             <label class="admin-form-label">Équipe</label>
-            <input type="text" name="rows[{{ $rIdx }}][name]" class="form-control" maxlength="64"
+            <input type="text" name="rows[{{ $rIdx }}][name]" class="form-control js-team-field-name" maxlength="64"
                    value="{{ e((string) ($row['name'] ?? '')) }}">
         </div>
         <div style="flex:2; min-width:200px;">
             <label class="admin-form-label">Avatar par URL (optionnel)</label>
-            <input type="url" name="rows[{{ $rIdx }}][avatar]" class="form-control" maxlength="500"
+            <input type="url" name="rows[{{ $rIdx }}][avatar]" class="form-control js-team-field-avatar" maxlength="500"
                    placeholder="https://…/logo.png" value="{{ e((string) ($row['avatar'] ?? '')) }}">
         </div>
         <div style="flex:1; min-width:120px;">
             <label class="admin-form-label">Pays (optionnel)</label>
-            <input type="text" name="rows[{{ $rIdx }}][country]" class="form-control" maxlength="32"
+            <input type="text" name="rows[{{ $rIdx }}][country]" class="form-control js-team-field-country" maxlength="32"
                    placeholder="France" value="{{ e((string) ($row['country'] ?? '')) }}">
         </div>
         <div style="width:80px;">

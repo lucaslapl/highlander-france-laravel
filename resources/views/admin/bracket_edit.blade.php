@@ -67,6 +67,38 @@
         </div>
     </div>
 
+    <h3 class="admin-section-title"><i class="fa-solid fa-user-group"></i> Remplissage assisté (équipes ETF2L)</h3>
+    <div class="admin-form-row" style="border:1px solid #9b6dff; border-radius:8px; padding:14px; background:rgba(155,109,255,0.08);">
+        @if (count($competitions) > 0)
+            <p style="margin:0 0 10px; color:#bbb; font-size:13px;">
+                Choisissez une compétition puis chargez ses équipes : un menu de sélection apparaît dans chaque case du
+                bracket (ou chaque ligne du classement) pour remplir nom, avatar et pays d'un clic. La saisie manuelle
+                reste possible à tout moment.
+            </p>
+            <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:flex-end;">
+                <div style="flex:2; min-width:280px;">
+                    <label class="admin-form-label" for="bracket-teams-competition">Compétition ETF2L</label>
+                    <select id="bracket-teams-competition" class="form-control">
+                        @foreach ($competitions as $competition)
+                            <option value="{{ (int) $competition['id'] }}">
+                                {{ e($competition['name']) }}{{ $competition['archived'] ? ' (archivée)' : '' }}
+                            </option>
+                        @endforeach
+                    </select>
+                </div>
+                <button type="button" id="bracket-load-teams" class="admin-btn admin-btn--primary">
+                    <i class="fa-solid fa-cloud-arrow-down"></i> Charger les équipes
+                </button>
+            </div>
+            <p id="bracket-teams-status" style="margin:10px 0 0; font-size:13px; color:#888;"></p>
+        @else
+            <p style="margin:0; color:#888; font-size:13px;">
+                Liste des compétitions ETF2L indisponible pour le moment : remplissez les équipes à la main, ou
+                réessayez plus tard.
+            </p>
+        @endif
+    </div>
+
     @if ($isBracket)
 
         <h3 class="admin-section-title"><i class="fa-solid fa-table-columns"></i> Colonnes du bracket</h3>

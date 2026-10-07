@@ -33,20 +33,20 @@
                 $team = $teams[$i] ?? ['name' => '', 'avatar' => '', 'country' => '', 'score' => ''];
                 $n = $i + 1;
             @endphp
-            <div style="flex:1; min-width:260px; border:1px solid #333; border-radius:8px; padding:12px;">
+            <div class="js-etf2l-team" style="flex:1; min-width:260px; border:1px solid #333; border-radius:8px; padding:12px;">
                 <h5 style="margin:0 0 8px; color:#bbb;">Équipe {{ $label }}</h5>
                 <label class="admin-form-label">Nom</label>
                 <input type="text" name="columns[{{ $cIdx }}][matches][{{ $mIdx }}][team{{ $n }}_name]"
-                       class="form-control" maxlength="64" value="{{ e((string) ($team['name'] ?? '')) }}">
+                       class="form-control js-team-field-name" maxlength="64" value="{{ e((string) ($team['name'] ?? '')) }}">
                 <label class="admin-form-label" style="margin-top:8px;">Avatar par URL (optionnel)</label>
                 <input type="url" name="columns[{{ $cIdx }}][matches][{{ $mIdx }}][team{{ $n }}_avatar]"
-                       class="form-control" maxlength="500" placeholder="https://…/logo.png"
+                       class="form-control js-team-field-avatar" maxlength="500" placeholder="https://…/logo.png"
                        value="{{ e((string) ($team['avatar'] ?? '')) }}">
                 <div style="display:flex; gap:10px; margin-top:8px;">
                     <div style="flex:1;">
                         <label class="admin-form-label">Pays (optionnel)</label>
                         <input type="text" name="columns[{{ $cIdx }}][matches][{{ $mIdx }}][team{{ $n }}_country]"
-                               class="form-control" maxlength="32" placeholder="France"
+                               class="form-control js-team-field-country" maxlength="32" placeholder="France"
                                value="{{ e((string) ($team['country'] ?? '')) }}">
                     </div>
                     <div style="width:110px;">

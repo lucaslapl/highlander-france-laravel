@@ -9,7 +9,9 @@ use App\Models\BracketRepository;
 use App\Models\SeriesRepository;
 use App\Services\AdminLogger;
 use App\Services\Auth;
+use App\Services\Etf2lTeamService;
 use Illuminate\Contracts\View\View;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 
@@ -23,8 +25,9 @@ use Illuminate\Http\Request;
  * vide (un bracket démarre avec une colonne et une case, un classement
  * sans ligne), puis tout se construit et se renomme dans l'éditeur —
  * colonnes, labels de round, équipes, avatars, scores. Pas d'import
- * automatique : les brackets et classements sont saisis à la main pour
- * éviter les erreurs de données externes.
+ * automatique des résultats : seuls les noms / avatars / pays des
+ * équipes peuvent être piochés dans une compétition ETF2L (remplissage
+ * assisté de l'éditeur).
  *
  * Le match diffusé en direct est désigné dans l'éditeur et peut être
  * attaché à une série (outil séries) : son score suit alors la série en
@@ -46,10 +49,13 @@ final class AdminBracketController extends Controller
 
     private SeriesRepository $series;
 
+    private Etf2lTeamService $etf2lTeams;
+
     public function __construct()
     {
         $this->brackets = new BracketRepository;
         $this->series = new SeriesRepository;
+        $this->etf2lTeams = new Etf2lTeamService;
     }
 
     /**
@@ -109,7 +115,9 @@ final class AdminBracketController extends Controller
 
     /**
      * GET /admin/overlay/bracket/{token} — éditeur complet (bracket ou
-     * classement selon le type de l'overlay).
+     * classement selon le type de l'overlay). La liste des compétitions
+     * ETF2L alimente le remplissage assisté (noms / avatars / pays) ;
+     * l'indisponibilité de l'API n'empêche pas l'édition manuelle.
      */
     public function edit(string $token): View
     {
@@ -117,17 +125,52 @@ final class AdminBracketController extends Controller
 
         $bracket = $this->requireBracket($token);
 
+        $competitions = [];
+        try {
+            $competitions = $this->etf2lTeams->competitions();
+        } catch (\Throwable) {
+            // API indisponible : le remplissage assisté sera masqué, le
+            // reste de l'éditeur reste utilisable.
+        }
+
         return view('admin.bracket_edit', [
             'title' => 'Admin - Overlay Bracket (OBS)',
             'description' => 'Édition de l\'overlay bracket / classement pour les broadcasts OBS.',
             'bracket' => $bracket,
             'overlay_url' => url('/bracket-overlay/'.$bracket['token']),
+            'competitions' => $competitions,
             // Payloads complets (l'index des séries ne porte pas les équipes).
             'seriesList' => array_values(array_filter(array_map(
                 fn (array $entry): ?array => $this->series->find((string) ($entry['token'] ?? '')),
                 $this->series->all(),
             ))),
         ]);
+    }
+
+    /**
+     * GET /admin/overlay/bracket/teams?competition_id=N — équipes d'une
+     * compétition ETF2L (nom, avatar, pays) pour le remplissage assisté
+     * de l'éditeur, interrogé en JavaScript. Vide si l'API est
+     * indisponible ou la compétition inconnue.
+     */
+    public function teams(Request $request): JsonResponse
+    {
+        Auth::requireOverlayTools();
+
+        $data = $request->validate([
+            'competition_id' => ['required', 'integer', 'min:1'],
+        ]);
+
+        $teams = [];
+        try {
+            $teams = $this->etf2lTeams->teams((int) $data['competition_id']);
+        } catch (\Throwable) {
+            // API indisponible : liste vide, message d'erreur explicite.
+        }
+
+        return response()
+            ->json(['teams' => $teams])
+            ->header('Cache-Control', 'no-store, no-cache, must-revalidate');
     }
 
     /**
