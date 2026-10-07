@@ -79,12 +79,19 @@
         var counter = 0;
         var placed = { upper: [], lower: [], final: [] };
 
+        /* La voie « final » est la dernière colonne du bracket : elle se
+           place à droite, après la voie la plus profonde (elle est seule
+           dans sa voie, son index interne partirait sinon de la gauche et
+           écraserait la première colonne des voies haute et basse). */
+        var stride = CARD_W + GAP_X;
+        var finalOffset = Math.max(lanes.upper.length, lanes.lower.length);
+
         ['upper', 'lower', 'final'].forEach(function (lane) {
             lanes[lane].forEach(function (column, depth) {
                 var gf = lane === 'final';
                 var w = gf ? GF_W : CARD_W;
                 var h = gf ? GF_H : CARD_H;
-                var x = MARGIN_X + depth * (CARD_W + GAP_X);
+                var x = MARGIN_X + (lane === 'final' ? finalOffset + depth : depth) * stride;
                 var n = (column.matches || []).length;
                 var total = n * h + Math.max(0, n - 1) * GAP_Y;
                 var band = BANDS[lane];

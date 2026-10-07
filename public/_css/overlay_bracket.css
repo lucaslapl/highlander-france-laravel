@@ -15,8 +15,8 @@
     --violet-bright: #e97fff;
     --violet-line: rgba(186, 53, 215, 0.57);
     --dim: rgba(255, 255, 255, 0.6);
-    --playoff-won-bg: rgba(42, 74, 42, 0.55);
-    --playoff-won: #8c8;
+    --win-bg: rgba(233, 127, 255, 0.42);
+    --win: var(--accent);
     --lose: #f35f5f;
     --live: #ff3c3c;
     --live-border: rgba(255, 90, 90, 0.65);
@@ -163,8 +163,11 @@ h1 em {
     text-align: right;
 }
 
-.team.win { background: linear-gradient(90deg, var(--playoff-won-bg), transparent); }
-.team.win .score { color: var(--playoff-won); }
+/* Équipe victorieuse : fond rose/violet ; perdant et score inconnu
+   restent sur le fond sombre neutre de la carte. */
+.team.win { background: linear-gradient(90deg, var(--win-bg), rgba(233, 127, 255, 0.08) 60%, transparent); }
+.team.win .score { color: var(--win); }
+.team.win .name { color: white; }
 
 .team.lose { color: var(--dim); }
 .team.lose .score { color: var(--lose); }
