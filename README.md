@@ -92,11 +92,12 @@ par polling de `/overlay/{token}/version` ou
 `/series-overlay/{token}/version` — plus besoin de recharger la source
 manuellement pendant le cast.
 
-La gestion se fait dans le panel **`/admin/overlay`**, réservé aux admins et
-aux rôles **caster / prod** (middleware `overlay-tools`) : génération et
-suppression des tokens, édition/score manuel, rafraîchissement,
-inversion des côtés red/blue, avatars d'équipes. Les casters et la prod
-n'ont accès à rien d'autre du `/admin/*`.
+La gestion se fait dans le panel **`/admin/overlay`** (outil « Overlay Logs »),
+réservé aux admins et aux rôles **caster / prod** (middleware `overlay-tools`) :
+génération et suppression des tokens, noms d'équipes (A / B côté admin, logs.tf
+les classe arbitrairement en rouge/bleu) avec bouton d'interversion, avatars
+d'équipes par URL externe (mémorisés pour réutilisation), rafraîchissement.
+Les casters et la prod n'ont accès à rien d'autre du `/admin/*`.
 
 Les scores de série sont rapprochés automatiquement des logs logs.tf
 (commande de réconciliation `app:series-reconcile` en filet de sécurité).

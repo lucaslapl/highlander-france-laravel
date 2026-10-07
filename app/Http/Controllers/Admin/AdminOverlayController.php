@@ -15,13 +15,16 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 
 /**
- * Outil « Overlay match » : génération d'overlays de stats pour OBS
+ * Outil « Overlay Logs » : génération d'overlays de stats pour OBS
  * Studio à partir d'un log logs.tf. Accessible aux admins et aux rôles
  * caster / prod (panel restreint /admin/panel).
  *
  * Chaque overlay possède son propre token et son URL publique
  * (/overlay/{token}) à pointer dans OBS via une source navigateur web.
- * Les noms d'équipes, avatars (upload ou URL) et le style (opacité, blur)
+ * Les équipes sont présentées comme A / B (logs.tf les classe en
+ * rouge/bleu de façon arbitraire, sans lien avec le layout du broadcast :
+ * le bouton d'interversion de la page d'édition échange noms et avatars).
+ * Les noms d'équipes et avatars (URL externe, mémorisée pour réutilisation)
  * sont personnalisables ; la vue overlay se rafraîchit automatiquement
  * dès que le payload change (polling de version côté navigateur).
  */
@@ -47,9 +50,10 @@ final class AdminOverlayController extends Controller
         Auth::requireOverlayTools();
 
         return view('admin.overlay', [
-            'title' => 'Admin - Overlay match (OBS)',
+            'title' => 'Admin - Overlay Logs (OBS)',
             'description' => 'Génération d\'overlays de stats logs.tf pour les broadcasts OBS de Highlander France.',
             'overlays' => $this->overlays->all(),
+            'avatar_urls' => $this->overlays->avatarUrls(),
         ]);
     }
 
@@ -86,7 +90,6 @@ final class AdminOverlayController extends Controller
             'token' => $token,
             'created_at' => time(),
             'teams' => $this->withGenerationInputs($payload['teams'], $data),
-            'style' => $this->defaultStyle(),
         ]);
 
         $this->overlays->save($overlay);
@@ -96,7 +99,7 @@ final class AdminOverlayController extends Controller
     }
 
     /**
-     * GET /admin/overlay/{token} — édition d'un overlay (équipes, style).
+     * GET /admin/overlay/{token} — édition d'un overlay (équipes A / B).
      */
     public function edit(string $token): View
     {
@@ -105,20 +108,17 @@ final class AdminOverlayController extends Controller
         $overlay = $this->requireOverlay($token);
 
         return view('admin.overlay_edit', [
-            'title' => 'Admin - Overlay match (OBS)',
+            'title' => 'Admin - Overlay Logs (OBS)',
             'description' => 'Personnalisation de l\'overlay de stats pour les broadcasts OBS.',
             'overlay' => $overlay,
             'overlay_url' => url('/overlay/'.$overlay['token']),
-            'has_avatar' => [
-                'red' => $this->overlays->hasAvatar($overlay['token'], 'red'),
-                'blue' => $this->overlays->hasAvatar($overlay['token'], 'blue'),
-            ],
+            'avatar_urls' => $this->overlays->avatarUrls(),
         ]);
     }
 
     /**
-     * POST /admin/overlay/{token}/update — noms d'équipes, avatars (URL) et
-     * style (panneau, opacité, blur).
+     * POST /admin/overlay/{token}/update — noms des équipes A / B et
+     * avatars par URL externe (mémorisée pour réutilisation).
      */
     public function update(Request $request, string $token): RedirectResponse
     {
@@ -131,9 +131,6 @@ final class AdminOverlayController extends Controller
             'blue_name' => ['required', 'string', 'max:'.self::MAX_NAME_LEN],
             'red_avatar_url' => ['nullable', 'url:http,https', 'max:500'],
             'blue_avatar_url' => ['nullable', 'url:http,https', 'max:500'],
-            'panel' => ['nullable', 'boolean'],
-            'opacity' => ['required', 'integer', 'between:0,100'],
-            'blur' => ['required', 'integer', 'between:0,20'],
         ]);
 
         $overlay['teams']['red']['name'] = trim((string) $data['red_name']);
@@ -141,21 +138,19 @@ final class AdminOverlayController extends Controller
         $overlay['teams']['red']['avatar_url'] = $this->cleanUrl($data['red_avatar_url'] ?? null);
         $overlay['teams']['blue']['avatar_url'] = $this->cleanUrl($data['blue_avatar_url'] ?? null);
 
-        $overlay['style'] = [
-            'panel' => (bool) ($data['panel'] ?? false),
-            'opacity' => (int) $data['opacity'],
-            'blur' => (int) $data['blur'],
-        ];
-
         $this->overlays->save($overlay);
+        $this->rememberAvatarUrls($overlay['teams']);
 
         return back()->with('success', 'Overlay mis à jour.');
     }
 
     /**
-     * POST /admin/overlay/{token}/swap — intervertit les équipes Rouge et
-     * Bleue côté personnalisation : noms, avatars par URL et avatars
-     * uploadés. Les scores et stats des joueurs ne bougent pas.
+     * POST /admin/overlay/{token}/swap — intervertit les équipes A et B
+     * côté personnalisation : noms et avatars par URL (ainsi que les
+     * avatars historiques uploadés, s'il en reste). Les scores et les
+     * stats des joueurs ne bougent pas : logs.tf classe les équipes en
+     * rouge/bleu arbitrairement, ce bouton sert à aligner l'affichage
+     * sur le layout souhaité du broadcast.
      */
     public function swap(string $token): RedirectResponse
     {
@@ -175,51 +170,12 @@ final class AdminOverlayController extends Controller
         $this->overlays->swapAvatars($token);
         AdminLogger::log('admin_overlay_swap', null, 'SUCCESS (overlay '.$token.')');
 
-        return back()->with('success', 'Équipes interverties : noms et avatars Rouge / Bleue échangés.');
-    }
-
-    /**
-     * POST /admin/overlay/{token}/avatar — upload de l'avatar d'une équipe.
-     */
-    public function avatar(Request $request, string $token): RedirectResponse
-    {
-        Auth::requireOverlayTools();
-
-        $this->requireOverlay($token);
-
-        $data = $request->validate([
-            'team' => ['required', 'string', 'in:red,blue'],
-            'avatar' => ['required', 'image', 'mimes:jpeg,png,webp', 'max:'.$this->overlays->maxAvatarKb()],
-        ]);
-
-        if (! $this->overlays->saveAvatar($token, (string) $data['team'], $data['avatar'])) {
-            return back()->with('error', 'Format d\'avatar non autorisé (jpeg, png, webp).');
-        }
-
-        return back()->with('success', 'Avatar enregistré.');
-    }
-
-    /**
-     * POST /admin/overlay/{token}/avatar/delete — supprime l'avatar uploadé.
-     */
-    public function avatarDelete(Request $request, string $token): RedirectResponse
-    {
-        Auth::requireOverlayTools();
-
-        $this->requireOverlay($token);
-
-        $data = $request->validate([
-            'team' => ['required', 'string', 'in:red,blue'],
-        ]);
-
-        $this->overlays->deleteAvatar($token, (string) $data['team']);
-
-        return back()->with('success', 'Avatar supprimé.');
+        return back()->with('success', 'Équipes interverties : noms et avatars A / B échangés.');
     }
 
     /**
      * POST /admin/overlay/{token}/refresh — relit le log logs.tf (scores et
-     * stats à jour, ex. fin de map) en conservant noms, avatars et style.
+     * stats à jour, ex. fin de map) en conservant noms et avatars.
      */
     public function refresh(Request $request, string $token): RedirectResponse
     {
@@ -232,7 +188,7 @@ final class AdminOverlayController extends Controller
             return back()->with('error', 'Impossible de relire le log logs.tf, réessayez plus tard.');
         }
 
-        // Les personnalisations (noms, avatars, style) priment sur le refresh.
+        // Les personnalisations (noms, avatars) priment sur le refresh.
         $overlay = array_merge($overlay, $payload, [
             'token' => $token,
             'teams' => $this->mergeTeams($overlay['teams'], $payload['teams']),
@@ -289,7 +245,8 @@ final class AdminOverlayController extends Controller
     /**
      * Initialise les champs personnalisables des équipes depuis les saisies
      * du formulaire de génération (optionnelles) : noms et avatars par URL,
-     * avec repli sur les valeurs par défaut du payload logs.tf.
+     * avec repli sur les valeurs par défaut du payload logs.tf. Les URL
+     * d'avatars sont mémorisées pour les prochaines générations.
      *
      * @param  array<string, array<string, mixed>>  $teams
      * @param  array<string, mixed>  $data
@@ -303,7 +260,24 @@ final class AdminOverlayController extends Controller
             $teams[$team]['avatar_url'] = $this->cleanUrl($data[$team.'_avatar_url'] ?? null);
         }
 
+        $this->rememberAvatarUrls($teams);
+
         return $teams;
+    }
+
+    /**
+     * Mémorise les URL d'avatars non vides des deux équipes.
+     *
+     * @param  array<string, array<string, mixed>>  $teams
+     */
+    private function rememberAvatarUrls(array $teams): void
+    {
+        foreach (['red', 'blue'] as $team) {
+            $url = (string) ($teams[$team]['avatar_url'] ?? '');
+            if ($url !== '') {
+                $this->overlays->rememberAvatarUrl($url);
+            }
+        }
     }
 
     /**
@@ -321,14 +295,6 @@ final class AdminOverlayController extends Controller
         }
 
         return $fresh;
-    }
-
-    /**
-     * @return array<string, mixed>
-     */
-    private function defaultStyle(): array
-    {
-        return ['panel' => true, 'opacity' => 70, 'blur' => 6];
     }
 
     /**

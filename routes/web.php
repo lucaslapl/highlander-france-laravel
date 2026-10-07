@@ -106,8 +106,6 @@ Route::middleware('overlay-tools')->prefix('admin')->group(function (): void {
     Route::post('/overlay/{token}/update', [AdminOverlayController::class, 'update'])->where('token', '[a-z0-9]{16}');
     Route::post('/overlay/{token}/refresh', [AdminOverlayController::class, 'refresh'])->where('token', '[a-z0-9]{16}');
     Route::post('/overlay/{token}/swap', [AdminOverlayController::class, 'swap'])->where('token', '[a-z0-9]{16}');
-    Route::post('/overlay/{token}/avatar', [AdminOverlayController::class, 'avatar'])->where('token', '[a-z0-9]{16}');
-    Route::post('/overlay/{token}/avatar/delete', [AdminOverlayController::class, 'avatarDelete'])->where('token', '[a-z0-9]{16}');
     Route::post('/overlay/{token}/delete', [AdminOverlayController::class, 'delete'])->where('token', '[a-z0-9]{16}');
     Route::get('/series', [AdminSeriesController::class, 'index'])->name('admin.series');
     Route::post('/series/create', [AdminSeriesController::class, 'create']);

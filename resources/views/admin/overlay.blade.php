@@ -7,7 +7,7 @@
 @include('admin.partials.panel_back_link')
 
 <div class="admin-header" style="--accent:#9b6dff;">
-    <h2><i class="fa-solid fa-tv"></i> Overlay match (OBS)</h2>
+    <h2><i class="fa-solid fa-tv"></i> Overlay Logs (OBS)</h2>
     <p>Génération d'overlays de stats logs.tf pour les broadcasts OBS : entrez un lien logs.tf, personnalisez, puis pointez l'URL d'overlay dans OBS Studio (source navigateur web, 1920x1080, fond transparent).</p>
 </div>
 
@@ -25,27 +25,32 @@
         </button>
     </div>
 
+    @if (! empty($avatar_urls))
+        <datalist id="overlay-avatar-urls">
+            @foreach ($avatar_urls as $url)
+                <option value="{{ e($url) }}"></option>
+            @endforeach
+        </datalist>
+    @endif
+
     <div class="admin-form-row" style="display:flex; gap:24px; flex-wrap:wrap;">
-        @foreach (['red' => 'Rouge', 'blue' => 'Bleue'] as $team => $label)
+        @foreach (['red' => 'A', 'blue' => 'B'] as $team => $label)
             <div style="flex:1; min-width:300px; border:1px solid #333; border-radius:8px; padding:14px;">
-                <h4 style="margin:0 0 10px; color: {{ $team === 'red' ? '#e06c5a' : '#5885a2' }};">Équipe {{ $label }}</h4>
+                <h4 style="margin:0 0 10px; color:#bbb;">Équipe {{ $label }}</h4>
                 <label class="admin-form-label" for="overlay-{{ $team }}-name">Nom affiché (optionnel)</label>
                 <input type="text" id="overlay-{{ $team }}-name" name="{{ $team }}_name" class="form-control"
                        placeholder="{{ $team === 'red' ? 'RED par défaut' : 'BLU par défaut' }}" maxlength="64">
                 <label class="admin-form-label" style="margin-top:10px;" for="overlay-{{ $team }}-avatar">Avatar par URL externe (optionnel)</label>
                 <input type="url" id="overlay-{{ $team }}-avatar" name="{{ $team }}_avatar_url" class="form-control"
-                       placeholder="https://…/logo.png">
+                       list="overlay-avatar-urls" placeholder="https://…/logo.png">
             </div>
         @endforeach
     </div>
-    <div class="admin-form-row" style="display:flex; justify-content:flex-end;">
-        <button type="button" class="admin-btn js-overlay-swap"
-                title="Échange les noms et avatars entre Rouge et Bleue">
-            <i class="fa-solid fa-right-left"></i> Intervertir Rouge / Bleue
-        </button>
-    </div>
     <p style="color:#777; font-size:13px; margin:6px 0 0;">
-        Les scores, joueurs, classes et stats medics sont récupérés depuis l'API logs.tf. Noms et avatars saisis ici sont appliqués dès la création : tout est prêt avant le stream, et reste modifiable ensuite (transparence, upload d'avatar).
+        Les scores, joueurs, classes et stats medics sont récupérés depuis l'API logs.tf. Noms et avatars saisis ici sont appliqués dès la création : tout est prêt avant le stream, et reste modifiable ensuite. Les URL d'avatars utilisées sont mémorisées et re-proposées (saisie prédictive) lors des prochaines générations.
+    </p>
+    <p style="color:#777; font-size:13px; margin:6px 0 0;">
+        logs.tf classe les équipes en « rouge » et « bleu » sans lien avec votre layout : ici elles sont simplement A et B, et si les côtés ne conviennent pas, la page de l'overlay créé propose un bouton d'interversion.
     </p>
 </form>
 
@@ -96,9 +101,5 @@
 
 @push('styles')
 <link rel="stylesheet" href="{{ hlfr_asset('/_css/admin_overlay.css') }}">
-@endpush
-
-@push('scripts')
-<script src="{{ hlfr_asset('/_js/admin_overlay.js') }}" defer></script>
 @endpush
 @endsection

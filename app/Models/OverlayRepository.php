@@ -4,25 +4,26 @@ declare(strict_types=1);
 
 namespace App\Models;
 
-use Illuminate\Http\UploadedFile;
-
 /**
- * Persistance des overlays de stats match (outil admin « Overlay match »).
+ * Persistance des overlays de stats match (outil admin « Overlay Logs »).
  *
  * Les overlays vivent dans des caches JSON sous hlfr_data_path('overlays/') :
  * un index (liste des overlays) et un payload complet par overlay. Les
- * avatars d'équipe uploadés sont stockés sous storage/app/public/
- * overlay-avatars/ et servis par la route /overlay/{token}/avatar/{team}.
+ * avatars d'équipe sont fournis par URL externe, mémorisées dans un cache
+ * dédié (avatar_urls.json) pour être proposées à la prochaine génération.
+ * Les avatars historiques uploadés restent stockés sous
+ * storage/app/public/overlay-avatars/ et servis par la route
+ * /overlay/{token}/avatar/{team} (l'upload n'est plus proposé).
  *
  * Aucun modèle Eloquent : état 100% fichiers, régénérable depuis logs.tf.
  */
 final class OverlayRepository
 {
-    /** Extensions d'avatar autorisées (upload). */
+    /** Extensions d'avatar autorisées (fichiers historiques). */
     private const AVATAR_EXTENSIONS = ['jpg', 'png', 'webp'];
 
-    /** Taille maximale d'un avatar en Ko. */
-    private const MAX_AVATAR_KB = 2048;
+    /** Nombre d'URL d'avatars mémorisées au maximum. */
+    private const MAX_REMEMBERED_AVATAR_URLS = 20;
 
     private string $dir;
 
@@ -131,35 +132,6 @@ final class OverlayRepository
     }
 
     /**
-     * Enregistre l'avatar uploadé d'une équipe (remplace l'ancien).
-     * Retourne false si l'extension n'est pas autorisée.
-     */
-    public function saveAvatar(string $token, string $team, UploadedFile $file): bool
-    {
-        $ext = strtolower((string) $file->getClientOriginalExtension());
-        if ($ext === 'jpeg') {
-            $ext = 'jpg';
-        }
-
-        if (! in_array($ext, self::AVATAR_EXTENSIONS, true)) {
-            return false;
-        }
-
-        $this->deleteAvatar($token, $team);
-
-        $dir = $this->avatarDir($token);
-        if (! is_dir($dir)) {
-            @mkdir($dir, 0755, true);
-        }
-
-        $target = $dir.'/'.$team.'.'.$ext;
-        move_uploaded_file((string) $file->getRealPath(), $target)
-            ?: @copy((string) $file->getRealPath(), $target);
-
-        return is_file($target);
-    }
-
-    /**
      * Supprime l'avatar uploadé d'une équipe (silencieux s'il n'existe pas).
      */
     public function deleteAvatar(string $token, string $team): void
@@ -230,11 +202,50 @@ final class OverlayRepository
     }
 
     /**
-     * Taille maximale d'un avatar en Ko (exposée à la validation).
+     * Mémorise une URL d'avatar pour la proposer lors des prochaines
+     * générations d'overlays (les plus récentes en tête, doublons retirés).
      */
-    public function maxAvatarKb(): int
+    public function rememberAvatarUrl(string $url): void
     {
-        return self::MAX_AVATAR_KB;
+        $url = trim($url);
+        if ($url === '') {
+            return;
+        }
+
+        $urls = array_values(array_unique(array_merge(
+            [$url],
+            array_filter($this->avatarUrls(), static fn (string $existing): bool => $existing !== $url)
+        )));
+        $urls = array_slice($urls, 0, self::MAX_REMEMBERED_AVATAR_URLS);
+
+        if (! is_dir($this->dir)) {
+            @mkdir($this->dir, 0755, true);
+        }
+
+        @file_put_contents($this->avatarUrlFile(), json_encode($urls), LOCK_EX);
+    }
+
+    /**
+     * URL d'avatars déjà utilisées, de la plus récente à la plus ancienne.
+     *
+     * @return array<int, string>
+     */
+    public function avatarUrls(): array
+    {
+        $file = $this->avatarUrlFile();
+        if (! is_file($file)) {
+            return [];
+        }
+
+        $data = json_decode((string) file_get_contents($file), true);
+        if (! is_array($data)) {
+            return [];
+        }
+
+        return array_values(array_filter(
+            $data,
+            static fn (mixed $url): bool => is_string($url) && $url !== ''
+        ));
     }
 
     /**
@@ -267,6 +278,11 @@ final class OverlayRepository
     private function payloadFile(string $token): string
     {
         return $this->dir.'/overlay_'.$token.'.json';
+    }
+
+    private function avatarUrlFile(): string
+    {
+        return $this->dir.'/avatar_urls.json';
     }
 
     private function avatarDir(string $token): string

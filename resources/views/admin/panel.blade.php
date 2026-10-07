@@ -11,8 +11,8 @@
 
 <div class="admin-cards-grid">
     <div class="admin-action-card" style="--accent: #9b6dff;">
-        <h4 class="admin-action-card__title"><i class="fa-solid fa-tv"></i> Overlay match (OBS)</h4>
-        <p class="admin-action-card__desc">Génération d'overlays de stats logs.tf pour OBS : équipes, scores, joueurs et medics, avec transparence réglable.</p>
+        <h4 class="admin-action-card__title"><i class="fa-solid fa-tv"></i> Overlay Logs (OBS)</h4>
+        <p class="admin-action-card__desc">Génération d'overlays de stats logs.tf pour OBS : équipes, scores, joueurs et medics.</p>
         <a href="/admin/overlay" class="admin-link-btn">Gérer les overlays</a>
     </div>
 

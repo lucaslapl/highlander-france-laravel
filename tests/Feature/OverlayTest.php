@@ -9,8 +9,8 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
 /**
- * Outil « Overlay match » : accès réservé aux admins côté panel, vue overlay
- * publique par token (OBS), mise à jour du style et suppression.
+ * Outil « Overlay Logs » : accès réservé aux admins côté panel, vue overlay
+ * publique par token (OBS), mise à jour des équipes et suppression.
  */
 class OverlayTest extends TestCase
 {
@@ -111,13 +111,17 @@ class OverlayTest extends TestCase
             ->assertOk()
             ->assertSee('4059225')
             ->assertSee(url('/overlay/'.self::TOKEN))
-            // Le formulaire de génération permet de préparer noms et avatars.
+            // Le formulaire de génération permet de préparer noms et avatars,
+            // avec les équipes présentées comme A / B (côtés arbitraires).
             ->assertSee('red_name')
             ->assertSee('blue_name')
             ->assertSee('red_avatar_url')
             ->assertSee('blue_avatar_url')
-            // Bouton d'interversion des équipes côté client.
-            ->assertSee('js-overlay-swap');
+            ->assertSee('Équipe A')
+            ->assertSee('Équipe B')
+            // Plus de bouton d'interversion côté page de génération :
+            // il vit désormais sur la page d'édition de l'overlay.
+            ->assertDontSee('js-overlay-swap');
     }
 
     public function test_la_generation_rejette_une_saisie_invalide(): void
@@ -186,7 +190,7 @@ class OverlayTest extends TestCase
 
     // ─── Édition ──────────────────────────────────────────────────────────
 
-    public function test_l_admin_modifie_noms_et_style_et_la_version_bump(): void
+    public function test_l_admin_modifie_noms_et_avatars_et_la_version_bump(): void
     {
         $this->seedOverlay();
 
@@ -202,8 +206,6 @@ class OverlayTest extends TestCase
                 'blue_name' => 'Baguettes',
                 'red_avatar_url' => 'https://example.com/logo.png',
                 'blue_avatar_url' => '',
-                'opacity' => 45,
-                'blur' => 12,
             ])
             ->assertRedirect();
 
@@ -212,16 +214,13 @@ class OverlayTest extends TestCase
         $this->assertSame('Baguettes', $after['teams']['blue']['name']);
         $this->assertSame('https://example.com/logo.png', $after['teams']['red']['avatar_url']);
         $this->assertNull($after['teams']['blue']['avatar_url']);
-        $this->assertSame(45, $after['style']['opacity']);
-        $this->assertSame(12, $after['style']['blur']);
-        $this->assertFalse($after['style']['panel']);
         $this->assertGreaterThan((int) $before['version'], (int) $after['version']);
 
         // L'overlay reflète le nouveau nom (polling OBS → reload).
         $this->get('/overlay/'.self::TOKEN)->assertOk()->assertSee('Les Étoiles');
     }
 
-    public function test_la_validation_rejette_une_opacite_hors_bornes(): void
+    public function test_les_urls_d_avatars_sont_memorisees_pour_reutilisation(): void
     {
         $this->seedOverlay();
 
@@ -229,10 +228,54 @@ class OverlayTest extends TestCase
             ->post('/admin/overlay/'.self::TOKEN.'/update', [
                 'red_name' => 'RED',
                 'blue_name' => 'BLU',
-                'opacity' => 140,
-                'blur' => 6,
+                'red_avatar_url' => 'https://example.com/logo.png',
+                'blue_avatar_url' => 'https://example.com/logo-b.png',
             ])
-            ->assertInvalid(['opacity']);
+            ->assertRedirect();
+
+        // Les deux URL sont mémorisées et proposées en saisie prédictive
+        // sur la page de génération comme sur la page d'édition.
+        $session = $this->adminSession();
+        $this->withSession($session)
+            ->get('/admin/overlay')
+            ->assertOk()
+            ->assertSee('https://example.com/logo.png')
+            ->assertSee('https://example.com/logo-b.png');
+
+        $this->withSession($session)
+            ->get('/admin/overlay/'.self::TOKEN)
+            ->assertOk()
+            ->assertSee('https://example.com/logo.png')
+            ->assertSee('https://example.com/logo-b.png');
+
+        // La dernière URL mémorisée passe en tête de liste.
+        $this->assertSame(
+            ['https://example.com/logo-b.png', 'https://example.com/logo.png'],
+            array_slice((new OverlayRepository)->avatarUrls(), 0, 2)
+        );
+    }
+
+    public function test_l_upload_d_avatar_n_est_plus_propose(): void
+    {
+        $this->seedOverlay();
+
+        $session = $this->adminSession();
+
+        // Les routes d'upload ont disparu.
+        $this->withSession($session)
+            ->post('/admin/overlay/'.self::TOKEN.'/avatar', [])
+            ->assertNotFound();
+        $this->withSession($session)
+            ->post('/admin/overlay/'.self::TOKEN.'/avatar/delete', ['team' => 'red'])
+            ->assertNotFound();
+
+        // La page d'édition ne propose plus de champ fichier.
+        $this->withSession($session)
+            ->get('/admin/overlay/'.self::TOKEN)
+            ->assertOk()
+            ->assertDontSee('type="file"', false)
+            // Le bouton d'interversion A / B est mis en avant et expliqué.
+            ->assertSee('Intervertir les équipes A / B');
     }
 
     public function test_l_admin_intervertit_les_equipes_noms_avatars(): void
