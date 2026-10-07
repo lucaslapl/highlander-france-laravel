@@ -9,3 +9,6 @@
 /.github export-ignore
 CHANGELOG.md export-ignore
 .styleci.yml export-ignore
+
+# GitHub : ne pas compter le Dockerfile dans les statistiques de langage
+Dockerfile linguist-documentation

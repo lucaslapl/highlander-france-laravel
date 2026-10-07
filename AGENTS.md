@@ -7,7 +7,7 @@ Laravel 13 (PHP 8.3+) rewrite of a legacy home-made MVC site for "Highlander Fra
 Three components live in this repo:
 - **Laravel website** (repo root) — the main app
 - **`bot/`** — "Octave" Discord bot (Node.js ESM, discord.js v14)
-- **`plugins/`** — two SourceMod Pawn server plugins pushing data via tokenized webhooks
+- **`plugins/`** — three SourceMod Pawn server plugins (`hlfr_etf2l_rename`, `hlfr_live_match`, `hlfr_match_log`) pushing data via tokenized webhooks
 
 All UI strings, comments, and docblocks are in **French**. Read `README.md`, `bot/README.md`, and `plugins/*/README.md` before touching those areas.
 
@@ -28,6 +28,11 @@ All UI strings, comments, and docblocks are in **French**. Read `README.md`, `bo
 - **Real-time pipeline is webhook-driven.** Match stats update on `POST /api/server/match-ended` (shared token + IP allowlist, CSRF-exempt). The scheduled commands (`app:update-stats`, etc.) are only safety nets. Don't duplicate or restructure this pipeline.
 - **Frontend is vanilla JS/CSS** in `public/_css`, `public/_js`. Vite/Tailwind 4 only compiles `resources/css/app.css`. No JS framework; keep using `hlfr_asset()` for cache busting.
 - **Concurrency is guarded** with `flock()` lock files (services/webhooks) and `withoutOverlapping()` (see `routes/console.php`). Any new scheduled task or service must follow the same pattern.
+- **OBS overlays are token-URL, session-less pages.** `/overlay/{token}` (match stats) and `/series-overlay/{token}` (series scoreboard) render fully transparent 1920x1080 pages (Blade views in `resources/views/overlay/`, CSS in `public/_css/overlay_*.css`); OBS cannot authenticate, so access relies on a random 16-char hex token and exposes no sensitive data. Self-refresh is done by polling `/version` — each journal event (logs.tf log, manual point, cancellation) bumps the version. Admin tooling for casters/prod lives under `/admin/overlay` behind the `overlay-tools` middleware (admins + caster/prod roles, nothing else of `/admin/*`) — keep that restriction intact.
+
+## Workflow rules
+
+- **Always end a file-modification session with a commit message.** After any session that modifies files, the agent must provide a ready-to-use commit message, written per Conventional Commits (`type(scope): description`, e.g. `feat(overlay): ...`, `fix(bot): ...`, `docs: ...`), in English lowercase like the existing history. The agent drafts the message but never runs `git commit` (nor `git push`) without explicit validation from the maintainer.
 
 ## Required verification
 

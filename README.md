@@ -76,6 +76,31 @@ php artisan app:backfill-etf2l-history  # historique 180 jours
 php artisan app:import-legacy <stats.db>
 ```
 
+## Overlays OBS (sources navigateur)
+
+Le site sert deux overlays pour OBS Studio, à ajouter comme **source
+navigateur web** (1920x1080, fond entièrement transparent) :
+
+- `/overlay/{token}` — scoreboard de stats de match (données logs.tf) ;
+- `/series-overlay/{token}` — scoreboard de série playoffs : score de la
+  série, maps jouées avec miniatures, points manuels, gagnant.
+
+L'URL contient un token aléatoire (16 caractères hexa) impossible à
+deviner : pas d'authentification par session (OBS ne peut pas s'authentifier),
+aucune donnée sensible exposée. Chaque overlay se rafraîchit automatiquement
+par polling de `/overlay/{token}/version` ou
+`/series-overlay/{token}/version` — plus besoin de recharger la source
+manuellement pendant le cast.
+
+La gestion se fait dans le panel **`/admin/overlay`**, réservé aux admins et
+aux rôles **caster / prod** (middleware `overlay-tools`) : génération et
+suppression des tokens, édition/score manuel, rafraîchissement,
+inversion des côtés red/blue, avatars d'équipes. Les casters et la prod
+n'ont accès à rien d'autre du `/admin/*`.
+
+Les scores de série sont rapprochés automatiquement des logs logs.tf
+(commande de réconciliation `app:series-reconcile` en filet de sécurité).
+
 ## Streams Twitch (badge « EN DIRECT »)
 
 Les chaînes suivies sont détectées automatiquement : quand un stream démarre,
