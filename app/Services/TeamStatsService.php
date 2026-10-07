@@ -30,7 +30,7 @@ final class TeamStatsService
     /** TTL (s) du cache des réponses ETF2L / logs.tf lors de la préparation. */
     private const CACHE_TTL_S = 300;
 
-    /** Délai minimal entre deux appels HTTP réels (ETF2L & logs.tf : 60 req/min). */
+    /** Délai minimal entre deux appels logs.tf réels (60 req/min). */
     private const HTTP_DELAY_S = 1.1;
 
     private float $lastHttpAt = 0;
@@ -738,7 +738,13 @@ final class TeamStatsService
             }
         }
 
-        $this->throttle();
+        // ETF2L : budget de 60 req/min partagé entre tous les processus du
+        // site via Etf2lRateLimiter ; logs.tf : espacement local (API distincte).
+        if (str_contains($url, 'etf2l.org')) {
+            (new Etf2lRateLimiter)->wait();
+        } else {
+            $this->throttle();
+        }
 
         $meta = JsonClient::getWithMeta($url, 15, 'Highlander France/1.0', ['Accept: application/json']);
         if ($meta['curl_error'] !== '') {

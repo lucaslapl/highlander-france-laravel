@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services\Crons;
 
 use App\Services\AdminLogger;
+use App\Services\Etf2lRateLimiter;
 use App\Services\JsonClient;
 use App\Services\SteamId;
 use Illuminate\Support\Facades\DB;
@@ -28,8 +29,6 @@ final class ComputePlayerPalmaresService
     private const SCRIPT_NAME = 'compute_player_palmares.php';
 
     private const LOCK_FILE = 'compute_player_palmares.lock';
-
-    private const API_CALL_DELAY_S = 1.1;
 
     private const HTTP_TIMEOUT_S = 15;
 
@@ -105,11 +104,13 @@ final class ComputePlayerPalmaresService
 
     private \PDO $db;
 
-    private float $lastHttpAt = 0;
+    /** Espacement des appels HTTP réels, partagé entre tous les processus. */
+    private Etf2lRateLimiter $limiter;
 
     public function __construct()
     {
         $this->db = DB::connection()->getPdo();
+        $this->limiter = new Etf2lRateLimiter;
     }
 
     // ---------------------------------------------------------------
@@ -129,11 +130,7 @@ final class ComputePlayerPalmaresService
             }
         }
 
-        $elapsed = microtime(true) - $this->lastHttpAt;
-        if ($this->lastHttpAt > 0 && $elapsed < self::API_CALL_DELAY_S) {
-            usleep((int) ((self::API_CALL_DELAY_S - $elapsed) * 1e6));
-        }
-        $this->lastHttpAt = microtime(true);
+        $this->limiter->wait();
 
         $data = $this->fetchWithRetry($url);
 

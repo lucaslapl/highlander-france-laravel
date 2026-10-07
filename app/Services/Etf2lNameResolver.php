@@ -32,9 +32,6 @@ final class Etf2lNameResolver
     /** Durée de vie (s) du cache négatif (joueur introuvable sur ETF2L). */
     private const CACHE_TTL_NOT_FOUND_S = 12 * 3600;
 
-    /** Délai minimal entre deux appels HTTP réels (rate-limit ETF2L : 60 req/min). */
-    private const HTTP_DELAY_S = 1.1;
-
     /** Timeout cURL par appel. */
     private const HTTP_TIMEOUT_S = 10;
 
@@ -48,14 +45,15 @@ final class Etf2lNameResolver
      */
     private \Closure $fetcher;
 
-    /** Timestamp (microtime) du dernier appel HTTP réel, pour le rate-limit. */
-    private float $lastHttpAt = 0;
+    /** Espacement des appels HTTP réels, partagé entre tous les processus. */
+    private Etf2lRateLimiter $limiter;
 
     /**
      * @param  \Closure(string): (array|null)|null  $fetcher  Récupération HTTP injectable (tests)
      */
     public function __construct(?\Closure $fetcher = null)
     {
+        $this->limiter = new Etf2lRateLimiter;
         $this->fetcher = $fetcher ?? static function (string $url): ?array {
             $meta = JsonClient::getWithMeta($url, self::HTTP_TIMEOUT_S, 'Highlander France Bot/1.0', ['Accept: application/json']);
 
@@ -297,11 +295,7 @@ final class Etf2lNameResolver
      */
     private function cachedFetch(string $url): ?array
     {
-        $elapsed = microtime(true) - $this->lastHttpAt;
-        if ($this->lastHttpAt > 0 && $elapsed < self::HTTP_DELAY_S) {
-            usleep((int) ((self::HTTP_DELAY_S - $elapsed) * 1e6));
-        }
-        $this->lastHttpAt = microtime(true);
+        $this->limiter->wait();
 
         $payload = ($this->fetcher)($url);
         if ($payload === null) {

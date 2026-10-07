@@ -51,16 +51,28 @@ final class ApiStatus
         $checks = [];
 
         // --- ETF2L ---
+        // Le check participe au budget partagé (60 req/min par IP) : il
+        // passe par l'espacement global plutôt que d'ajouter du bruit.
+        (new Etf2lRateLimiter)->wait();
+
         $r = $this->curl('https://api-v2.etf2l.org/matches?scheduled=1');
         $data = json_decode((string) $r['body'], true);
         $valid = $r['http_code'] === 200 && is_array($data['results']['data'] ?? null);
+
+        // Un 429 signifie que l'IP du site a épuisé le quota de la minute :
+        // la quasi-totalité vient de nos propres scripts (crons, overlays).
+        $message = $this->message($valid, $r);
+        if ((int) $r['http_code'] === 429) {
+            $message = 'HTTP 429 : quota ETF2L de la minute épuisé (rafales de scripts du site ?) — réessayer dans ~1 min.';
+        }
+
         $checks['etf2l'] = [
             'api' => 'ETF2L',
             'icon' => 'fa-solid fa-flag-checkered',
             'status' => $this->evalStatus($r['http_code'], $valid, $r['latency_ms']),
             'http_code' => $r['http_code'],
             'latency_ms' => $r['latency_ms'],
-            'message' => $this->message($valid, $r),
+            'message' => $message,
             'script' => 'sync_etf2l.php',
         ];
 

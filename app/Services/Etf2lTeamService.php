@@ -15,9 +15,11 @@ use Illuminate\Support\Facades\DB;
  * /competition/{id}/teams, paginé).
  *
  * Conso modèle Etf2lNameResolver : réponses mises en cache dans la
- * table etf2l_api_cache (clé = URL), appels HTTP espacés de plus d'une
- * seconde (rate-limit ETF2L : 60 req/min). La récupération HTTP est
- * injectable (closure) pour les tests.
+ * table etf2l_api_cache (clé = URL), appels HTTP espacés par le
+ * Etf2lRateLimiter partagé entre tous les processus du site (rate-limit
+ * ETF2L : 60 req/min). Un échec (réseau, 429, 5xx…) est mis en cache
+ * négativement quelques minutes pour ne pas marteler l'API. La
+ * récupération HTTP est injectable (closure) pour les tests.
  */
 final class Etf2lTeamService
 {
@@ -29,8 +31,11 @@ final class Etf2lTeamService
     /** Durée de vie (s) du cache des équipes d'une compétition. */
     private const TEAMS_TTL_S = 3600;
 
-    /** Délai minimal entre deux appels HTTP réels (rate-limit ETF2L : 60 req/min). */
-    private const HTTP_DELAY_S = 1.1;
+    /** Durée de vie (s) du cache négatif (API indisponible, throttle 429…). */
+    private const FAIL_TTL_S = 120;
+
+    /** Clé « error » d'une entrée de cache négative (API indisponible). */
+    private const NEGATIVE_ERROR = 'hlfr_etf2l_indisponible';
 
     /** Timeout cURL par appel. */
     private const HTTP_TIMEOUT_S = 15;
@@ -51,23 +56,22 @@ final class Etf2lTeamService
      */
     private \Closure $fetcher;
 
-    /** Timestamp (microtime) du dernier appel HTTP réel, pour le rate-limit. */
-    private float $lastHttpAt = 0;
-
-    /** Délai minimal effectif entre deux appels (réduit à zéro en tests). */
-    private float $httpDelayS;
+    /** Espacement des appels HTTP réels, partagé entre tous les processus. */
+    private Etf2lRateLimiter $limiter;
 
     /**
      * @param  \Closure(string): (array<string, mixed>|null)|null  $fetcher  Récupération HTTP injectable (tests)
-     * @param  float  $httpDelayS  Délai minimal entre deux appels HTTP réels (réduit à zéro en tests)
+     * @param  float|null  $httpDelayS  Délai minimal entre deux appels HTTP réels (null = défaut, 0.0 = désactivé en tests)
      */
-    public function __construct(?\Closure $fetcher = null, float $httpDelayS = self::HTTP_DELAY_S)
+    public function __construct(?\Closure $fetcher = null, ?float $httpDelayS = null)
     {
-        $this->httpDelayS = $httpDelayS;
+        $this->limiter = new Etf2lRateLimiter($httpDelayS);
         $this->fetcher = $fetcher ?? static function (string $url): ?array {
             $meta = JsonClient::getWithMeta($url, self::HTTP_TIMEOUT_S, 'Highlander France Bot/1.0', ['Accept: application/json']);
 
-            if ($meta['curl_error'] !== '' || ! is_array($meta['data'])) {
+            // Un throttle 429 (ou toute erreur HTTP) n'est pas un payload :
+            // null, pour qu'il ne soit jamais mis en cache comme valide.
+            if ($meta['curl_error'] !== '' || $meta['http_code'] !== 200 || ! is_array($meta['data'])) {
                 return null;
             }
 
@@ -175,26 +179,42 @@ final class Etf2lTeamService
      * Appel API avec lecture du cache etf2l_api_cache, écriture après
      * appel. Les équipes ne varient pas en cours de saison : pas de
      * contournement de cache prévu (le rate-limit ETF2L est vite atteint).
+     * Un échec (réseau, throttle 429, 5xx…) est mis en cache négativement
+     * FAIL_TTL_S : ni payload d'erreur empoisonné pour une heure, ni
+     * re-martèlement de l'API à chaque clic pendant une indisponibilité.
      *
      * @return array<string, mixed>|null
      */
     private function cachedFetch(string $url, int $ttl): ?array
     {
         $row = DB::table('etf2l_api_cache')->where('url', $url)->first();
-        if ($row !== null && (time() - (int) $row->fetched_at) < $ttl) {
+        if ($row !== null) {
             $cached = json_decode((string) $row->payload, true);
+            $age = time() - (int) $row->fetched_at;
 
-            return is_array($cached) ? $cached : null;
+            if (is_array($cached) && ($cached['error'] ?? null) === self::NEGATIVE_ERROR) {
+                // Dernier essai en échec : on n'a pas plus de nouvelles de
+                // l'API tant que le cache négatif n'a pas expiré.
+                if ($age < self::FAIL_TTL_S) {
+                    return null;
+                }
+            } elseif (is_array($cached) && $age < $ttl) {
+                return $cached;
+            }
         }
 
-        $elapsed = microtime(true) - $this->lastHttpAt;
-        if ($this->lastHttpAt > 0 && $elapsed < $this->httpDelayS) {
-            usleep((int) (($this->httpDelayS - $elapsed) * 1e6));
-        }
-        $this->lastHttpAt = microtime(true);
+        $this->limiter->wait();
 
         $payload = ($this->fetcher)($url);
-        if ($payload === null) {
+
+        if ($payload === null || ! $this->isValidPayload($payload)) {
+            // Échec (réseau, throttle 429, 5xx…) : cache négatif court.
+            DB::table('etf2l_api_cache')->upsert(
+                ['url' => $url, 'payload' => json_encode(['error' => self::NEGATIVE_ERROR], JSON_THROW_ON_ERROR), 'fetched_at' => time()],
+                ['url'],
+                ['payload', 'fetched_at'],
+            );
+
             return null;
         }
 
@@ -205,6 +225,22 @@ final class Etf2lTeamService
         );
 
         return $payload;
+    }
+
+    /**
+     * Un payload n'est exploitable que si l'API a répondu 200 : une
+     * réponse de throttle ou d'erreur (status.code 429, 5xx…, corps
+     * « Too Many Attempts. ») ne doit jamais finir en cache. Un payload
+     * sans bloc status (cache amorcé à la main, fixtures de test) est
+     * accepté tel quel.
+     *
+     * @param  array<string, mixed>  $payload
+     */
+    private function isValidPayload(array $payload): bool
+    {
+        $code = $payload['status']['code'] ?? null;
+
+        return $code === null || (int) $code === 200;
     }
 
     /**

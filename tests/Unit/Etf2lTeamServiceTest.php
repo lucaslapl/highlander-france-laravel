@@ -6,6 +6,7 @@ namespace Tests\Unit;
 
 use App\Services\Etf2lTeamService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Tests\TestCase;
 
 /**
@@ -182,5 +183,53 @@ class Etf2lTeamServiceTest extends TestCase
         $this->assertCount(1, $service->teams(1050));
         $this->assertCount(1, $service->teams(1050));
         $this->assertSame(1, $calls);
+    }
+
+    public function test_un_payload_throttle_429_est_rejete_et_mis_en_cache_negativement(): void
+    {
+        // Corps renvoyé par le throttle Laravel de l'API ( Too Many Attempts ).
+        $throttle = ['status' => ['code' => 429, 'message' => 'Too Many Attempts.']];
+        $service = $this->service(['teams?limit=100&page=1' => $throttle], $calls);
+
+        // Le payload 429 n'est jamais servi : liste vide.
+        $this->assertSame([], $service->teams(1050));
+        $this->assertSame(1, $calls);
+
+        // Cache négatif écrit pour l'URL : l'API n'est pas martelée ensuite.
+        $this->assertSame([], $service->teams(1050));
+        $this->assertSame(1, $calls);
+
+        $row = DB::table('etf2l_api_cache')
+            ->where('url', 'https://api-v2.etf2l.org/competition/1050/teams?limit=100&page=1')
+            ->first();
+
+        $this->assertNotNull($row);
+        $payload = json_decode((string) $row->payload, true);
+        // Marqueur négatif (clé privée NEGATIVE_ERROR du service).
+        $this->assertSame('hlfr_etf2l_indisponible', $payload['error'] ?? null);
+    }
+
+    public function test_le_cache_negatif_expire_relance_l_api(): void
+    {
+        // Entrée négative périmée (TTL 120 s dépassé) : l'API est rappelée
+        // et le payload valide écrase le marqueur négatif.
+        DB::table('etf2l_api_cache')->insert([
+            'url' => 'https://api-v2.etf2l.org/competition/1050/teams?limit=100&page=1',
+            'payload' => json_encode(['error' => 'hlfr_etf2l_indisponible'], JSON_THROW_ON_ERROR),
+            'fetched_at' => time() - 121,
+        ]);
+
+        $page1 = $this->teamsPayload([['name' => 'DD14', 'avatar' => null, 'country' => '']]);
+        $service = $this->service(['teams?limit=100&page=1' => $page1], $calls);
+
+        $this->assertSame(['DD14'], array_column($service->teams(1050), 'name'));
+        $this->assertSame(1, $calls);
+
+        $row = DB::table('etf2l_api_cache')
+            ->where('url', 'https://api-v2.etf2l.org/competition/1050/teams?limit=100&page=1')
+            ->first();
+
+        $payload = json_decode((string) $row->payload, true);
+        $this->assertSame(200, $payload['status']['code'] ?? null);
     }
 }

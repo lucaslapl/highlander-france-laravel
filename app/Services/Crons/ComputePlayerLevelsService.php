@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services\Crons;
 
 use App\Services\AdminLogger;
+use App\Services\Etf2lRateLimiter;
 use App\Services\JsonClient;
 use App\Services\SteamId;
 use Illuminate\Support\Facades\DB;
@@ -29,9 +30,6 @@ final class ComputePlayerLevelsService
 
     /** Verrou anti-concurrence : une seule exécution à la fois (cron + panel admin). */
     private const LOCK_FILE = 'compute_player_levels.lock';
-
-    /** Délai minimal entre deux appels HTTP réels (rate-limit ETF2L : 60 req/min). */
-    private const API_CALL_DELAY_S = 1.1;
 
     /** Timeout cURL par appel (connexion plafonnée à 5 s côté JsonClient). */
     private const HTTP_TIMEOUT_S = 15;
@@ -106,12 +104,13 @@ final class ComputePlayerLevelsService
 
     private \PDO $db;
 
-    /** Timestamp (microtime) du dernier appel HTTP réel, pour le rate-limit. */
-    private float $lastHttpAt = 0;
+    /** Espacement des appels HTTP réels, partagé entre tous les processus. */
+    private Etf2lRateLimiter $limiter;
 
     public function __construct()
     {
         $this->db = DB::connection()->getPdo();
+        $this->limiter = new Etf2lRateLimiter;
     }
 
     /**
@@ -132,11 +131,7 @@ final class ComputePlayerLevelsService
         }
 
         // Rate-limit uniquement sur les vrais appels HTTP (un cache hit ne compte pas).
-        $elapsed = microtime(true) - $this->lastHttpAt;
-        if ($this->lastHttpAt > 0 && $elapsed < self::API_CALL_DELAY_S) {
-            usleep((int) ((self::API_CALL_DELAY_S - $elapsed) * 1e6));
-        }
-        $this->lastHttpAt = microtime(true);
+        $this->limiter->wait();
 
         $data = $this->fetchWithRetry($url);
 
