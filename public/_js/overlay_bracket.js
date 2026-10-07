@@ -113,8 +113,11 @@
         drawConnectors(host, lanes, placed);
     }
 
+    /* Délai d'apparition d'un élément : 1 s d'attente avant que
+       l'animation du bracket ne se lance, puis échelonnement de .18 s
+       par élément (titre, colonnes, cases, connecteurs). */
     function delay(counter) {
-        return (0.25 + counter * 0.18).toFixed(2);
+        return (1.25 + counter * 0.18).toFixed(2);
     }
 
     function label(text, lane, x, y, d) {

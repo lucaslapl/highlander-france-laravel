@@ -14,7 +14,7 @@
 </head>
 <body>
 <div id="scene">
-    <header class="anim" style="--d:.2s;">
+    <header class="anim" style="--d:1.2s;">
         @if (trim($data['eyebrow']) !== '')
             <div class="eyebrow">{{ e($data['eyebrow']) }}</div>
         @endif
