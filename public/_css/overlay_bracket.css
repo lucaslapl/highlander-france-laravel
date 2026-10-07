@@ -243,7 +243,7 @@ h1 em {
 /* Dans une case standard : le badge flotte sous la carte. */
 .card:not(.gf) .live {
     position: absolute;
-    left: 50%;
+    left: 25%;
     top: 100%;
     transform: translateX(-50%);
     margin-top: 8px;
