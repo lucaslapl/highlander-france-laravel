@@ -235,6 +235,39 @@ final class AdminSeriesController extends Controller
     }
 
     /**
+     * POST /admin/series/{token}/swap — intervertit les équipes A et B côté
+     * personnalisation : noms, avatars par URL et avatars uploadés. Les
+     * rosters ne bougent pas : ce sont eux qui alignent les couleurs des
+     * logs sur les équipes (SeriesReconcileService), ce bouton ne fait donc
+     * que corriger l'ordre d'affichage sur l'overlay — même logique que
+     * l'outil Overlay Logs.
+     */
+    public function swap(string $token): RedirectResponse
+    {
+        Auth::requireOverlayTools();
+
+        $series = $this->series->find($token);
+        if ($series === null) {
+            abort(404);
+        }
+
+        $redName = (string) $series['teams']['red']['name'];
+        $redAvatarUrl = $series['teams']['red']['avatar_url'] ?? null;
+
+        $series['teams']['red']['name'] = (string) $series['teams']['blue']['name'];
+        $series['teams']['red']['avatar_url'] = $series['teams']['blue']['avatar_url'] ?? null;
+        $series['teams']['blue']['name'] = $redName;
+        $series['teams']['blue']['avatar_url'] = $redAvatarUrl;
+
+        $this->series->save($series);
+        $this->series->swapAvatars($token);
+
+        AdminLogger::log('admin_series_swap', null, 'SUCCESS (série '.$token.' : équipes interverties)');
+
+        return back()->with('success', 'Équipes interverties : noms et avatars A / B échangés — l\'overlay se rafraîchit tout seul.');
+    }
+
+    /**
      * POST /admin/series/{token}/status — lance, arrête ou termine le suivi.
      *
      * « live » fige l'horodatage de référence : seuls les logs uploadés après

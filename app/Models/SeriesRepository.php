@@ -8,7 +8,7 @@ use Illuminate\Http\UploadedFile;
 
 /**
  * Persistance des séries de matchs (playoffs) pour le suivi automatique des
- * scores via logs.tf (outil admin « Séries de matchs »).
+ * scores via logs.tf (outil admin « Overlay Scores »).
  *
  * Une série vit dans un cache JSON sous hlfr_data_path('series/') : un index
  * (liste des séries) et un payload complet par série. Le payload contient les
@@ -256,6 +256,37 @@ final class SeriesRepository
 
         foreach (self::AVATAR_EXTENSIONS as $ext) {
             @unlink($this->avatarDir($token).'/'.$team.'.'.$ext);
+        }
+    }
+
+    /**
+     * Intervertit les avatars uploadés des équipes A / B (accompagne
+     * l'interversion des noms et URL d'avatar côté contrôleur).
+     */
+    public function swapAvatars(string $token): void
+    {
+        if (! preg_match('/^[a-z0-9]{16}$/', $token)) {
+            return;
+        }
+
+        $red = $this->avatar($token, 'red');
+        $blue = $this->avatar($token, 'blue');
+
+        if ($red === null && $blue === null) {
+            return;
+        }
+
+        // Le passage par un fichier temporaire gère les extensions
+        // différentes (ex : red.png <-> blue.webp).
+        $dir = $this->avatarDir($token);
+        if ($red !== null) {
+            @rename($red['path'], $dir.'/_swap.'.$red['ext']);
+        }
+        if ($blue !== null) {
+            @rename($blue['path'], $dir.'/red.'.$blue['ext']);
+        }
+        if ($red !== null) {
+            @rename($dir.'/_swap.'.$red['ext'], $dir.'/blue.'.$red['ext']);
         }
     }
 

@@ -14,8 +14,8 @@ use Tests\TestCase;
  * Outil admin « Overlay Scores » : accès strictement réservé aux admins,
  * création d'une série (rosters SteamIDs, maps, format), lancement du suivi,
  * point de map manuel, annulation d'un événement, renommage des équipes
- * (nom + avatar par URL, mémorisés comme pour l'outil Overlay Logs) et
- * suppression.
+ * (nom + avatar par URL, mémorisés comme pour l'outil Overlay Logs),
+ * interversion des équipes A / B et suppression.
  */
 class SeriesAdminTest extends TestCase
 {
@@ -84,6 +84,7 @@ class SeriesAdminTest extends TestCase
         $this->get('/admin/series/'.self::TOKEN)->assertForbidden();
         $this->post('/admin/series/'.self::TOKEN.'/status', ['status' => 'live'])->assertForbidden();
         $this->post('/admin/series/'.self::TOKEN.'/teams', ['red_name' => 'LB', 'blue_name' => 'E6'])->assertForbidden();
+        $this->post('/admin/series/'.self::TOKEN.'/swap')->assertForbidden();
         $this->post('/admin/series/'.self::TOKEN.'/point', ['map' => 'pl_upward_f10', 'team' => 'red'])->assertForbidden();
         $this->post('/admin/series/'.self::TOKEN.'/void', ['event' => 'e1'])->assertForbidden();
         $this->post('/admin/series/'.self::TOKEN.'/delete')->assertForbidden();
@@ -241,6 +242,30 @@ class SeriesAdminTest extends TestCase
             ->assertSee('https://example.com/ig.png');
     }
 
+    public function test_l_interversion_echange_noms_et_avatars_mais_pas_les_rosters(): void
+    {
+        $this->seedSeries();
+        $repository = new SeriesRepository;
+        $series = $repository->find(self::TOKEN);
+        $series['teams']['red']['avatar_url'] = 'https://example.com/lb.png';
+        $series['teams']['blue']['avatar_url'] = 'https://example.com/e6.png';
+        $repository->save($series);
+
+        $this->withSession($this->adminSession())
+            ->post('/admin/series/'.self::TOKEN.'/swap')
+            ->assertRedirect();
+
+        $series = (new SeriesRepository)->find(self::TOKEN);
+        // Noms et avatars échangés (affichage), rosters inchangés (ce sont
+        // eux qui alignent les couleurs des logs sur les équipes).
+        $this->assertSame('Escouade 6', $series['teams']['red']['name']);
+        $this->assertSame('https://example.com/e6.png', $series['teams']['red']['avatar_url']);
+        $this->assertSame(['76561198000000001', '76561198000000002'], $series['teams']['red']['players']);
+        $this->assertSame('Les Baguettes', $series['teams']['blue']['name']);
+        $this->assertSame('https://example.com/lb.png', $series['teams']['blue']['avatar_url']);
+        $this->assertSame(['76561198000000011', '76561198000000012'], $series['teams']['blue']['players']);
+    }
+
     public function test_le_renommage_des_equipes_rejette_un_nom_vide(): void
     {
         $this->seedSeries();
@@ -327,7 +352,8 @@ class SeriesAdminTest extends TestCase
             ->assertSee('Les Baguettes')
             ->assertSee('Escouade 6')
             ->assertSee('Point manuel')
-            ->assertSee('Lancer le suivi');
+            ->assertSee('Lancer le suivi')
+            ->assertSee('Intervertir les équipes A / B');
     }
 
     public function test_suppression_d_une_serie(): void

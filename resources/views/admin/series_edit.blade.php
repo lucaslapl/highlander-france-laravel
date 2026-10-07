@@ -71,6 +71,22 @@
 @endif
 
 <h3 class="admin-section-title"><i class="fa-solid fa-trophy"></i> Équipes</h3>
+<div style="border:2px solid #4cc46a; border-radius:10px; padding:16px; margin-bottom:16px; background:rgba(76,196,106,0.08);">
+    <h4 style="margin:0 0 8px;"><i class="fa-solid fa-right-left"></i> L'affichage des logs est inversé ?</h4>
+    <p style="margin:0 0 12px; font-size:14px; line-height:1.5;">
+        Si les noms d'équipe et avatars apparaissent du mauvais côté par rapport aux logs, ce bouton échange
+        <strong>uniquement les noms et les avatars</strong> des équipes A et B — les rosters ne bougent pas (ce sont
+        eux qui alignent les logs sur les équipes), le score reste sur son côté, et l'overlay se rafraîchit
+        immédiatement dans OBS.
+    </p>
+    <form method="POST" action="/admin/series/{{ $series['token'] }}/swap"
+          onsubmit="return confirm('Intervertir les équipes A et B (noms et avatars) ?');">
+        @csrf
+        <button type="submit" class="admin-btn admin-btn--primary">
+            <i class="fa-solid fa-right-left"></i> Intervertir les équipes A / B
+        </button>
+    </form>
+</div>
 <p style="color:#aaa; font-size:13px;">
     Les noms s'affichent tels quels sur l'overlay : utilisez l'acronyme de l'équipe (ex : Inglorious Gamblers → IG),
     l'espace y est très réduit. Modifiables à tout moment, y compris après la création (erreur d'acronyme, alias).
@@ -126,30 +142,29 @@
     <a class="admin-link-btn" href="/series-overlay/{{ $series['token'] }}/match" target="_blank">Prévisualiser</a>
 </p>
 
-<h4 style="margin:16px 0 8px;">Avatars d'équipes (upload)</h4>
-<div style="display:flex; gap:16px; flex-wrap:wrap; margin-top:16px;">
-    @foreach (['red' => 'A', 'blue' => 'B'] as $team => $label)
-        <div style="border:1px solid #333; border-radius:8px; padding:14px; flex:1; min-width:300px;">
-            <h4 style="margin:0 0 10px;">Avatar équipe {{ $label }} (upload)</h4>
+@if ($has_avatar['red'] || $has_avatar['blue'])
+    <h4 style="margin:16px 0 8px;">Avatars uploadés (historique)</h4>
+    <p style="color:#777; font-size:12px; margin:0 0 10px;">
+        L'upload n'est plus proposé : renseignez une URL externe dans le formulaire « Équipes » ci-dessus.
+        Ces avatars historiques, s'il en reste, continuent d'être affichés par l'overlay (l'URL externe prime).
+    </p>
+    <div style="display:flex; gap:16px; flex-wrap:wrap;">
+        @foreach (['red' => 'A', 'blue' => 'B'] as $team => $label)
             @if ($has_avatar[$team])
-                <img src="/series-overlay/{{ $series['token'] }}/avatar/{{ $team }}" alt="Avatar {{ $label }}"
-                     style="max-width:96px; max-height:96px; display:block; margin-bottom:10px;">
-                <form method="POST" action="/admin/series/{{ $series['token'] }}/avatar/delete" style="margin-bottom:8px;">
-                    @csrf
-                    <input type="hidden" name="team" value="{{ $team }}">
-                    <button type="submit" class="admin-btn admin-btn--danger">Supprimer l'avatar</button>
-                </form>
+                <div style="border:1px solid #333; border-radius:8px; padding:14px; flex:1; min-width:300px;">
+                    <h4 style="margin:0 0 10px;">Avatar équipe {{ $label }}</h4>
+                    <img src="/series-overlay/{{ $series['token'] }}/avatar/{{ $team }}" alt="Avatar {{ $label }}"
+                         style="max-width:96px; max-height:96px; display:block; margin-bottom:10px;">
+                    <form method="POST" action="/admin/series/{{ $series['token'] }}/avatar/delete">
+                        @csrf
+                        <input type="hidden" name="team" value="{{ $team }}">
+                        <button type="submit" class="admin-btn admin-btn--danger">Supprimer l'avatar</button>
+                    </form>
+                </div>
             @endif
-            <form method="POST" action="/admin/series/{{ $series['token'] }}/avatar" enctype="multipart/form-data">
-                @csrf
-                <input type="hidden" name="team" value="{{ $team }}">
-                <input type="file" name="avatar" accept=".jpeg,.jpg,.png,.webp" required style="font-size:13px;">
-                <button type="submit" class="admin-btn" style="margin-top:8px;">Envoyer</button>
-            </form>
-            <p style="color:#777; font-size:12px; margin:8px 0 0;">jpeg, png ou webp — 2 Mo max. L'URL externe, si renseignée, prime sur l'upload.</p>
-        </div>
-    @endforeach
-</div>
+        @endforeach
+    </div>
+@endif
 
 <h3 class="admin-section-title"><i class="fa-solid fa-map"></i> Maps de la série</h3>
 <div class="admin-table-scroll">
