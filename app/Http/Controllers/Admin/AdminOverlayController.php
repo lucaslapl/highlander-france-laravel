@@ -17,7 +17,7 @@ use Illuminate\Support\Str;
 /**
  * Outil « Overlay Logs » : génération d'overlays de stats pour OBS
  * Studio à partir d'un log logs.tf. Accessible aux admins et aux rôles
- * caster / prod (panel restreint /admin/panel).
+ * caster / prod (hub des overlays /admin/overlays-stream).
  *
  * Chaque overlay possède son propre token et son URL publique
  * (/overlay/{token}) à pointer dans OBS via une source navigateur web.

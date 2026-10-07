@@ -147,21 +147,9 @@ window.__dashboardData = {!! json_encode($dashboardData, JSON_UNESCAPED_UNICODE 
             </div>
 
             <div class="admin-action-card" style="--accent: #9b6dff;">
-                <h4 class="admin-action-card__title"><i class="fa-solid fa-tv"></i> Overlay Logs</h4>
-                <p class="admin-action-card__desc">Génération d'overlays de stats logs.tf pour les broadcasts OBS : équipes, scores, joueurs et medics.</p>
-                <a href="/admin/overlay" class="admin-link-btn">Gérer les overlays</a>
-            </div>
-
-            <div class="admin-action-card" style="--accent: #4cc46a;">
-                <h4 class="admin-action-card__title"><i class="fa-solid fa-trophy"></i> Overlay Scores</h4>
-                <p class="admin-action-card__desc">Suivi automatique du score des séries de playoffs via logs.tf (maps gagnées par équipe), avec ajustements manuels + affichage logs.</p>
-                <a href="/admin/series" class="admin-link-btn">Gérer les séries</a>
-            </div>
-
-            <div class="admin-action-card" style="--accent: #e97fff;">
-                <h4 class="admin-action-card__title"><i class="fa-solid fa-sitemap"></i> Overlay Bracket</h4>
-                <p class="admin-action-card__desc">Brackets de playoffs et classements (poules) construits à la main, éditables, avec match « EN DIRECT » rattachable à une série.</p>
-                <a href="/admin/overlay/bracket" class="admin-link-btn">Gérer les brackets</a>
+                <h4 class="admin-action-card__title"><i class="fa-solid fa-tv"></i> Overlays Stream</h4>
+                <p class="admin-action-card__desc">Hub des outils d'overlay OBS : stats logs.tf, scores de séries (playoffs), brackets et pick/ban de maps — panel centralisé partagé avec les casters et la prod.</p>
+                <a href="/admin/overlays-stream" class="admin-link-btn">Ouvrir le panel overlays</a>
             </div>
         </div>
 

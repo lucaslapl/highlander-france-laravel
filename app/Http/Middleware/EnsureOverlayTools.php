@@ -10,8 +10,8 @@ use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
- * Accès aux outils d'overlay OBS (/admin/overlay, /admin/series et le panel
- * restreint /admin/panel) : réservé aux administrateurs et aux rôles
+ * Accès aux outils d'overlay OBS (/admin/overlay, /admin/series et le hub
+ * /admin/overlays-stream) : réservé aux administrateurs et aux rôles
  * caster / prod (team Twitch). Les casters et prod ne voient rien d'autre
  * du panel admin (cf. EnsureAdmin pour les autres routes /admin/*).
  */

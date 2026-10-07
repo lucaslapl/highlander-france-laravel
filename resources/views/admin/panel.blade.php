@@ -5,8 +5,8 @@
 
 @section('content')
 <div class="admin-header" style="--accent:#9b6dff;">
-    <h2><i class="fa-solid fa-screwdriver-wrench"></i> Panel admin</h2>
-    <p>Outils d'overlay OBS pour les broadcasts Highlander France.</p>
+    <h2><i class="fa-solid fa-tv"></i> Overlays Stream</h2>
+    <p>Les quatre outils d'overlay OBS pour les broadcasts Highlander France, au même endroit.</p>
 </div>
 
 <div class="admin-cards-grid">

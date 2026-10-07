@@ -24,8 +24,8 @@
         </div>
     @elseif (\App\Services\Auth::isCaster() || \App\Services\Auth::isProducer())
         <div class="admin-profile-box" style="background: #1e1a2c; border: 1px solid #9b6dff; padding: 15px; margin: 15px 0 15px 0; border-radius: 5px;">
-            <a href="/admin/panel" class="btn-admin" style="background: #9b6dff; color: white; padding: 8px 12px; text-decoration: none; border-radius: 4px; display: inline-block;">
-                <i class="fa-solid fa-tv"></i> Panel admin (outils overlay OBS)
+            <a href="/admin/overlays-stream" class="btn-admin" style="background: #9b6dff; color: white; padding: 8px 12px; text-decoration: none; border-radius: 4px; display: inline-block;">
+                <i class="fa-solid fa-tv"></i> Overlays Stream (outils overlay OBS)
             </a>
         </div>
     @endif

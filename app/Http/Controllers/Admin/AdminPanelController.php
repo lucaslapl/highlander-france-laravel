@@ -9,22 +9,23 @@ use App\Services\Auth;
 use Illuminate\Contracts\View\View;
 
 /**
- * Panel admin restreint (/admin/panel) : la seule porte d'entrée du panel
- * pour les rôles caster / prod (team Twitch). Ils n'y voient que le titre
- * et l'accès aux deux outils d'overlay OBS — aucune statistique du site.
+ * Hub des outils d'overlay OBS (/admin/overlays-stream) : la porte d'entrée
+ * unique vers les quatre outils de broadcast (logs, scores, bracket, pick/ban)
+ * pour les administrateurs comme pour les rôles caster / prod (team Twitch).
+ * Aucune statistique du site n'y est exposée.
  */
 final class AdminPanelController extends Controller
 {
     /**
-     * GET /admin/panel — titre + boutons vers les outils d'overlay.
+     * GET /admin/overlays-stream — titre + boutons vers les outils d'overlay.
      */
     public function index(): View
     {
         Auth::requireOverlayTools();
 
         return view('admin.panel', [
-            'title' => 'Panel admin - '.config('app.name'),
-            'description' => 'Panel admin restreint : outils d\'overlay OBS pour les broadcasts Highlander France.',
+            'title' => 'Overlays Stream - '.config('app.name'),
+            'description' => 'Overlays Stream : outils d\'overlay OBS pour les broadcasts Highlander France.',
         ]);
     }
 }

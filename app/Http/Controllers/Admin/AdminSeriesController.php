@@ -22,7 +22,7 @@ use Illuminate\Support\Str;
  * ajustements manuels (point de map, annulation d'un événement, renommage
  * des équipes et avatars par URL mémorisés pour réutilisation) pour les
  * contestations et les cas que l'automatisme ne couvre pas. Accessible aux
- * admins et aux rôles caster / prod (panel restreint /admin/panel).
+ * admins et aux rôles caster / prod (hub des overlays /admin/overlays-stream).
  */
 final class AdminSeriesController extends Controller
 {

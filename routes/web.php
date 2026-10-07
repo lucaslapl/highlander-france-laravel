@@ -104,10 +104,10 @@ Route::get('/pickban-overlay/{token}', [PickBanOverlayController::class, 'show']
 Route::get('/pickban-overlay/{token}/version', [PickBanOverlayController::class, 'version'])->where('token', '[a-z0-9]{16}');
 
 // ─── Outils overlay OBS (admins + rôles caster / prod) ───────────────────────
-// Panel restreint : les casters et prod n'ont accès qu'aux deux outils
-// d'overlay et au panel ci-dessous, rien d'autre du /admin/*.
+// Panel restreint : les casters et prod n'ont accès qu'aux outils
+// d'overlay et au hub ci-dessous, rien d'autre du /admin/*.
 Route::middleware('overlay-tools')->prefix('admin')->group(function (): void {
-    Route::get('/panel', [AdminPanelController::class, 'index'])->name('admin.panel');
+    Route::get('/overlays-stream', [AdminPanelController::class, 'index'])->name('admin.overlays_stream');
     Route::get('/overlay', [AdminOverlayController::class, 'index'])->name('admin.overlay');
     Route::post('/overlay/generate', [AdminOverlayController::class, 'generate']);
     Route::get('/overlay/{token}', [AdminOverlayController::class, 'edit'])->where('token', '[a-z0-9]{16}');
