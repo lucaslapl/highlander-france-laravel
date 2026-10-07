@@ -254,7 +254,7 @@ h1 em {
 .hl, .vl {
     position: absolute;
     border-radius: 2px;
-    background: linear-gradient(90deg, var(--violet-line), rgba(151, 124, 225, .3));
+    background: linear-gradient(90deg, rgba(151, 124, 225, .3), var(--violet-line));
     box-shadow: 0 0 8px rgba(135, 0, 227, .3);
 }
 
