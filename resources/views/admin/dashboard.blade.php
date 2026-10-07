@@ -153,8 +153,8 @@ window.__dashboardData = {!! json_encode($dashboardData, JSON_UNESCAPED_UNICODE 
             </div>
 
             <div class="admin-action-card" style="--accent: #4cc46a;">
-                <h4 class="admin-action-card__title"><i class="fa-solid fa-trophy"></i> Séries de matchs</h4>
-                <p class="admin-action-card__desc">Suivi automatique du score des séries de playoffs via logs.tf (maps gagnées par équipe), avec ajustements manuels pour les contestations.</p>
+                <h4 class="admin-action-card__title"><i class="fa-solid fa-trophy"></i> Overlay Scores</h4>
+                <p class="admin-action-card__desc">Suivi automatique du score des séries de playoffs via logs.tf (maps gagnées par équipe), avec ajustements manuels + affichage logs.</p>
                 <a href="/admin/series" class="admin-link-btn">Gérer les séries</a>
             </div>
         </div>
