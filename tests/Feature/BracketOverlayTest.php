@@ -36,6 +36,10 @@ class BracketOverlayTest extends TestCase
         // storage/app/hlfr et tout est nettoyé en tearDown.
         $this->dataDir = storage_path('app/hlfr_bracket_overlay_test');
         config(['hlfr.data_dir' => $this->dataDir]);
+
+        // Le remplissage assisté ETF2L de l'éditeur est servi depuis le
+        // cache : amorce vide pour rester sans appel HTTP réel.
+        $this->seedEtf2lCompetitionsCache();
     }
 
     protected function tearDown(): void

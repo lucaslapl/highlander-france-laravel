@@ -8,6 +8,7 @@ use App\Http\Controllers\Controller;
 use App\Models\OverlayRepository;
 use App\Services\AdminLogger;
 use App\Services\Auth;
+use App\Services\Etf2lTeamService;
 use App\Services\OverlayStatsService;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
@@ -24,9 +25,11 @@ use Illuminate\Support\Str;
  * Les équipes sont présentées comme A / B (logs.tf les classe en
  * rouge/bleu de façon arbitraire, sans lien avec le layout du broadcast :
  * le bouton d'interversion de la page d'édition échange noms et avatars).
- * Les noms d'équipes et avatars (URL externe, mémorisée pour réutilisation)
- * sont personnalisables ; la vue overlay se rafraîchit automatiquement
- * dès que le payload change (polling de version côté navigateur).
+ * Les noms d'équipes et avatars (URL externe) sont personnalisables, avec
+ * le même remplissage assisté ETF2L que les autres outils overlay
+ * (compétition → équipes via Etf2lTeamService) ; la vue overlay se
+ * rafraîchit automatiquement dès que le payload change (polling de
+ * version côté navigateur).
  */
 final class AdminOverlayController extends Controller
 {
@@ -36,10 +39,29 @@ final class AdminOverlayController extends Controller
 
     private OverlayStatsService $stats;
 
+    private Etf2lTeamService $etf2lTeams;
+
     public function __construct()
     {
         $this->overlays = new OverlayRepository;
         $this->stats = new OverlayStatsService;
+        $this->etf2lTeams = new Etf2lTeamService;
+    }
+
+    /**
+     * Compétitions ETF2L pour le remplissage assisté (liste vide si l'API
+     * est indisponible : la boîte est masquée, la saisie manuelle reste
+     * possible).
+     *
+     * @return array<int, array{id: int, name: string, archived: bool}>
+     */
+    private function competitions(): array
+    {
+        try {
+            return $this->etf2lTeams->competitions();
+        } catch (\Throwable) {
+            return [];
+        }
     }
 
     /**
@@ -53,7 +75,7 @@ final class AdminOverlayController extends Controller
             'title' => 'Admin - Overlay Logs (OBS)',
             'description' => 'Génération d\'overlays de stats logs.tf pour les broadcasts OBS de Highlander France.',
             'overlays' => $this->overlays->all(),
-            'memorized_avatars' => $this->overlays->memorizedAvatars(),
+            'competitions' => $this->competitions(),
         ]);
     }
 
@@ -112,13 +134,13 @@ final class AdminOverlayController extends Controller
             'description' => 'Personnalisation de l\'overlay de stats pour les broadcasts OBS.',
             'overlay' => $overlay,
             'overlay_url' => url('/overlay/'.$overlay['token']),
-            'memorized_avatars' => $this->overlays->memorizedAvatars(),
+            'competitions' => $this->competitions(),
         ]);
     }
 
     /**
      * POST /admin/overlay/{token}/update — noms des équipes A / B et
-     * avatars par URL externe (mémorisée pour réutilisation).
+     * avatars par URL externe.
      */
     public function update(Request $request, string $token): RedirectResponse
     {
@@ -139,7 +161,6 @@ final class AdminOverlayController extends Controller
         $overlay['teams']['blue']['avatar_url'] = $this->cleanUrl($data['blue_avatar_url'] ?? null);
 
         $this->overlays->save($overlay);
-        $this->rememberAvatars($overlay['teams']);
 
         return back()->with('success', 'Overlay mis à jour.');
     }
@@ -245,9 +266,9 @@ final class AdminOverlayController extends Controller
     /**
      * Initialise les champs personnalisables des équipes depuis les saisies
      * du formulaire de génération (optionnelles) : noms et avatars par URL,
-     * avec repli sur les valeurs par défaut du payload logs.tf. Chaque équipe
-     * saisie (nom + URL d'avatar) est mémorisée pour les prochaines
-     * générations, avec son visuel et son nom proposés en un clic.
+     * avec repli sur les valeurs par défaut du payload logs.tf. Le
+     * remplissage assisté des équipes vit côté éditeur (compétition →
+     * équipes ETF2L), partagé avec les autres outils overlay.
      *
      * @param  array<string, array<string, mixed>>  $teams
      * @param  array<string, mixed>  $data
@@ -261,24 +282,7 @@ final class AdminOverlayController extends Controller
             $teams[$team]['avatar_url'] = $this->cleanUrl($data[$team.'_avatar_url'] ?? null);
         }
 
-        $this->rememberAvatars($teams);
-
         return $teams;
-    }
-
-    /**
-     * Mémorise les URL d'avatars non vides des deux équipes.
-     *
-     * @param  array<string, array<string, mixed>>  $teams
-     */
-    private function rememberAvatars(array $teams): void
-    {
-        foreach (['red', 'blue'] as $team) {
-            $url = (string) ($teams[$team]['avatar_url'] ?? '');
-            if ($url !== '') {
-                $this->overlays->rememberAvatar($url, (string) ($teams[$team]['name'] ?? ''));
-            }
-        }
     }
 
     /**

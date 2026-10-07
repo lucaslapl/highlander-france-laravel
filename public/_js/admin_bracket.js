@@ -6,11 +6,9 @@
    par index numérique (ksort) à l'enregistrement, les trous d'indexation
    ne posent donc aucun problème.
 
-   Remplissage assisté : le bouton « Charger les équipes » interroge
-   /admin/overlay/bracket/teams et insère un menu de sélection dans chaque
-   bloc équipe (case de match ou ligne de classement) qui remplit nom,
-   avatar et pays d'un clic ; les blocs ajoutés ensuite reçoivent aussi le
-   menu. */
+   Remplissage assisté : partagé avec les autres outils overlay
+   (admin_etf2l_teams.js) — les blocs équipe ajoutés ensuite reçoivent
+   aussi le menu de sélection via window.hlfrEtf2lFillTeamPickers(). */
 
 (function () {
     'use strict';
@@ -103,112 +101,15 @@
         });
     }
 
-    /* ── Remplissage assisté : équipes ETF2L ────────────────────────────── */
+    /* ── Remplissage assisté : équipes ETF2L (admin_etf2l_teams.js) ────── */
 
-    /* Équipes chargées [{name, avatar, country}] ; le menu de sélection
-       inséré dans chaque bloc équipe (case de match ou ligne de
-       classement) remplit nom, avatar et pays d'un clic. Les blocs
-       clonés reçoivent aussi le menu via fillTeamPickers(). */
-    var etf2lTeams = [];
-
+    /* Les blocs équipe ajoutés après le chargement des équipes reçoivent
+       aussi le menu de sélection. */
     function fillTeamPickers() {
-        if (etf2lTeams.length === 0) {
-            return;
+        if (window.hlfrEtf2lFillTeamPickers) {
+            window.hlfrEtf2lFillTeamPickers();
         }
-        document.querySelectorAll('.js-etf2l-team').forEach(function (block) {
-            if (block.querySelector('.js-etf2l-picker')) {
-                return;
-            }
-            var host = document.createElement('div');
-            host.style.margin = '0 0 8px';
-            var select = document.createElement('select');
-            select.className = 'form-control js-etf2l-picker';
-            var placeholder = document.createElement('option');
-            placeholder.value = '';
-            placeholder.textContent = '— Choisir une équipe ETF2L —';
-            select.appendChild(placeholder);
-            etf2lTeams.forEach(function (team) {
-                var option = document.createElement('option');
-                option.value = team.name;
-                option.textContent = team.name;
-                select.appendChild(option);
-            });
-            host.appendChild(select);
-            block.insertBefore(host, block.firstChild);
-        });
     }
-
-    var loadTeams = document.getElementById('bracket-load-teams');
-    if (loadTeams) {
-        loadTeams.addEventListener('click', function () {
-            var competition = document.getElementById('bracket-teams-competition');
-            var status = document.getElementById('bracket-teams-status');
-            if (!competition || !competition.value) {
-                return;
-            }
-            loadTeams.disabled = true;
-            if (status) {
-                status.style.color = '#888';
-                status.textContent = 'Chargement des équipes…';
-            }
-            fetch('/admin/overlay/bracket/teams?competition_id=' + encodeURIComponent(competition.value), {
-                headers: { 'Accept': 'application/json' },
-                credentials: 'same-origin'
-            })
-                .then(function (response) { return response.json(); })
-                .then(function (data) {
-                    etf2lTeams = data.teams || [];
-                    if (etf2lTeams.length === 0) {
-                        if (status) {
-                            status.style.color = '#ff8080';
-                            status.textContent = 'Aucune équipe trouvée (API ETF2L indisponible ou compétition vide ?).';
-                        }
-                        return;
-                    }
-                    if (status) {
-                        status.style.color = '#8c8';
-                        status.textContent = etf2lTeams.length + ' équipe(s) chargée(s) — utilisez le menu de chaque case / ligne.';
-                    }
-                    fillTeamPickers();
-                })
-                .catch(function () {
-                    if (status) {
-                        status.style.color = '#ff8080';
-                        status.textContent = 'Chargement impossible, réessayez plus tard.';
-                    }
-                })
-                .finally(function () {
-                    loadTeams.disabled = false;
-                });
-        });
-    }
-
-    document.addEventListener('change', function (event) {
-        var select = event.target.closest('.js-etf2l-picker');
-        if (!select) {
-            return;
-        }
-        var block = select.closest('.js-etf2l-team');
-        var team = null;
-        for (var i = 0; i < etf2lTeams.length; i++) {
-            if (etf2lTeams[i].name === select.value) {
-                team = etf2lTeams[i];
-                break;
-            }
-        }
-        var name = block ? block.querySelector('.js-team-field-name') : null;
-        var avatar = block ? block.querySelector('.js-team-field-avatar') : null;
-        var country = block ? block.querySelector('.js-team-field-country') : null;
-        if (name) {
-            name.value = team ? team.name : '';
-        }
-        if (avatar) {
-            avatar.value = team ? team.avatar : '';
-        }
-        if (country) {
-            country.value = team ? team.country : '';
-        }
-    });
 
     /* ── Déplacement / suppression génériques ──────────────────────────── */
 

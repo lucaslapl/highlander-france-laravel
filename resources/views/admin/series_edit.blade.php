@@ -71,6 +71,7 @@
 @endif
 
 <h3 class="admin-section-title"><i class="fa-solid fa-trophy"></i> Équipes</h3>
+@include('admin.partials.etf2l_teams', ['competitions' => $competitions, 'prefix' => 'series'])
 <div style="border:2px solid #4cc46a; border-radius:10px; padding:16px; margin-bottom:16px; background:rgba(76,196,106,0.08);">
     <h4 style="margin:0 0 8px;"><i class="fa-solid fa-right-left"></i> L'affichage des logs est inversé ?</h4>
     <p style="margin:0 0 12px; font-size:14px; line-height:1.5;">
@@ -97,22 +98,17 @@
     @csrf
     <div style="display:flex; gap:16px; flex-wrap:wrap;">
         @foreach (['red' => 'A', 'blue' => 'B'] as $team => $label)
-            <div style="border:1px solid #333; border-radius:8px; padding:14px; flex:1; min-width:280px;">
+            <div class="js-etf2l-team" style="border:1px solid #333; border-radius:8px; padding:14px; flex:1; min-width:280px;">
                 <label class="admin-form-label" for="team-{{ $team }}-name">Nom équipe {{ $label }} (acronyme)</label>
-                <input type="text" id="team-{{ $team }}-name" name="{{ $team }}_name" class="form-control"
+                <input type="text" id="team-{{ $team }}-name" name="{{ $team }}_name" class="form-control js-team-field-name"
                        value="{{ e($series['teams'][$team]['name']) }}" maxlength="64" required>
                 <label class="admin-form-label" style="margin-top:10px;" for="team-{{ $team }}-avatar-url">Avatar par URL externe (optionnel)</label>
-                <input type="url" id="team-{{ $team }}-avatar-url" name="{{ $team }}_avatar_url" class="form-control"
+                <input type="url" id="team-{{ $team }}-avatar-url" name="{{ $team }}_avatar_url" class="form-control js-team-field-avatar"
                        value="{{ e($series['teams'][$team]['avatar_url'] ?? '') }}"
                        placeholder="https://…/logo.png">
-                @include('admin.partials.avatar_memory', ['team' => $team, 'label' => $label])
             </div>
         @endforeach
     </div>
-    <p style="color:#777; font-size:13px; margin:6px 0 0;">
-        Chaque équipe enregistrée avec son avatar est mémorisée (visuel + nom) et proposée en un clic lors des
-        prochaines créations — la même mémoire que l'outil Overlay Logs.
-    </p>
     <button type="submit" class="admin-btn" style="margin-top:10px;"><i class="fa-solid fa-floppy-disk"></i> Enregistrer les équipes</button>
 </form>
 
@@ -317,6 +313,6 @@
 @endpush
 
 @push('scripts')
-<script src="{{ hlfr_asset('/_js/admin_overlay.js') }}" defer></script>
+<script src="{{ hlfr_asset('/_js/admin_etf2l_teams.js') }}" defer></script>
 @endpush
 @endsection

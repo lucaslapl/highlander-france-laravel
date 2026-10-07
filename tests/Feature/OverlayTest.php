@@ -28,6 +28,10 @@ class OverlayTest extends TestCase
         // storage/app/hlfr et tout est nettoyé en tearDown.
         $this->dataDir = storage_path('app/hlfr_overlays_test');
         config(['hlfr.data_dir' => $this->dataDir]);
+
+        // Le remplissage assisté ETF2L des pages admin est servi depuis le
+        // cache : amorce vide pour rester sans appel HTTP réel.
+        $this->seedEtf2lCompetitionsCache();
     }
 
     protected function tearDown(): void
@@ -220,62 +224,53 @@ class OverlayTest extends TestCase
         $this->get('/overlay/'.self::TOKEN)->assertOk()->assertSee('Les Étoiles');
     }
 
-    public function test_les_equipes_sont_memorisees_avec_avatar_et_nom_pour_reutilisation(): void
+    public function test_le_remplissage_assiste_etf2l_est_propose_sur_la_generation_et_l_edition(): void
     {
-        $this->seedOverlay();
+        // Le remplissage assisté des équipes est le même que pour les
+        // autres outils overlay (Bracket, Pick/Ban) : compétition ETF2L →
+        // équipes chargées via /admin/overlay/etf2l/teams. La mémoire des
+        // « équipes déjà castées » a disparu au profit de ce mécanisme.
+        $this->seedEtf2lCompetitionsCache([
+            ['id' => 42, 'type' => 'Highlander', 'name' => 'HLFR Test Cup', 'archived' => false],
+        ]);
 
-        $this->withSession($this->adminSession())
-            ->post('/admin/overlay/'.self::TOKEN.'/update', [
-                'red_name' => 'Les Étoiles',
-                'blue_name' => 'Baguettes',
-                'red_avatar_url' => 'https://example.com/logo.png',
-                'blue_avatar_url' => 'https://example.com/logo-b.png',
-            ])
-            ->assertRedirect();
-
-        // Les équipes sont mémorisées (URL d'avatar + nom) et proposées
-        // en vignettes cliquables sur la génération comme sur l'édition :
-        // un clic applique le nom et l'avatar à l'équipe A ou B.
         $session = $this->adminSession();
         $this->withSession($session)
             ->get('/admin/overlay')
             ->assertOk()
-            ->assertSee('overlay-avatar-memory__tile')
-            ->assertSee('https://example.com/logo.png')
-            ->assertSee('https://example.com/logo-b.png')
-            ->assertSee('Les Étoiles')
-            ->assertSee('Baguettes');
+            ->assertSee('Remplissage assisté')
+            ->assertSee('HLFR Test Cup')
+            ->assertSee('overlay-load-teams')
+            ->assertDontSee('Équipes déjà castées');
+
+        $this->seedOverlay();
+        $this->withSession($session)
+            ->get('/admin/overlay/'.self::TOKEN)
+            ->assertOk()
+            ->assertSee('Remplissage assisté')
+            ->assertSee('HLFR Test Cup')
+            ->assertSee('overlay-load-teams')
+            ->assertDontSee('Équipes déjà castées');
+    }
+
+    public function test_l_api_indisponible_masque_le_remplissage_assiste(): void
+    {
+        // Cache amorce vide (setUp) : la boîte affiche le message de repli
+        // sans bloquer la saisie manuelle des équipes.
+        $this->seedOverlay();
+
+        $session = $this->adminSession();
+        $this->withSession($session)
+            ->get('/admin/overlay')
+            ->assertOk()
+            ->assertSee('indisponible pour le moment')
+            ->assertDontSee('overlay-load-teams');
 
         $this->withSession($session)
             ->get('/admin/overlay/'.self::TOKEN)
             ->assertOk()
-            ->assertSee('overlay-avatar-memory__tile')
-            ->assertSee('https://example.com/logo-b.png');
-
-        // La dernière équipe mémorisée passe en tête de liste, avec son nom.
-        $this->assertSame(
-            [
-                ['url' => 'https://example.com/logo-b.png', 'name' => 'Baguettes'],
-                ['url' => 'https://example.com/logo.png', 'name' => 'Les Étoiles'],
-            ],
-            array_slice((new OverlayRepository)->memorizedAvatars(), 0, 2)
-        );
-
-        // Une même URL re-saisie avec un nouveau nom met l'entrée à jour
-        // au lieu de créer un doublon.
-        $this->withSession($session)
-            ->post('/admin/overlay/'.self::TOKEN.'/update', [
-                'red_name' => 'Baguettes FC',
-                'blue_name' => 'BLU',
-                'red_avatar_url' => 'https://example.com/logo-b.png',
-                'blue_avatar_url' => '',
-            ])
-            ->assertRedirect();
-
-        $this->assertSame(
-            ['url' => 'https://example.com/logo-b.png', 'name' => 'Baguettes FC'],
-            (new OverlayRepository)->memorizedAvatars()[0]
-        );
+            ->assertSee('indisponible pour le moment')
+            ->assertDontSee('overlay-load-teams');
     }
 
     public function test_l_upload_d_avatar_n_est_plus_propose(): void

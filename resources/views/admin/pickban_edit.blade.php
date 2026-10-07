@@ -74,33 +74,18 @@
 
     <h3 class="admin-section-title"><i class="fa-solid fa-users"></i> Équipes</h3>
 
-    @if (! empty($competitions))
-        <div style="border:1px solid #333; border-radius:8px; padding:14px; margin-bottom:14px;">
-            <h4 style="margin:0 0 8px; color:#bbb;"><i class="fa-solid fa-wand-magic-sparkles"></i> Remplissage assisté ETF2L</h4>
-            <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
-                <label class="admin-form-label" for="pickban-teams-competition">Compétition ETF2L</label>
-                <select id="pickban-teams-competition" class="form-control" style="max-width:420px;">
-                    @foreach ($competitions as $competition)
-                        <option value="{{ (int) $competition['id'] }}">{{ e($competition['name']) }}</option>
-                    @endforeach
-                </select>
-                <button type="button" class="admin-btn" id="pickban-load-teams"><i class="fa-solid fa-download"></i> Charger les équipes</button>
-                <span id="pickban-teams-status" style="color:#777; font-size:13px;"></span>
-            </div>
-        </div>
-    @endif
+    @include('admin.partials.etf2l_teams', ['competitions' => $competitions, 'prefix' => 'pickban'])
 
     <div class="admin-form-row" style="display:flex; gap:16px; flex-wrap:wrap;">
         @foreach (['a' => 'A', 'b' => 'B'] as $side => $label)
-            <div style="flex:1; min-width:300px; border:1px solid #333; border-radius:8px; padding:14px;">
+            <div class="js-etf2l-team" style="flex:1; min-width:300px; border:1px solid #333; border-radius:8px; padding:14px;">
                 <h4 style="margin:0 0 10px; color:#bbb;">Équipe {{ $label }}</h4>
-                <div class="js-etf2l-team" data-side="{{ $side }}" style="margin-bottom:10px;"></div>
                 <label class="admin-form-label" for="team-{{ $side }}-name">Nom affiché</label>
-                <input type="text" name="team_{{ $side }}[name]" id="team-{{ $side }}-name" class="form-control"
+                <input type="text" name="team_{{ $side }}[name]" id="team-{{ $side }}-name" class="form-control js-team-field-name"
                        maxlength="64" value="{{ e((string) ($overlay['teams'][$side]['name'] ?? '')) }}"
                        placeholder="Ex : DD14">
                 <label class="admin-form-label" style="margin-top:10px;" for="team-{{ $side }}-avatar">Avatar (URL)</label>
-                <input type="text" name="team_{{ $side }}[avatar]" id="team-{{ $side }}-avatar" class="form-control"
+                <input type="text" name="team_{{ $side }}[avatar]" id="team-{{ $side }}-avatar" class="form-control js-team-field-avatar"
                        maxlength="500" value="{{ e((string) ($overlay['teams'][$side]['avatar'] ?? '')) }}"
                        placeholder="https://…/logo.png">
             </div>
@@ -169,5 +154,6 @@
 </div>
 
 <script type="application/json" id="pickban-config">{!! json_encode(['defaultActions' => $defaultActions, 'formats' => $formats], JSON_HEX_TAG | JSON_UNESCAPED_UNICODE) !!}</script>
+<script src="{{ hlfr_asset('/_js/admin_etf2l_teams.js') }}" defer></script>
 <script src="{{ hlfr_asset('/_js/admin_pickban.js') }}" defer></script>
 @endsection

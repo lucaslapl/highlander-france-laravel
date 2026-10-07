@@ -25,36 +25,23 @@
         </button>
     </div>
 
+    @include('admin.partials.etf2l_teams', ['competitions' => $competitions, 'prefix' => 'overlay'])
+
     <div class="admin-form-row" style="display:flex; gap:24px; flex-wrap:wrap;">
         @foreach (['red' => 'A', 'blue' => 'B'] as $team => $label)
-            <div style="flex:1; min-width:300px; border:1px solid #333; border-radius:8px; padding:14px;">
+            <div class="js-etf2l-team" style="flex:1; min-width:300px; border:1px solid #333; border-radius:8px; padding:14px;">
                 <h4 style="margin:0 0 10px; color:#bbb;">Équipe {{ $label }}</h4>
                 <label class="admin-form-label" for="overlay-{{ $team }}-name">Nom affiché (optionnel)</label>
-                <input type="text" id="overlay-{{ $team }}-name" name="{{ $team }}_name" class="form-control"
+                <input type="text" id="overlay-{{ $team }}-name" name="{{ $team }}_name" class="form-control js-team-field-name"
                        placeholder="{{ $team === 'red' ? 'RED par défaut' : 'BLU par défaut' }}" maxlength="64">
                 <label class="admin-form-label" style="margin-top:10px;" for="overlay-{{ $team }}-avatar">Avatar par URL externe (optionnel)</label>
-                <input type="url" id="overlay-{{ $team }}-avatar" name="{{ $team }}_avatar_url" class="form-control"
+                <input type="url" id="overlay-{{ $team }}-avatar" name="{{ $team }}_avatar_url" class="form-control js-team-field-avatar"
                        placeholder="https://…/logo.png">
-                @if (! empty($memorized_avatars))
-                    <div class="overlay-avatar-memory" data-team="{{ $team }}" style="margin-top:10px;">
-                        <span class="overlay-avatar-memory__label">Équipes déjà castées — un clic applique nom + avatar :</span>
-                        <div class="overlay-avatar-memory__tiles">
-                            @foreach ($memorized_avatars as $entry)
-                                <button type="button" class="overlay-avatar-memory__tile"
-                                        data-name="{{ e($entry['name']) }}" data-url="{{ e($entry['url']) }}"
-                                        title="Appliquer « {{ e($entry['name'] !== '' ? $entry['name'] : $entry['url']) }} » à l'équipe {{ $label }}">
-                                    <img src="{{ e($entry['url']) }}" alt="" loading="lazy">
-                                    <span>{{ e($entry['name'] !== '' ? $entry['name'] : '(sans nom)') }}</span>
-                                </button>
-                            @endforeach
-                        </div>
-                    </div>
-                @endif
             </div>
         @endforeach
     </div>
     <p style="color:#777; font-size:13px; margin:6px 0 0;">
-        Les scores, joueurs, classes et stats medics sont récupérés depuis l'API logs.tf. Noms et avatars saisis ici sont appliqués dès la création : tout est prêt avant le stream, et reste modifiable ensuite. Chaque équipe saisie avec son avatar est mémorisée (visuel + nom) et proposée en un clic lors des prochaines générations.
+        Les scores, joueurs, classes et stats medics sont récupérés depuis l'API logs.tf. Noms et avatars saisis ici sont appliqués dès la création : tout est prêt avant le stream, et reste modifiable ensuite.
     </p>
     <p style="color:#777; font-size:13px; margin:6px 0 0;">
         logs.tf classe les équipes en « rouge » et « bleu » sans lien avec votre layout : ici elles sont simplement A et B, et si les côtés ne conviennent pas, la page de l'overlay créé propose un bouton d'interversion.
@@ -111,6 +98,6 @@
 @endpush
 
 @push('scripts')
-<script src="{{ hlfr_asset('/_js/admin_overlay.js') }}" defer></script>
+<script src="{{ hlfr_asset('/_js/admin_etf2l_teams.js') }}" defer></script>
 @endpush
 @endsection

@@ -96,8 +96,10 @@ La gestion se fait dans le panel **`/admin/overlay`** (outil « Overlay Logs »)
 réservé aux admins et aux rôles **caster / prod** (middleware `overlay-tools`) :
 génération et suppression des tokens, noms d'équipes (A / B côté admin, logs.tf
 les classe arbitrairement en rouge/bleu) avec bouton d'interversion, avatars
-d'équipes par URL externe (visuel + nom mémorisés, proposés en un clic),
-rafraîchissement.
+d'équipes par URL externe, rafraîchissement. Le remplissage assisté des noms
+d'équipes est partagé par tous les outils overlay : compétition ETF2L → équipes
+chargées via l'endpoint `/admin/overlay/etf2l/teams` (cache `etf2l_api_cache`,
+rate-limit friendly), puis piochées dans chaque bloc équipe du formulaire.
 Les casters et la prod n'ont accès à rien d'autre du `/admin/*`.
 
 Les scores de série sont rapprochés automatiquement des logs logs.tf

@@ -11,7 +11,6 @@ use App\Services\AdminLogger;
 use App\Services\Auth;
 use App\Services\Etf2lTeamService;
 use Illuminate\Contracts\View\View;
-use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 
@@ -145,32 +144,6 @@ final class AdminBracketController extends Controller
                 $this->series->all(),
             ))),
         ]);
-    }
-
-    /**
-     * GET /admin/overlay/bracket/teams?competition_id=N — équipes d'une
-     * compétition ETF2L (nom, avatar, pays) pour le remplissage assisté
-     * de l'éditeur, interrogé en JavaScript. Vide si l'API est
-     * indisponible ou la compétition inconnue.
-     */
-    public function teams(Request $request): JsonResponse
-    {
-        Auth::requireOverlayTools();
-
-        $data = $request->validate([
-            'competition_id' => ['required', 'integer', 'min:1'],
-        ]);
-
-        $teams = [];
-        try {
-            $teams = $this->etf2lTeams->teams((int) $data['competition_id']);
-        } catch (\Throwable) {
-            // API indisponible : liste vide, message d'erreur explicite.
-        }
-
-        return response()
-            ->json(['teams' => $teams])
-            ->header('Cache-Control', 'no-store, no-cache, must-revalidate');
     }
 
     /**

@@ -23,9 +23,11 @@
         </p>
     </div>
 
+    @include('admin.partials.etf2l_teams', ['competitions' => $competitions, 'prefix' => 'series'])
+
     <div class="admin-form-row" style="display:flex; gap:24px; flex-wrap:wrap;">
         @foreach (['red' => 'A', 'blue' => 'B'] as $team => $label)
-            <div style="flex:1; min-width:300px; border:1px solid #333; border-radius:8px; padding:14px;">
+            <div class="js-etf2l-team" style="flex:1; min-width:300px; border:1px solid #333; border-radius:8px; padding:14px;">
                 <h4 style="margin:0 0 10px; color: {{ $team === 'red' ? '#e06c5a' : '#5885a2' }};">Équipe {{ $label }}</h4>
                 <p style="color:#777; font-size:12px; margin:0 0 10px;">
                     La couleur n'a aucune importance sur le match : elle ne fait que fixer l'ordre d'affichage
@@ -33,7 +35,7 @@
                     quel que soit le côté où le jeu place réellement les équipes.
                 </p>
                 <label class="admin-form-label" for="series-{{ $team }}-name">Nom de l'équipe (acronyme)</label>
-                <input type="text" id="series-{{ $team }}-name" name="{{ $team }}_name" class="form-control"
+                <input type="text" id="series-{{ $team }}-name" name="{{ $team }}_name" class="form-control js-team-field-name"
                        placeholder="Ex : IG" maxlength="64" required>
                 <p style="color:#777; font-size:12px; margin:6px 0 0;">
                     Utilisez l'acronyme de l'équipe (ex : Inglorious Gamblers devient IG) : l'espace disponible sur
@@ -48,16 +50,11 @@
                     Formats acceptés : SteamID64, STEAM_1:X:Y ou [U:1:N].
                 </p>
                 <label class="admin-form-label" style="margin-top:10px;" for="series-{{ $team }}-avatar-url">Avatar par URL externe (optionnel)</label>
-                <input type="url" id="series-{{ $team }}-avatar-url" name="{{ $team }}_avatar_url" class="form-control"
+                <input type="url" id="series-{{ $team }}-avatar-url" name="{{ $team }}_avatar_url" class="form-control js-team-field-avatar"
                        placeholder="https://…/logo.png">
-                @include('admin.partials.avatar_memory', ['team' => $team, 'label' => $label])
             </div>
         @endforeach
     </div>
-
-    <p style="color:#777; font-size:13px; margin:6px 0 0;">
-        Chaque équipe saisie avec son avatar est mémorisée (visuel + nom) et proposée en un clic lors des prochaines créations — la même mémoire que l'outil Overlay Logs.
-    </p>
 
     <div class="admin-form-row" style="display:flex; gap:24px; flex-wrap:wrap;">
         <div style="min-width:180px;">
@@ -128,6 +125,6 @@
 @endpush
 
 @push('scripts')
-<script src="{{ hlfr_asset('/_js/admin_overlay.js') }}" defer></script>
+<script src="{{ hlfr_asset('/_js/admin_etf2l_teams.js') }}" defer></script>
 @endpush
 @endsection

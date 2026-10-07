@@ -31,24 +31,21 @@
 <h3 class="admin-section-title"><i class="fa-solid fa-pen-to-square"></i> Personnalisation</h3>
 <form method="POST" action="/admin/overlay/{{ $overlay['token'] }}/update" class="admin-form-stack admin-form-stack--wide">
     @csrf
+    @include('admin.partials.etf2l_teams', ['competitions' => $competitions, 'prefix' => 'overlay'])
     <div class="admin-form-row" style="display:flex; gap:24px; flex-wrap:wrap;">
         @foreach (['red' => 'A', 'blue' => 'B'] as $team => $label)
-            <div style="flex:1; min-width:300px; border:1px solid #333; border-radius:8px; padding:14px;">
+            <div class="js-etf2l-team" style="flex:1; min-width:300px; border:1px solid #333; border-radius:8px; padding:14px;">
                 <h4 style="margin:0 0 10px; color:#bbb;">Équipe {{ $label }} — {{ (int) $overlay['teams'][$team]['score'] }} pts</h4>
                 <label class="admin-form-label">Nom affiché</label>
-                <input type="text" name="{{ $team }}_name" class="form-control"
+                <input type="text" name="{{ $team }}_name" class="form-control js-team-field-name"
                        value="{{ e($overlay['teams'][$team]['name']) }}" maxlength="64" required>
                 <label class="admin-form-label" style="margin-top:10px;">Avatar par URL externe (optionnel)</label>
-                <input type="url" name="{{ $team }}_avatar_url" class="form-control"
+                <input type="url" name="{{ $team }}_avatar_url" class="form-control js-team-field-avatar"
                        value="{{ e($overlay['teams'][$team]['avatar_url'] ?? '') }}"
                        placeholder="https://…/logo.png">
-                @include('admin.partials.avatar_memory', ['memorizedAvatars' => $memorized_avatars])
             </div>
         @endforeach
     </div>
-    <p style="color:#777; font-size:13px; margin:6px 0 0;">
-        Chaque équipe saisie avec son avatar est mémorisée (visuel + nom) et proposée en un clic lors des prochaines générations.
-    </p>
 
     <div>
         <button type="submit" class="admin-btn admin-btn--primary"><i class="fa-solid fa-floppy-disk"></i> Enregistrer</button>
@@ -90,6 +87,6 @@
 @endpush
 
 @push('scripts')
-<script src="{{ hlfr_asset('/_js/admin_overlay.js') }}" defer></script>
+<script src="{{ hlfr_asset('/_js/admin_etf2l_teams.js') }}" defer></script>
 @endpush
 @endsection

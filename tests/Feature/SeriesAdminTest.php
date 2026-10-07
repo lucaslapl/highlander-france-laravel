@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Tests\Feature;
 
-use App\Models\OverlayRepository;
 use App\Models\SeriesRepository;
 use App\Services\SeriesScoreService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -14,8 +13,8 @@ use Tests\TestCase;
  * Outil admin « Overlay Scores » : accès strictement réservé aux admins,
  * création d'une série (rosters SteamIDs, maps, format), lancement du suivi,
  * point de map manuel, annulation d'un événement, renommage des équipes
- * (nom + avatar par URL, mémorisés comme pour l'outil Overlay Logs),
- * interversion des équipes A / B et suppression.
+ * (nom + avatar par URL, remplissage assisté ETF2L comme pour les autres
+ * outils overlay), interversion des équipes A / B et suppression.
  */
 class SeriesAdminTest extends TestCase
 {
@@ -33,6 +32,10 @@ class SeriesAdminTest extends TestCase
         // storage/app/hlfr et tout est nettoyé en tearDown.
         $this->dataDir = storage_path('app/hlfr_series_test');
         config(['hlfr.data_dir' => $this->dataDir]);
+
+        // Le remplissage assisté ETF2L des pages admin est servi depuis le
+        // cache : amorce vide pour rester sans appel HTTP réel.
+        $this->seedEtf2lCompetitionsCache();
     }
 
     protected function tearDown(): void
@@ -186,7 +189,7 @@ class SeriesAdminTest extends TestCase
         $this->assertSame([], $series['journal']);
     }
 
-    public function test_le_renommage_met_a_jour_les_avatars_et_memorise_les_equipes(): void
+    public function test_le_renommage_met_a_jour_les_avatars(): void
     {
         $this->seedSeries();
 
@@ -202,14 +205,9 @@ class SeriesAdminTest extends TestCase
         $series = (new SeriesRepository)->find(self::TOKEN);
         $this->assertSame('https://example.com/lb.png', $series['teams']['red']['avatar_url']);
         $this->assertSame('https://example.com/e6.png', $series['teams']['blue']['avatar_url']);
-
-        // Les deux équipes sont mémorisées (visuel + nom) pour les prochaines créations.
-        $memorized = (new OverlayRepository)->memorizedAvatars();
-        $this->assertSame(['url' => 'https://example.com/lb.png', 'name' => 'LB'], $memorized[1]);
-        $this->assertSame(['url' => 'https://example.com/e6.png', 'name' => 'E6'], $memorized[0]);
     }
 
-    public function test_la_creation_memorise_les_equipes_avec_avatar(): void
+    public function test_la_creation_enregistre_les_avatars_par_url(): void
     {
         $input = $this->createInput();
         $input['red_avatar_url'] = 'https://example.com/lb.png';
@@ -219,27 +217,37 @@ class SeriesAdminTest extends TestCase
             ->post('/admin/series/create', $input)
             ->assertRedirect();
 
-        $memorized = (new OverlayRepository)->memorizedAvatars();
-        $this->assertSame(['url' => 'https://example.com/lb.png', 'name' => 'Les Baguettes'], $memorized[1]);
-        $this->assertSame(['url' => 'https://example.com/e6.png', 'name' => 'Escouade 6'], $memorized[0]);
+        $seriesList = (new SeriesRepository)->all();
+        $series = (new SeriesRepository)->find((string) $seriesList[0]['token']);
+        $this->assertSame('https://example.com/lb.png', $series['teams']['red']['avatar_url']);
+        $this->assertSame('https://example.com/e6.png', $series['teams']['blue']['avatar_url']);
     }
 
-    public function test_les_pages_serie_proposent_les_equipes_memorisees_en_un_clic(): void
+    public function test_les_pages_serie_proposent_le_remplissage_assiste_etf2l(): void
     {
-        (new OverlayRepository)->rememberAvatar('https://example.com/ig.png', 'IG');
+        // Même remplissage assisté que les autres outils overlay :
+        // compétition ETF2L → équipes chargées via /admin/overlay/etf2l/teams.
+        $this->seedEtf2lCompetitionsCache([
+            ['id' => 42, 'type' => 'Highlander', 'name' => 'HLFR Test Cup', 'archived' => false],
+        ]);
 
-        $this->withSession($this->adminSession())
+        $session = $this->adminSession();
+        $this->withSession($session)
             ->get('/admin/series')
             ->assertOk()
-            ->assertSee('Équipes déjà castées')
-            ->assertSee('https://example.com/ig.png');
+            ->assertSee('Remplissage assisté')
+            ->assertSee('HLFR Test Cup')
+            ->assertSee('series-load-teams')
+            ->assertDontSee('Équipes déjà castées');
 
         $this->seedSeries();
-        $this->withSession($this->adminSession())
+        $this->withSession($session)
             ->get('/admin/series/'.self::TOKEN)
             ->assertOk()
-            ->assertSee('Équipes déjà castées')
-            ->assertSee('https://example.com/ig.png');
+            ->assertSee('Remplissage assisté')
+            ->assertSee('HLFR Test Cup')
+            ->assertSee('series-load-teams')
+            ->assertDontSee('Équipes déjà castées');
     }
 
     public function test_l_interversion_echange_noms_et_avatars_mais_pas_les_rosters(): void

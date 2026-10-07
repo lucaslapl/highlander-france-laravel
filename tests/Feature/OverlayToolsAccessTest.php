@@ -16,6 +16,16 @@ class OverlayToolsAccessTest extends TestCase
 {
     use RefreshDatabase;
 
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        // Les pages outils overlay affichent le remplissage assisté ETF2L
+        // (compétitions depuis le cache) : amorce vide pour éviter tout
+        // appel HTTP réel en test.
+        $this->seedEtf2lCompetitionsCache();
+    }
+
     // ─── Accès au hub des overlays et aux outils overlay ──────────────────
 
     public function test_le_hub_des_overlays_et_les_outils_overlay_sont_interdits_aux_visiteurs(): void
