@@ -179,10 +179,14 @@
         return card;
     }
 
-    /* Connecteurs : au sein d'une voie, la case i d'une colonne est
-       alimentée par la case floor(i/2) de la colonne précédente (câblage
-       standard d'un bracket, sans saisie supplémentaire) ; les dernières
-       cases des voies haute et basse alimentent la grande finale. */
+    /* Connecteurs : au sein d'une voie, chaque case d'une colonne alimente
+       la case floor(i/2) de la colonne suivante (câblage standard d'un
+       bracket, sans saisie supplémentaire). Le câblage est piloté par les
+       sources : toutes les cases d'une colonne reçoivent un trait, y
+       compris quand la colonne suivante compte moins de cases que la
+       moitié (pré-remplissage manuel, BYE) — les cases en surnombre
+       rejoignent alors la dernière case disponible ; les dernières cases
+       des voies haute et basse alimentent la grande finale. */
     function drawConnectors(host, lanes, placed) {
         var counter = 0;
 
@@ -211,8 +215,12 @@
         ['upper', 'lower'].forEach(function (lane) {
             for (var depth = 1; depth < lanes[lane].length; depth++) {
                 var sources = byDepth(lane, depth - 1);
-                byDepth(lane, depth).forEach(function (tgt) {
-                    connect(sources[Math.floor(tgt.index / 2)], tgt);
+                var targets = byDepth(lane, depth);
+                if (sources.length === 0 || targets.length === 0) {
+                    continue;
+                }
+                sources.forEach(function (src) {
+                    connect(src, targets[Math.min(Math.floor(src.index / 2), targets.length - 1)]);
                 });
             }
         });
