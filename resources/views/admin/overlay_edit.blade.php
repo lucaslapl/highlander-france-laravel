@@ -31,13 +31,6 @@
 <h3 class="admin-section-title"><i class="fa-solid fa-pen-to-square"></i> Personnalisation</h3>
 <form method="POST" action="/admin/overlay/{{ $overlay['token'] }}/update" class="admin-form-stack admin-form-stack--wide">
     @csrf
-    @if (! empty($avatar_urls))
-        <datalist id="overlay-avatar-urls">
-            @foreach ($avatar_urls as $url)
-                <option value="{{ e($url) }}"></option>
-            @endforeach
-        </datalist>
-    @endif
     <div class="admin-form-row" style="display:flex; gap:24px; flex-wrap:wrap;">
         @foreach (['red' => 'A', 'blue' => 'B'] as $team => $label)
             <div style="flex:1; min-width:300px; border:1px solid #333; border-radius:8px; padding:14px;">
@@ -48,12 +41,27 @@
                 <label class="admin-form-label" style="margin-top:10px;">Avatar par URL externe (optionnel)</label>
                 <input type="url" name="{{ $team }}_avatar_url" class="form-control"
                        value="{{ e($overlay['teams'][$team]['avatar_url'] ?? '') }}"
-                       list="overlay-avatar-urls" placeholder="https://…/logo.png">
+                       placeholder="https://…/logo.png">
+                @if (! empty($memorized_avatars))
+                    <div class="overlay-avatar-memory" data-team="{{ $team }}" style="margin-top:10px;">
+                        <span class="overlay-avatar-memory__label">Équipes déjà castées — un clic applique nom + avatar :</span>
+                        <div class="overlay-avatar-memory__tiles">
+                            @foreach ($memorized_avatars as $entry)
+                                <button type="button" class="overlay-avatar-memory__tile"
+                                        data-name="{{ e($entry['name']) }}" data-url="{{ e($entry['url']) }}"
+                                        title="Appliquer « {{ e($entry['name'] !== '' ? $entry['name'] : $entry['url']) }} » à l'équipe {{ $label }}">
+                                    <img src="{{ e($entry['url']) }}" alt="" loading="lazy">
+                                    <span>{{ e($entry['name'] !== '' ? $entry['name'] : '(sans nom)') }}</span>
+                                </button>
+                            @endforeach
+                        </div>
+                    </div>
+                @endif
             </div>
         @endforeach
     </div>
     <p style="color:#777; font-size:13px; margin:6px 0 0;">
-        Les URL d'avatars utilisées sont mémorisées et re-proposées (saisie prédictive) lors des prochaines générations.
+        Chaque équipe saisie avec son avatar est mémorisée (visuel + nom) et proposée en un clic lors des prochaines générations.
     </p>
 
     <div>
@@ -93,5 +101,9 @@
 
 @push('styles')
 <link rel="stylesheet" href="{{ hlfr_asset('/_css/admin_overlay.css') }}">
+@endpush
+
+@push('scripts')
+<script src="{{ hlfr_asset('/_js/admin_overlay.js') }}" defer></script>
 @endpush
 @endsection

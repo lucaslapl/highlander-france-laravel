@@ -9,7 +9,7 @@ namespace App\Models;
  *
  * Les overlays vivent dans des caches JSON sous hlfr_data_path('overlays/') :
  * un index (liste des overlays) et un payload complet par overlay. Les
- * avatars d'équipe sont fournis par URL externe, mémorisées dans un cache
+ * équipes (nom affiché + avatar par URL) sont mémorisées dans un cache
  * dédié (avatar_urls.json) pour être proposées à la prochaine génération.
  * Les avatars historiques uploadés restent stockés sous
  * storage/app/public/overlay-avatars/ et servis par la route
@@ -22,8 +22,8 @@ final class OverlayRepository
     /** Extensions d'avatar autorisées (fichiers historiques). */
     private const AVATAR_EXTENSIONS = ['jpg', 'png', 'webp'];
 
-    /** Nombre d'URL d'avatars mémorisées au maximum. */
-    private const MAX_REMEMBERED_AVATAR_URLS = 20;
+    /** Nombre d'équipes mémorisées au maximum (avatar + nom). */
+    private const MAX_REMEMBERED_AVATARS = 20;
 
     private string $dir;
 
@@ -202,35 +202,40 @@ final class OverlayRepository
     }
 
     /**
-     * Mémorise une URL d'avatar pour la proposer lors des prochaines
-     * générations d'overlays (les plus récentes en tête, doublons retirés).
+     * Mémorise une équipe (URL d'avatar + nom affiché) pour la proposer
+     * lors des prochaines générations d'overlays : l'entrée existante de
+     * la même URL est mise à jour et remontée en tête de liste.
      */
-    public function rememberAvatarUrl(string $url): void
+    public function rememberAvatar(string $url, string $teamName): void
     {
         $url = trim($url);
         if ($url === '') {
             return;
         }
 
-        $urls = array_values(array_unique(array_merge(
-            [$url],
-            array_filter($this->avatarUrls(), static fn (string $existing): bool => $existing !== $url)
-        )));
-        $urls = array_slice($urls, 0, self::MAX_REMEMBERED_AVATAR_URLS);
+        $entry = ['url' => $url, 'name' => trim($teamName)];
+
+        $entries = array_values(array_filter(
+            $this->memorizedAvatars(),
+            static fn (array $existing): bool => ($existing['url'] ?? '') !== $entry['url']
+        ));
+        array_unshift($entries, $entry);
+        $entries = array_slice($entries, 0, self::MAX_REMEMBERED_AVATARS);
 
         if (! is_dir($this->dir)) {
             @mkdir($this->dir, 0755, true);
         }
 
-        @file_put_contents($this->avatarUrlFile(), json_encode($urls), LOCK_EX);
+        @file_put_contents($this->avatarUrlFile(), json_encode($entries), LOCK_EX);
     }
 
     /**
-     * URL d'avatars déjà utilisées, de la plus récente à la plus ancienne.
+     * Équipes mémorisées (URL d'avatar + nom affiché), de la plus récente
+     * à la plus ancienne.
      *
-     * @return array<int, string>
+     * @return array<int, array{url: string, name: string}>
      */
-    public function avatarUrls(): array
+    public function memorizedAvatars(): array
     {
         $file = $this->avatarUrlFile();
         if (! is_file($file)) {
@@ -242,10 +247,21 @@ final class OverlayRepository
             return [];
         }
 
-        return array_values(array_filter(
-            $data,
-            static fn (mixed $url): bool => is_string($url) && $url !== ''
-        ));
+        $entries = [];
+        foreach ($data as $entry) {
+            if (! is_array($entry)) {
+                continue;
+            }
+
+            $url = (string) ($entry['url'] ?? '');
+            if ($url === '') {
+                continue;
+            }
+
+            $entries[] = ['url' => $url, 'name' => (string) ($entry['name'] ?? '')];
+        }
+
+        return $entries;
     }
 
     /**

@@ -220,38 +220,61 @@ class OverlayTest extends TestCase
         $this->get('/overlay/'.self::TOKEN)->assertOk()->assertSee('Les Étoiles');
     }
 
-    public function test_les_urls_d_avatars_sont_memorisees_pour_reutilisation(): void
+    public function test_les_equipes_sont_memorisees_avec_avatar_et_nom_pour_reutilisation(): void
     {
         $this->seedOverlay();
 
         $this->withSession($this->adminSession())
             ->post('/admin/overlay/'.self::TOKEN.'/update', [
-                'red_name' => 'RED',
-                'blue_name' => 'BLU',
+                'red_name' => 'Les Étoiles',
+                'blue_name' => 'Baguettes',
                 'red_avatar_url' => 'https://example.com/logo.png',
                 'blue_avatar_url' => 'https://example.com/logo-b.png',
             ])
             ->assertRedirect();
 
-        // Les deux URL sont mémorisées et proposées en saisie prédictive
-        // sur la page de génération comme sur la page d'édition.
+        // Les équipes sont mémorisées (URL d'avatar + nom) et proposées
+        // en vignettes cliquables sur la génération comme sur l'édition :
+        // un clic applique le nom et l'avatar à l'équipe A ou B.
         $session = $this->adminSession();
         $this->withSession($session)
             ->get('/admin/overlay')
             ->assertOk()
+            ->assertSee('overlay-avatar-memory__tile')
             ->assertSee('https://example.com/logo.png')
-            ->assertSee('https://example.com/logo-b.png');
+            ->assertSee('https://example.com/logo-b.png')
+            ->assertSee('Les Étoiles')
+            ->assertSee('Baguettes');
 
         $this->withSession($session)
             ->get('/admin/overlay/'.self::TOKEN)
             ->assertOk()
-            ->assertSee('https://example.com/logo.png')
+            ->assertSee('overlay-avatar-memory__tile')
             ->assertSee('https://example.com/logo-b.png');
 
-        // La dernière URL mémorisée passe en tête de liste.
+        // La dernière équipe mémorisée passe en tête de liste, avec son nom.
         $this->assertSame(
-            ['https://example.com/logo-b.png', 'https://example.com/logo.png'],
-            array_slice((new OverlayRepository)->avatarUrls(), 0, 2)
+            [
+                ['url' => 'https://example.com/logo-b.png', 'name' => 'Baguettes'],
+                ['url' => 'https://example.com/logo.png', 'name' => 'Les Étoiles'],
+            ],
+            array_slice((new OverlayRepository)->memorizedAvatars(), 0, 2)
+        );
+
+        // Une même URL re-saisie avec un nouveau nom met l'entrée à jour
+        // au lieu de créer un doublon.
+        $this->withSession($session)
+            ->post('/admin/overlay/'.self::TOKEN.'/update', [
+                'red_name' => 'Baguettes FC',
+                'blue_name' => 'BLU',
+                'red_avatar_url' => 'https://example.com/logo-b.png',
+                'blue_avatar_url' => '',
+            ])
+            ->assertRedirect();
+
+        $this->assertSame(
+            ['url' => 'https://example.com/logo-b.png', 'name' => 'Baguettes FC'],
+            (new OverlayRepository)->memorizedAvatars()[0]
         );
     }
 

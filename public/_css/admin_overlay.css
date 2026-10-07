@@ -1,10 +1,60 @@
-/* Outil admin « Overlay match » (/admin/overlay) : champs d'URL et aperçu. */
+/* Outil admin « Overlay Logs » (/admin/overlay) : champs d'URL, équipes
+   mémorisées (vignettes avatar + nom) et aperçu. */
 
 .overlay-url-input {
     font-family: monospace;
     font-size: 13px;
     color: #9b6dff;
     background: #17141f;
+}
+
+/* Équipes mémorisées : vignettes cliquables (visuel + nom de team). */
+.overlay-avatar-memory__label {
+    display: block;
+    color: #777;
+    font-size: 12px;
+    margin-bottom: 6px;
+}
+
+.overlay-avatar-memory__tiles {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.overlay-avatar-memory__tile {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    width: 88px;
+    padding: 6px;
+    border: 1px solid #333;
+    border-radius: 8px;
+    background: #17141f;
+    color: #ccc;
+    font-size: 11px;
+    cursor: pointer;
+}
+
+.overlay-avatar-memory__tile:hover {
+    border-color: #9b6dff;
+    color: #fff;
+}
+
+.overlay-avatar-memory__tile img {
+    width: 56px;
+    height: 56px;
+    object-fit: contain;
+    border-radius: 6px;
+    background: #0e0c13;
+}
+
+.overlay-avatar-memory__tile span {
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 .overlay-preview-wrap {

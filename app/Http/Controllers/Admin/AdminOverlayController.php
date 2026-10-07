@@ -53,7 +53,7 @@ final class AdminOverlayController extends Controller
             'title' => 'Admin - Overlay Logs (OBS)',
             'description' => 'Génération d\'overlays de stats logs.tf pour les broadcasts OBS de Highlander France.',
             'overlays' => $this->overlays->all(),
-            'avatar_urls' => $this->overlays->avatarUrls(),
+            'memorized_avatars' => $this->overlays->memorizedAvatars(),
         ]);
     }
 
@@ -112,7 +112,7 @@ final class AdminOverlayController extends Controller
             'description' => 'Personnalisation de l\'overlay de stats pour les broadcasts OBS.',
             'overlay' => $overlay,
             'overlay_url' => url('/overlay/'.$overlay['token']),
-            'avatar_urls' => $this->overlays->avatarUrls(),
+            'memorized_avatars' => $this->overlays->memorizedAvatars(),
         ]);
     }
 
@@ -139,7 +139,7 @@ final class AdminOverlayController extends Controller
         $overlay['teams']['blue']['avatar_url'] = $this->cleanUrl($data['blue_avatar_url'] ?? null);
 
         $this->overlays->save($overlay);
-        $this->rememberAvatarUrls($overlay['teams']);
+        $this->rememberAvatars($overlay['teams']);
 
         return back()->with('success', 'Overlay mis à jour.');
     }
@@ -245,8 +245,9 @@ final class AdminOverlayController extends Controller
     /**
      * Initialise les champs personnalisables des équipes depuis les saisies
      * du formulaire de génération (optionnelles) : noms et avatars par URL,
-     * avec repli sur les valeurs par défaut du payload logs.tf. Les URL
-     * d'avatars sont mémorisées pour les prochaines générations.
+     * avec repli sur les valeurs par défaut du payload logs.tf. Chaque équipe
+     * saisie (nom + URL d'avatar) est mémorisée pour les prochaines
+     * générations, avec son visuel et son nom proposés en un clic.
      *
      * @param  array<string, array<string, mixed>>  $teams
      * @param  array<string, mixed>  $data
@@ -260,7 +261,7 @@ final class AdminOverlayController extends Controller
             $teams[$team]['avatar_url'] = $this->cleanUrl($data[$team.'_avatar_url'] ?? null);
         }
 
-        $this->rememberAvatarUrls($teams);
+        $this->rememberAvatars($teams);
 
         return $teams;
     }
@@ -270,12 +271,12 @@ final class AdminOverlayController extends Controller
      *
      * @param  array<string, array<string, mixed>>  $teams
      */
-    private function rememberAvatarUrls(array $teams): void
+    private function rememberAvatars(array $teams): void
     {
         foreach (['red', 'blue'] as $team) {
             $url = (string) ($teams[$team]['avatar_url'] ?? '');
             if ($url !== '') {
-                $this->overlays->rememberAvatarUrl($url);
+                $this->overlays->rememberAvatar($url, (string) ($teams[$team]['name'] ?? ''));
             }
         }
     }
