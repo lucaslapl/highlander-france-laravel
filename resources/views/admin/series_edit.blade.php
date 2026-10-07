@@ -93,7 +93,7 @@
     La couleur (A = côté gauche de l'overlay, B = côté droit) n'a aucune importance sur le match : elle ne fixe
     que l'ordre d'affichage, les logs font ensuite le travail.
 </p>
-<form method="POST" action="/admin/series/{{ $series['token'] }}/teams" class="admin-form-stack">
+<form method="POST" action="/admin/series/{{ $series['token'] }}/teams" class="admin-form-stack admin-form-stack--wide">
     @csrf
     <div style="display:flex; gap:16px; flex-wrap:wrap;">
         @foreach (['red' => 'A', 'blue' => 'B'] as $team => $label)
