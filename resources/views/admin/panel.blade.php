@@ -27,5 +27,11 @@
         <p class="admin-action-card__desc">Brackets de playoffs et classements (poules) construits à la main, éditables, avec match « EN DIRECT » rattachable à une série.</p>
         <a href="/admin/overlay/bracket" class="admin-link-btn">Gérer les brackets</a>
     </div>
+
+    <div class="admin-action-card" style="--accent: #fbb7fb;">
+        <h4 class="admin-action-card__title"><i class="fa-solid fa-map"></i> Overlay Pick/Ban</h4>
+        <p class="admin-action-card__desc">Pick / ban de maps (3 picks + 3 bans ou 5 picks + 1 ban) avec remplissage assisté ETF2L : équipes, avatars et maps officielles.</p>
+        <a href="/admin/overlay/pickban" class="admin-link-btn">Gérer les pick/ban</a>
+    </div>
 </div>
 @endsection
