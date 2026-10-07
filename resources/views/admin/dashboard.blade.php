@@ -157,6 +157,12 @@ window.__dashboardData = {!! json_encode($dashboardData, JSON_UNESCAPED_UNICODE 
                 <p class="admin-action-card__desc">Suivi automatique du score des séries de playoffs via logs.tf (maps gagnées par équipe), avec ajustements manuels + affichage logs.</p>
                 <a href="/admin/series" class="admin-link-btn">Gérer les séries</a>
             </div>
+
+            <div class="admin-action-card" style="--accent: #e97fff;">
+                <h4 class="admin-action-card__title"><i class="fa-solid fa-sitemap"></i> Overlay Bracket</h4>
+                <p class="admin-action-card__desc">Brackets de playoffs et classements (poules) importés de l'API ETF2L, éditables, avec match « EN DIRECT » rattachable à une série.</p>
+                <a href="/admin/overlay/bracket" class="admin-link-btn">Gérer les brackets</a>
+            </div>
         </div>
 
         <h3 class="admin-section-title">Gestion interne du site (dangereux !)</h3>
