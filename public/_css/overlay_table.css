@@ -1,6 +1,8 @@
 /* Overlay classement (/bracket-overlay/{token}, type table) — page
    1920x1080 entièrement transparente pour OBS : tableau de classement
-   « poule » avec drapeaux, avatars, surlignage du top X. */
+   « poule » avec avatars. Le top 3 porte les couleurs médaille (or,
+   argent, bronze) ; un éventuel top X au-delà de 3 garde l'aplat vert
+   de qualification. Tous les fonds sont en aplat (pas de dégradé). */
 
 * { margin: 0; padding: 0; box-sizing: border-box; }
 
@@ -10,12 +12,18 @@
     --border: #38193d;
     --border-strong: #5f235f;
     --surface-dark: rgba(21, 10, 24, 0.92);
-    --surface-raised: rgba(122, 62, 138, 0.55);
     --violet-bright: #e97fff;
     --violet-line: rgba(186, 53, 215, 0.57);
     --dim: rgba(255, 255, 255, 0.6);
     --playoff-won-bg: rgba(42, 74, 42, 0.55);
     --playoff-won: #8c8;
+    --row-alt: rgba(122, 62, 138, 0.22);
+    --medal-gold: #f6c453;
+    --medal-gold-bg: rgba(246, 196, 83, 0.16);
+    --medal-silver: #cfd6dd;
+    --medal-silver-bg: rgba(207, 214, 221, 0.13);
+    --medal-bronze: #cd8a4e;
+    --medal-bronze-bg: rgba(205, 138, 78, 0.15);
 }
 
 html, body {
@@ -92,11 +100,10 @@ h1 em {
 .standings {
     position: absolute;
     top: 250px;
-    left: 50%;
+    left: 24%;
     transform: translateX(-50%);
     width: 1000px;
-    background: linear-gradient(180deg, var(--surface-raised), var(--surface-dark));
-    border: 1px solid var(--border);
+    background: var(--surface-dark);
     border-left: 4px solid var(--accent);
     border-radius: 10px;
     box-shadow: 0 12px 34px rgba(0, 0, 0, .45);
@@ -152,14 +159,6 @@ h1 em {
     gap: 14px;
 }
 
-.standings img.flag {
-    width: 28px;
-    height: 20px;
-    object-fit: cover;
-    border-radius: 3px;
-    flex: none;
-}
-
 .standings img.avatar {
     width: 38px;
     height: 38px;
@@ -186,12 +185,51 @@ h1 em {
 
 .standings td.penalty { color: var(--dim); width: 86px; }
 
-/* Ligne qualifiée (top X) : teinte verte de victoire, comme les cases
-   gagnantes du bracket. */
-.standings tr.qualified td {
-    background: linear-gradient(90deg, var(--playoff-won-bg), transparent 70%);
+/* Alternance des lignes en aplat violet discret : sépare visuellement
+   les équipes sans introduire de dégradé. */
+.standings tbody tr:nth-child(even) td {
+    background: var(--row-alt);
 }
 
-.standings tr.qualified td.rank {
+/* Top 3 « médaille » : or, argent, bronze. Le rang suit l'ordre des
+   lignes rendues (incrémenté côté contrôleur), donc nth-child = rang.
+   Aplat discret sur la ligne, chiffre du rang et liseré latéral aux
+   couleurs du métal. */
+.standings tbody tr:nth-child(1) td {
+    background: var(--medal-gold-bg);
+}
+
+.standings tbody tr:nth-child(1) td.rank {
+    color: var(--medal-gold);
+    box-shadow: inset 4px 0 0 var(--medal-gold);
+}
+
+.standings tbody tr:nth-child(2) td {
+    background: var(--medal-silver-bg);
+}
+
+.standings tbody tr:nth-child(2) td.rank {
+    color: var(--medal-silver);
+    box-shadow: inset 4px 0 0 var(--medal-silver);
+}
+
+.standings tbody tr:nth-child(3) td {
+    background: var(--medal-bronze-bg);
+}
+
+.standings tbody tr:nth-child(3) td.rank {
+    color: var(--medal-bronze);
+    box-shadow: inset 4px 0 0 var(--medal-bronze);
+}
+
+/* Lignes qualifiées au-delà du top 3 (top X > 3) : aplat vert de
+   victoire, liseré vert côté rang — même code couleur que les cases
+   gagnantes du bracket. */
+.standings tbody tr.qualified:nth-child(n+4) td {
+    background: var(--playoff-won-bg);
+}
+
+.standings tbody tr.qualified:nth-child(n+4) td.rank {
     color: var(--playoff-won);
+    box-shadow: inset 4px 0 0 var(--playoff-won);
 }

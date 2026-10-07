@@ -202,7 +202,7 @@ class BracketOverlayTest extends TestCase
         $this->assertGreaterThan(time(), (int) $response->json('version'));
     }
 
-    public function test_le_classement_affiche_rangs_drapeaux_et_top_x(): void
+    public function test_le_classement_affiche_rangs_et_top_x_sans_drapeaux(): void
     {
         $this->seedBracket([
             'kind' => 'table',
@@ -222,7 +222,8 @@ class BracketOverlayTest extends TestCase
         $this->assertStringContainsString('AKATSUKI', $html);
         $this->assertStringContainsString('Pén', $html);
         $this->assertStringContainsString('class="qualified"', $html);
-        $this->assertStringContainsString('flags/fr', $html);
+        $this->assertStringNotContainsString('flags/', $html);
+        $this->assertStringNotContainsString('class="flag"', $html);
     }
 
     public function test_le_classement_sans_penalite_masque_la_colonne(): void

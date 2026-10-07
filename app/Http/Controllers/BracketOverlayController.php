@@ -6,7 +6,6 @@ namespace App\Http\Controllers;
 
 use App\Models\BracketRepository;
 use App\Models\SeriesRepository;
-use App\Services\CountryFlags;
 use App\Services\SeriesScoreService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Response;
@@ -224,8 +223,6 @@ final class BracketOverlayController extends Controller
                 'rank' => $rank,
                 'name' => (string) ($row['name'] ?? ''),
                 'avatar' => (string) ($row['avatar'] ?? ''),
-                'country' => (string) ($row['country'] ?? ''),
-                'flag' => CountryFlags::flag((string) ($row['country'] ?? '')),
                 'played' => (int) ($row['played'] ?? 0),
                 'won' => (int) ($row['won'] ?? 0),
                 'lost' => (int) ($row['lost'] ?? 0),

@@ -1,8 +1,8 @@
 {{-- Vue overlay OBS du tableau de classement « poule » (1920x1080, fond
      transparent). Page autonome : pas de layout site, aucun chrome. Le
-     tableau est rendu côté serveur (rang, drapeau, avatar, surlignage du
-     top X) ; l'auto-rafraîchissement est porté par overlay_bracket.js
-     (polling de version commun aux deux formats). --}}
+     tableau est rendu côté serveur (rang, avatar, surlignage du top X) ;
+     l'auto-rafraîchissement est porté par overlay_bracket.js (polling de
+     version commun aux deux formats). --}}
 <!DOCTYPE html>
 <html lang="fr">
 <head>
@@ -47,7 +47,6 @@
                         <td class="rank">{{ (int) $row['rank'] }}</td>
                         <td class="team-col">
                             <span class="team-cell">
-                                <img class="flag" src="{{ e($row['flag']) }}" alt="" loading="lazy">
                                 @if ($row['avatar'] !== '')
                                     <img class="avatar" src="{{ e($row['avatar']) }}" alt="" loading="lazy">
                                 @endif
