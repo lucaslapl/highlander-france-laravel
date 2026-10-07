@@ -167,17 +167,61 @@ class Etf2lNameResolverTest extends TestCase
         $this->assertSame(['name' => 'NouveauNom', 'etf2l_id' => 112835], $resolved[self::SID2_PSYCHO]);
     }
 
-    public function test_erreur_reseau_sans_cache_rejoue_l_appel_suivant(): void
+    public function test_erreur_reseau_ecrit_un_cache_d_indisponibilite_court(): void
     {
         $calls = 0;
         $resolver = $this->resolver([self::SID64_PSYCHO => null], $calls);
 
+        // Premier essai : échec réseau, aucune résolution.
         $this->assertSame([], $resolver->resolve([self::SID2_PSYCHO]));
+        $this->assertSame(1, $calls);
+
+        // Deuxième résolution dans la fenêtre du cache d'indisponibilité
+        // (60 s) : l'API n'est pas martelée — un overlay OBS qui se
+        // recharge toutes les minutes ne doit pas relancer les appels.
         $this->assertSame([], $resolver->resolve([self::SID2_PSYCHO]));
-        $this->assertSame(2, $calls);
-        $this->assertDatabaseMissing('etf2l_api_cache', [
-            'url' => 'https://api-v2.etf2l.org/player/'.self::SID64_PSYCHO,
-        ]);
+        $this->assertSame(1, $calls);
+
+        // Entrée d'indisponibilité écrite (clé privée UNAVAILABLE_ERROR).
+        $row = DB::table('etf2l_api_cache')
+            ->where('url', 'https://api-v2.etf2l.org/player/'.self::SID64_PSYCHO)
+            ->first();
+        $this->assertNotNull($row);
+        $payload = json_decode((string) $row->payload, true);
+        $this->assertSame('hlfr_etf2l_indisponible', $payload['error'] ?? null);
+    }
+
+    public function test_le_cache_d_indisponibilite_expire_relance_l_api(): void
+    {
+        $this->seedApiCache(self::SID64_PSYCHO, ['error' => 'hlfr_etf2l_indisponible'], 61);
+
+        $calls = 0;
+        $resolver = $this->resolver([self::SID64_PSYCHO => $this->playerPayload('Psycho', 112835)], $calls);
+
+        $resolved = $resolver->resolve([self::SID2_PSYCHO]);
+
+        $this->assertSame(1, $calls);
+        $this->assertSame(['name' => 'Psycho', 'etf2l_id' => 112835], $resolved[self::SID2_PSYCHO]);
+    }
+
+    public function test_un_payload_throttle_429_est_un_echec_mis_en_cache_court(): void
+    {
+        $throttle = ['status' => ['code' => 429, 'message' => 'Too Many Attempts.']];
+        $calls = 0;
+        $resolver = $this->resolver([self::SID64_PSYCHO => $throttle], $calls);
+
+        $this->assertSame([], $resolver->resolve([self::SID2_PSYCHO]));
+        $this->assertSame(1, $calls);
+
+        // Cache d'indisponibilité écrit : pas de re-martèlement ensuite.
+        $this->assertSame([], $resolver->resolve([self::SID2_PSYCHO]));
+        $this->assertSame(1, $calls);
+
+        $row = DB::table('etf2l_api_cache')
+            ->where('url', 'https://api-v2.etf2l.org/player/'.self::SID64_PSYCHO)
+            ->first();
+        $payload = json_decode((string) $row->payload, true);
+        $this->assertSame('hlfr_etf2l_indisponible', $payload['error'] ?? null);
     }
 
     // ─── Cas divers ──────────────────────────────────────────────────────

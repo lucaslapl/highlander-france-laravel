@@ -527,10 +527,16 @@ final class PageController extends Controller
 
     /**
      * Page d'un match en direct (GET /live/{server}).
-     * Source : cache alimenté par le plugin hlfr_live_match.
+     * Source : cache alimenté par le plugin hlfr_live_match. Silencieuse
+     * (404) tant que la fonctionnalité n'est pas activée
+     * (config hlfr.live_matches.enabled).
      */
     public function liveMatch(Request $request): View
     {
+        if (! config('hlfr.live_matches.enabled')) {
+            abort(404);
+        }
+
         $server = (string) $request->route('server', '');
         $entry = $server !== '' ? LiveMatches::get($server) : null;
 

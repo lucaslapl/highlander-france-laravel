@@ -17,6 +17,11 @@ use Illuminate\Support\Facades\DB;
  *  3. l'API ETF2L v2 (player/{steamid64}), avec écriture du cache après
  *     chaque appel — y compris pour les « joueur introuvable » (cache
  *     négatif) afin de ne pas marteler l'API pour les mercs sans compte.
+ *     Un échec (réseau, throttle 429, 5xx…) est également mis en cache
+ *     une minute : les overlays OBS se rechargent souvent pendant un
+ *     cast, et sans ce cache d'indisponibilité chaque rechargement
+ *     re-questionnerait l'API pour tous les joueurs, entretenant le
+ *     throttle (429) de toute l'IP du site.
  *
  * Les pseudos sont assainis avant renvoi (suppression des caractères de
  * contrôle, taille plafonnée) : ils seront affichés en jeu comme noms de
@@ -31,6 +36,12 @@ final class Etf2lNameResolver
 
     /** Durée de vie (s) du cache négatif (joueur introuvable sur ETF2L). */
     private const CACHE_TTL_NOT_FOUND_S = 12 * 3600;
+
+    /** Durée de vie (s) du cache d'indisponibilité (réseau, throttle 429…). */
+    private const CACHE_TTL_UNAVAILABLE_S = 60;
+
+    /** Clé « error » d'une entrée de cache d'indisponibilité API. */
+    private const UNAVAILABLE_ERROR = 'hlfr_etf2l_indisponible';
 
     /** Timeout cURL par appel. */
     private const HTTP_TIMEOUT_S = 10;
@@ -58,6 +69,13 @@ final class Etf2lNameResolver
             $meta = JsonClient::getWithMeta($url, self::HTTP_TIMEOUT_S, 'Highlander France Bot/1.0', ['Accept: application/json']);
 
             if ($meta['curl_error'] !== '' || ! is_array($meta['data'])) {
+                return null;
+            }
+
+            // 404 = joueur introuvable : corps JSON complet, mis en cache
+            // négativement. Tout autre code HTTP (throttle 429, 5xx…) est
+            // un échec, jamais mis en cache comme un payload valide.
+            if ($meta['http_code'] !== 200 && (int) ($meta['data']['status']['code'] ?? 0) !== 404) {
                 return null;
             }
 
@@ -232,6 +250,17 @@ final class Etf2lNameResolver
                 continue;
             }
 
+            if (($decoded['error'] ?? null) === self::UNAVAILABLE_ERROR) {
+                // Dernier essai en échec tout récent (réseau, throttle…) :
+                // on ne martèle pas l'API, le pseudo en jeu du log reste
+                // utilisé ; au-delà du cache court, le niveau 3 retente.
+                if ((int) $row->fetched_at > time() - self::CACHE_TTL_UNAVAILABLE_S) {
+                    unset($missing[$steamid64]);
+                }
+
+                continue;
+            }
+
             $hit = $this->hitFromPayload($decoded);
             if ($hit !== null) {
                 // Fraîcheur standard (24 h) pour un joueur trouvé.
@@ -289,9 +318,10 @@ final class Etf2lNameResolver
 
     /**
      * Appel API réel (rate-limité) avec écriture immédiate dans le cache
-     * etf2l_api_cache — y compris pour une réponse 404 (cache négatif) ;
-     * seules les erreurs réseau / réponses illisibles restent sans cache
-     * afin d'être retentées au prochain appel.
+     * etf2l_api_cache : réponse 404 (cache négatif 12 h), comme un échec
+     * réseau / throttle 429 (cache d'indisponibilité 60 s). Sans ce dernier,
+     * chaque rechargement d'overlay pendant un cast re-questionnerait
+     * l'API pour tous les joueurs, entretenant le throttle de l'IP.
      */
     private function cachedFetch(string $url): ?array
     {
@@ -299,6 +329,16 @@ final class Etf2lNameResolver
 
         $payload = ($this->fetcher)($url);
         if ($payload === null) {
+            $this->writeCache($url, ['error' => self::UNAVAILABLE_ERROR]);
+
+            return null;
+        }
+
+        // Throttle ou erreur serveur dans le corps : échec, cache court.
+        $code = (int) ($payload['status']['code'] ?? 200);
+        if ($code === 429 || $code >= 500) {
+            $this->writeCache($url, ['error' => self::UNAVAILABLE_ERROR]);
+
             return null;
         }
 

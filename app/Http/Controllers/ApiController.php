@@ -24,8 +24,13 @@ final class ApiController extends Controller
     {
         $matches = [];
 
-        foreach (LiveMatches::all() as $entry) {
-            $matches[] = LiveMatches::enrich($entry);
+        // Fonctionnalité « matchs en direct » au silence tant qu'aucun
+        // serveur ne l'utilise (config hlfr.live_matches.enabled) : la
+        // liste reste vide, le badge de navigation ne s'affiche pas.
+        if (config('hlfr.live_matches.enabled')) {
+            foreach (LiveMatches::all() as $entry) {
+                $matches[] = LiveMatches::enrich($entry);
+            }
         }
 
         return response()

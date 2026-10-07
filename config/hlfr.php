@@ -16,6 +16,15 @@ return [
     // défaut (voir hlfr_theme() dans app/Support/helpers.php).
     'theme' => env('HLFR_THEME', 'default'),
 
+    // Matchs en direct (badge « MIX EN COURS » de la navigation, pages
+    // /live/{server}) alimentés par les webhooks du plugin hlfr_live_match.
+    // Désactivé par défaut : la fonctionnalité reste silencieuse (badge
+    // masqué, pages 404, webhooks toujours acceptés) tant qu'aucun serveur
+    // ne l'utilise réellement — réactivable via HLFR_LIVE_MATCHES=true.
+    'live_matches' => [
+        'enabled' => (bool) env('HLFR_LIVE_MATCHES', false),
+    ],
+
     // Téléchargements privés : ZIP volumineux servis via des liens à token
     // secret (/dl/<token>), destinés uniquement à ceux qui connaissent l'URL.
     // 'dir' : répertoire de stockage hors webroot (le fichier est déposé via SCP
