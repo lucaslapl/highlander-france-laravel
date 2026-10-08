@@ -26,9 +26,16 @@ use Illuminate\Http\Request;
  * autres outils), puis chaque classe reçoit son joueur via un menu
  * alimenté par le roster ETF2L de l'équipe. Tout reste modifiable à la
  * main (mercs, saisons passées) et chaque joueur peut être marqué
- * « merc » pour le badge doré de l'overlay. Le format est fixé à la
+ * « merc » pour le badge rose de l'overlay. Le format est fixé à la
  * création : il fixe la disposition de l'overlay (3x3 ou six classes en
  * ligne), le changer reviendrait à vider les affectations de classes.
+ *
+ * L'overlay n'affiche qu'une équipe à la fois (les spectateurs ne voient
+ * pas les interactions du caster) : le bouton « Switcher le roster
+ * affiché » bascule l'équipe rendue par l'overlay — le switch bump la
+ * version avec un drapeau pour que l'animation d'apparition se rejoue
+ * pour l'équipe qui arrive, les autres enregistrements restent des
+ * rafraîchissements statiques (voir RostersOverlayController).
  */
 final class AdminRostersController extends Controller
 {
@@ -122,6 +129,8 @@ final class AdminRostersController extends Controller
             'format' => $format,
             'eyebrow' => trim((string) ($data['eyebrow'] ?? '')),
             'title' => trim((string) $data['title']),
+            'displayed' => 'a',
+            'replay_enter' => false,
             'teams' => [
                 'a' => $this->emptyTeam(self::FORMATS[$format]['classes']),
                 'b' => $this->emptyTeam(self::FORMATS[$format]['classes']),
@@ -188,6 +197,11 @@ final class AdminRostersController extends Controller
         $overlay['eyebrow'] = trim((string) ($data['eyebrow'] ?? ''));
         $overlay['title'] = trim((string) $data['title']);
 
+        // Rafraîchissement statique : un simple enregistrement (pseudo,
+        // merc, renommage) ne rejoue pas l'animation d'apparition, seul le
+        // bouton de switch la déclenche (voir switch()).
+        $overlay['replay_enter'] = false;
+
         foreach (['a', 'b'] as $side) {
             $input = $request->input('team_'.$side, []);
             $input = is_array($input) ? $input : [];
@@ -206,6 +220,42 @@ final class AdminRostersController extends Controller
         AdminLogger::log('admin_rosters_update', null, 'SUCCESS ('.$format.' '.$token.')');
 
         return back()->with('success', 'Overlay enregistré — l\'overlay OBS se rafraîchit aussitôt.');
+    }
+
+    /**
+     * POST /admin/overlay/rosters/{token}/switch — bascule le roster
+     * affiché par l'overlay vers l'autre équipe. Le switch se joue côté
+     * admin : les spectateurs ne voient pas l'interaction, seulement le
+     * résultat. La version est bumpée (l'overlay se rafraîchit tout seul
+     * via son polling) avec le drapeau replay_enter : l'animation
+     * d'apparition se rejoue pour l'équipe qui arrive — un simple
+     * enregistrement, lui, reste un rafraîchissement statique.
+     */
+    public function switch(string $token): RedirectResponse
+    {
+        Auth::requireOverlayTools();
+
+        $overlay = $this->requireOverlay($token);
+
+        $overlay['displayed'] = $this->displayedSide($overlay) === 'a' ? 'b' : 'a';
+        $overlay['replay_enter'] = true;
+        $this->rosters->save($overlay);
+
+        $side = $overlay['displayed'];
+        $teamName = (string) ($overlay['teams'][$side]['name'] ?? '');
+
+        AdminLogger::log('admin_rosters_switch', null, 'SUCCESS ('.$token.' : roster affiché '.$side.' '.trim($teamName).')');
+
+        return back()->with('success', 'Roster affiché : équipe '.strtoupper($side).(($teamName !== '') ? ' ('.$teamName.')' : '').' — l\'overlay se rafraîchit tout seul et rejoue l\'animation d\'apparition.');
+    }
+
+    /**
+     * Équipe affichée par l'overlay (toujours « a » ou « b », même pour
+     * les payloads créés avant l'existence du switch).
+     */
+    private function displayedSide(array $overlay): string
+    {
+        return (string) ($overlay['displayed'] ?? 'a') === 'b' ? 'b' : 'a';
     }
 
     /**

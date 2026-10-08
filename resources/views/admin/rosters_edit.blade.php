@@ -22,7 +22,7 @@
 <h3 class="admin-section-title"><i class="fa-solid fa-tv"></i> Overlay OBS</h3>
 <p style="color:#aaa; font-size:13px;">
     Dans OBS Studio, ajoutez une source navigateur web (fond transparent) pointant sur l'URL ci-dessous :
-    elle affiche les deux équipes et chaque joueur devant son portrait de classe, et se rafraîchit toute seule
+    elle affiche les noms d'équipes et chaque joueur devant son portrait de classe, et se rafraîchit toute seule
     (polling toutes les 5 secondes — aucun alt-tab pendant le cast).
 </p>
 <p style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
@@ -31,6 +31,29 @@
     </code>
     <a class="admin-link-btn" href="/roster-overlay/{{ $overlay['token'] }}" target="_blank">Prévisualiser</a>
 </p>
+
+@php
+    $displayed = ($overlay['displayed'] ?? 'a') === 'b' ? 'b' : 'a';
+    $displayedName = (string) ($overlay['teams'][$displayed]['name'] ?? '');
+    $hidden = $displayed === 'a' ? 'b' : 'a';
+    $hiddenName = (string) ($overlay['teams'][$hidden]['name'] ?? '');
+@endphp
+<div style="border:2px solid #e97fff; border-radius:10px; padding:16px; margin-bottom:16px; background:rgba(233,127,255,0.08);">
+    <h4 style="margin:0 0 8px;"><i class="fa-solid fa-right-left"></i> Roster affiché</h4>
+    <p style="margin:0 0 12px; font-size:14px; line-height:1.5;">
+        L'overlay n'affiche qu'une équipe à la fois : actuellement
+        <strong>l'équipe {{ strtoupper($displayed) }}{{ $displayedName !== '' ? ' ('.$displayedName.')' : '' }}</strong>.
+        Ce bouton bascule l'affichage vers l'équipe {{ strtoupper($hidden) }}{{ $hiddenName !== '' ? ' ('.$hiddenName.')' : '' }} —
+        l'overlay se rafraîchit tout seul et rejoue l'animation d'apparition. La bascule se joue ici, côté réglages :
+        les spectateurs ne voient jamais l'interaction, seulement le résultat.
+    </p>
+    <form method="POST" action="/admin/overlay/rosters/{{ $overlay['token'] }}/switch">
+        @csrf
+        <button type="submit" class="admin-btn admin-btn--primary">
+            <i class="fa-solid fa-right-left"></i> Switcher le roster affiché
+        </button>
+    </form>
+</div>
 
 <h3 class="admin-section-title"><i class="fa-solid fa-user-group"></i> Équipes et classes</h3>
 @include('admin.partials.etf2l_teams', ['competitions' => $competitions, 'prefix' => 'rosters'])

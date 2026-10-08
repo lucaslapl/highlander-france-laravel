@@ -11,11 +11,15 @@ use Tests\TestCase;
 /**
  * Overlay OBS des rosters d'équipes : pages publiques par token (source
  * navigateur OBS, fond transparent) et endpoint de version interrogé par
- * la page pour se rafraîchir. L'outil admin (création / édition) impose le
- * format choisi à la création (Highlander = neuf classes, 6v6 = six
- * classes) : les affectations de classes suivent cet ordre, chaque joueur
- * peut être marqué merc pour le badge doré de l'overlay. Aucune donnée
- * sensible : noms d'équipes et pseudos publics des joueurs inscrits.
+ * la page pour se rafraîchir. Une seule équipe est affichée à la fois,
+ * pilotée côté admin (bouton « Switcher le roster affiché ») : le switch
+ * bump la version avec le drapeau replay_enter pour rejouer l'animation
+ * d'apparition, les autres enregistrements restent des rafraîchissements
+ * statiques. L'outil admin (création / édition) impose le format choisi à
+ * la création (Highlander = neuf classes, 6v6 = six classes) : les
+ * affectations suivent cet ordre, chaque joueur peut être marqué merc
+ * pour le badge rose de l'overlay. Aucune donnée sensible : noms
+ * d'équipes et pseudos publics des joueurs inscrits.
  */
 class RostersOverlayTest extends TestCase
 {
@@ -180,7 +184,7 @@ class RostersOverlayTest extends TestCase
         $this->assertSame('kaylus', $overlay['teams']['b']['players'][0]['name']);
     }
 
-    public function test_l_overlay_affiche_equipes_portraits_pseudos_et_mercs(): void
+    public function test_l_overlay_affiche_le_roster_de_l_equipe_courante(): void
     {
         $this->seedRosters([
             'format' => 'hl',
@@ -202,42 +206,103 @@ class RostersOverlayTest extends TestCase
             ],
         ]);
 
+        // Équipe A affichée par défaut : l'équipe B n'est pas rendue du
+        // tout (les spectateurs ne voient que l'équipe choisie côté
+        // admin, aucune donnée cachée dans la page).
         $response = $this->get('/roster-overlay/'.self::TOKEN);
 
         $response->assertOk()
             ->assertSee('ETF2L Highlander Saison 40 - Division 1')
             ->assertSee('Rosters')
             ->assertSee('DD14')
-            ->assertSee('AKATSUKI')
             ->assertSee('xine')
             ->assertSee('dexton123')
-            ->assertSee('kaylus')
             ->assertSee('MERC')
             // Portraits de classes : copie locale du wiki TF2.
             ->assertSee('_img/classes_portraits/scout.png')
-            ->assertSee('_img/classes_portraits/medic.png')
-            // Une seule équipe affichée à la fois : le bouton sous le
-            // panneau bascule vers l'équipe masquée (noms dans les deux
-            // libellés, le CSS n'en montre qu'un).
-            ->assertSee('js-roster-switch')
-            ->assertSee('Afficher AKATSUKI')
-            ->assertSee('Afficher DD14');
+            ->assertDontSee('AKATSUKI')
+            ->assertDontSee('kaylus');
     }
 
-    public function test_l_overlay_6v6_affiche_six_classes_par_equipe(): void
+    public function test_le_switch_bascule_le_roster_affiche_et_rejoue_l_animation(): void
+    {
+        $this->seedRosters([
+            'format' => 'hl',
+            'teams' => [
+                'a' => [
+                    'name' => 'DD14',
+                    'avatar' => '',
+                    'etf2l_id' => null,
+                    'players' => $this->hlPlayers(['scout' => ['xine', false]]),
+                ],
+                'b' => [
+                    'name' => 'AKATSUKI',
+                    'avatar' => '',
+                    'etf2l_id' => null,
+                    'players' => $this->hlPlayers(['medic' => ['kaylus', true]]),
+                ],
+            ],
+        ]);
+
+        $this->withSession(['steamid' => '76561198012345678', 'is_caster' => true])
+            ->post('/admin/overlay/rosters/'.self::TOKEN.'/switch')
+            ->assertSessionHas('success');
+
+        // Le switch bascule l'équipe affichée et pose le drapeau qui
+        // fait rejouer l'animation d'apparition à la page overlay.
+        $overlay = $this->findOverlay();
+        $this->assertSame('b', $overlay['displayed']);
+        $this->assertTrue((bool) $overlay['replay_enter']);
+
+        $this->get('/roster-overlay/'.self::TOKEN)
+            ->assertOk()
+            ->assertSee('AKATSUKI')
+            ->assertSee('kaylus')
+            ->assertDontSee('DD14')
+            ->assertDontSee('xine');
+    }
+
+    public function test_un_simple_enregistrement_garde_le_roster_affiche_et_reste_statique(): void
+    {
+        $this->seedRosters([
+            'format' => 'hl',
+            'displayed' => 'b',
+            'teams' => [
+                'a' => $this->team(['scout', 'soldier', 'pyro', 'demoman', 'heavyweapons', 'engineer', 'medic', 'sniper', 'spy']),
+                'b' => $this->team(['scout', 'soldier', 'pyro', 'demoman', 'heavyweapons', 'engineer', 'medic', 'sniper', 'spy']),
+            ],
+        ]);
+
+        $this->withSession(['steamid' => '76561198012345678', 'is_caster' => true])
+            ->post('/admin/overlay/rosters/'.self::TOKEN.'/update', [
+                'eyebrow' => '',
+                'title' => 'Rosters',
+                'team_a' => ['name' => 'DD14', 'avatar' => '', 'etf2l_id' => ''],
+                'team_b' => ['name' => 'AKATSUKI', 'avatar' => '', 'etf2l_id' => ''],
+                'players_a' => [],
+                'players_b' => [0 => ['name' => 'kaylus', 'merc' => '1']],
+            ])
+            ->assertSessionHas('success');
+
+        // L'équipe affichée ne bouge pas et le rafraîchissement repasse
+        // en statique : l'animation ne rejoue que pour un switch.
+        $overlay = $this->findOverlay();
+        $this->assertSame('b', $overlay['displayed']);
+        $this->assertFalse((bool) $overlay['replay_enter']);
+    }
+
+    public function test_l_overlay_6v6_affiche_six_classes(): void
     {
         $this->seedRosters(['format' => '6v6']);
 
         $response = $this->get('/roster-overlay/'.self::TOKEN);
 
-        $response->assertOk()
-            ->assertSee('js-roster-switch');
+        $response->assertOk();
 
         $content = (string) $response->getContent();
         $this->assertSame(1, substr_count($content, 'roster-scene--6v6'));
-        // Les deux équipes restent rendues (une seule affichée à la
-        // fois) : deux fois six classes = douze cartes de classe.
-        $this->assertSame(12, substr_count($content, '<li class="roster-class'));
+        // Une seule équipe rendue : six cartes de classe.
+        $this->assertSame(6, substr_count($content, '<li class="roster-class'));
     }
 
     public function test_l_endpoint_de_version_renvoie_la_version_courante(): void

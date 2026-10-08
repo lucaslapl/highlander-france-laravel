@@ -8,8 +8,9 @@ namespace App\Models;
  * Persistance des overlays « rosters d'équipes » (outil admin « Overlay
  * Rosters ») : la présentation des rosters des deux équipes d'un match
  * pour les broadcasts OBS — une équipe affichée à la fois (bascule par
- * bouton sur l'overlay), Highlander (grille 3x3 des neuf classes) comme
- * 6v6 (six classes alignées sur toute la largeur).
+ * bouton depuis le panneau de réglages admin), Highlander (grille 3x3
+ * des neuf classes) comme 6v6 (six classes alignées sur toute la
+ * largeur).
  *
  * Même modèle que PickBanRepository : caches JSON sous
  * hlfr_data_path('rosters/') — un index (liste des overlays) et un payload

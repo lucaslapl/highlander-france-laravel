@@ -1,13 +1,12 @@
 /* Overlay OBS « rosters d'équipes » (/roster-overlay/{token}) — 1920x1080,
    entièrement transparent pour OBS. Palette et style repris des autres
-   overlays (thème rose/violet du site) : un seul roster est affiché à la
-   fois, le bouton sous le panneau bascule vers l'autre équipe (clic via
-   « Interagir » dans OBS), la sélection survit au rechargement de
-   rafraîchissement. Chaque joueur est présenté devant le portrait officiel
-   de sa classe (buste du wiki TF2, copie locale dans
-   public/_img/classes_portraits), les mercs portent un badge rose.
-   Disposition selon le format : Highlander = grille 3x3 des neuf classes,
-   6v6 = six classes alignées sur toute la largeur. */
+   overlays (thème rose/violet du site) : une seule équipe est affichée,
+   celle choisie côté admin (bouton « Switcher le roster affiché » du
+   panneau de paramétrage — les spectateurs ne voient pas l'interaction).
+   Chaque joueur est présenté devant le buste officiel de sa classe (wiki
+   TF2, copie locale dans public/_img/classes_portraits), les mercs portent
+   un badge rose. Disposition selon le format : Highlander = grille 3x3
+   des neuf classes, 6v6 = six classes alignées sur toute la largeur. */
 
 * { margin: 0; padding: 0; box-sizing: border-box; }
 
@@ -50,8 +49,9 @@ html, body {
 }
 
 /* Rechargement automatique après une mise à jour côté admin (drapeau posé
-   par overlay_rosters.js, voir la vue) : le roster reste posé sans rejouer
-   l'animation d'entrée. */
+   par overlay_rosters.js, voir la vue) : le panneau reste posé sans
+   rejouer l'animation d'entrée — SAUF pour un switch de roster, qui
+   laisse la chorégraphie se rejouer pour l'équipe qui arrive. */
 .rosters-no-enter .anim {
     animation: none;
     opacity: 1;
@@ -93,11 +93,8 @@ html, body {
     background: linear-gradient(90deg, transparent, var(--violet-bright), transparent);
 }
 
-/* ---------- Roster affiché (un seul à la fois) ---------- */
+/* ---------- Roster affiché (une seule équipe, côté admin décide) -------- */
 
-/* Colonne centrale : le panneau de l'équipe affichée, puis le bouton de
-   bascule — le flux place le bouton sous le panneau, sans positionnement
-   absolu à caler au pixel. */
 .roster-teams {
     position: absolute;
     top: 0;
@@ -105,18 +102,10 @@ html, body {
     width: 100%;
     padding-top: 186px;
     display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 26px;
+    justify-content: center;
 }
 
-/* L'équipe A est affichée par défaut ; la classe html.rosters-active-b
-   (posée par overlay_rosters.js au clic sur le bouton, ou par le script
-   d'amorce de la vue depuis sessionStorage pour survivre au rechargement)
-   bascule sur l'équipe B. Les deux sections restent rendues côté serveur :
-   aucune donnée n'est chargée en JavaScript. */
 .roster-team {
-    display: none;
     background: var(--surface-dark);
     border: 1px solid var(--border);
     border-radius: 14px;
@@ -124,23 +113,11 @@ html, body {
     text-shadow: 2px 2px #000;
 }
 
-.roster-teams .roster-team--a {
-    display: block;
-}
-
-html.rosters-active-b .roster-teams .roster-team--a {
-    display: none;
-}
-
-html.rosters-active-b .roster-teams .roster-team--b {
-    display: block;
-}
-
 .roster-team__head {
     display: flex;
     align-items: center;
     gap: 14px;
-    margin-bottom: 16px;
+    margin-bottom: 18px;
     min-height: 56px;
 }
 
@@ -164,7 +141,7 @@ html.rosters-active-b .roster-teams .roster-team--b {
 .roster-team__classes {
     list-style: none;
     display: grid;
-    gap: 14px;
+    gap: 20px;
 }
 
 /* ---------- Cartes de classe ---------- */
@@ -183,7 +160,7 @@ html.rosters-active-b .roster-teams .roster-team--b {
 
 .roster-class__portrait {
     width: 100%;
-    max-width: 160px;
+    max-width: 140px;
     aspect-ratio: 1 / 1;
     object-fit: cover;
     border-radius: 8px;
@@ -230,49 +207,10 @@ html.rosters-active-b .roster-teams .roster-team--b {
     opacity: 0.5;
 }
 
-/* ---------- Bouton de bascule vers l'autre équipe ---------- */
-
-.roster-switch {
-    font-family: inherit;
-    font-size: 16px;
-    font-weight: 800;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-    color: var(--accent);
-    background: var(--surface-dark);
-    border: 1px solid var(--violet-line);
-    border-radius: 999px;
-    padding: 12px 34px;
-    cursor: pointer;
-    text-shadow: 1px 1px #000;
-}
-
-.roster-switch:hover {
-    border-color: var(--violet-bright);
-    color: var(--accent-soft);
-}
-
-/* Le libellé affiché nomme l'équipe actuellement masquée. */
-.roster-switch__label {
-    display: none;
-}
-
-.roster-switch__label--a {
-    display: inline;
-}
-
-html.rosters-active-b .roster-switch__label--a {
-    display: none;
-}
-
-html.rosters-active-b .roster-switch__label--b {
-    display: inline;
-}
-
 /* ---------- Highlander : grille 3x3 ---------- */
 
 .roster-scene--hl .roster-team {
-    width: 1000px;
+    width: 760px;
 }
 
 .roster-scene--hl .roster-team__classes {
@@ -281,27 +219,19 @@ html.rosters-active-b .roster-switch__label--b {
 
 /* ---------- 6v6 : six classes sur toute la largeur ---------- */
 
+.roster-scene--6v6 .roster-teams {
+    padding-top: 320px;
+}
+
 .roster-scene--6v6 .roster-team {
-    width: 1680px;
-    display: none;
+    width: 1600px;
+    display: flex;
     align-items: center;
-    gap: 22px;
-}
-
-.roster-scene--6v6 .roster-teams .roster-team--a {
-    display: flex;
-}
-
-html.rosters-active-b .roster-scene--6v6 .roster-teams .roster-team--a {
-    display: none;
-}
-
-html.rosters-active-b .roster-scene--6v6 .roster-teams .roster-team--b {
-    display: flex;
+    gap: 24px;
 }
 
 .roster-scene--6v6 .roster-team__head {
-    flex: 0 0 250px;
+    flex: 0 0 230px;
     flex-direction: column;
     justify-content: center;
     gap: 8px;
@@ -317,8 +247,9 @@ html.rosters-active-b .roster-scene--6v6 .roster-teams .roster-team--b {
 .roster-scene--6v6 .roster-team__classes {
     flex: 1;
     grid-template-columns: repeat(6, 1fr);
+    gap: 18px;
 }
 
 .roster-scene--6v6 .roster-class__portrait {
-    max-width: 200px;
+    max-width: 170px;
 }

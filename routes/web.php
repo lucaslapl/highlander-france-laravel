@@ -136,6 +136,7 @@ Route::middleware('overlay-tools')->prefix('admin')->group(function (): void {
     Route::post('/overlay/rosters/create', [AdminRostersController::class, 'create']);
     Route::get('/overlay/rosters/{token}', [AdminRostersController::class, 'edit'])->where('token', '[a-z0-9]{16}');
     Route::post('/overlay/rosters/{token}/update', [AdminRostersController::class, 'update'])->where('token', '[a-z0-9]{16}');
+    Route::post('/overlay/rosters/{token}/switch', [AdminRostersController::class, 'switch'])->where('token', '[a-z0-9]{16}');
     Route::post('/overlay/rosters/{token}/delete', [AdminRostersController::class, 'delete'])->where('token', '[a-z0-9]{16}');
     Route::get('/series', [AdminSeriesController::class, 'index'])->name('admin.series');
     Route::post('/series/create', [AdminSeriesController::class, 'create']);

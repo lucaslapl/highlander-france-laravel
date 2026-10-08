@@ -19,9 +19,13 @@ use Illuminate\Http\Response;
  * La page est entièrement transparente (1920x1080) et se rafraîchit
  * automatiquement via le polling de /roster-overlay/{token}/version :
  * chaque enregistrement côté admin bump la version. Rendu 100 % côté
- * serveur, aucune donnée n'est chargée en JavaScript. Une seule équipe est
- * affichée à la fois (bascule par bouton dans OBS), la disposition dépend
- * du format : Highlander = grille 3x3 des neuf classes, 6v6 = six classes
+ * serveur, aucune donnée n'est chargée en JavaScript. Une seule équipe
+ * est affichée à la fois — l'équipe affichée est pilotée côté admin
+ * (bouton « Switcher le roster affiché », les spectateurs ne voient pas
+ * l'interaction) : le switch bump la version avec le drapeau replay_enter
+ * pour que l'animation d'apparition se rejoue, les autres enregistrements
+ * restent des rafraîchissements statiques. La disposition dépend du
+ * format : Highlander = grille 3x3 des neuf classes, 6v6 = six classes
  * alignées sur toute la largeur.
  */
 final class RostersOverlayController extends Controller
@@ -43,6 +47,7 @@ final class RostersOverlayController extends Controller
             abort(404);
         }
 
+        $displayed = (string) ($overlay['displayed'] ?? 'a') === 'b' ? 'b' : 'a';
         $name = trim(((string) ($overlay['title'] ?? '')) !== '' ? (string) $overlay['title'] : $token);
 
         return response()
@@ -50,7 +55,11 @@ final class RostersOverlayController extends Controller
                 'title' => 'Overlay rosters - '.$name,
                 'token' => $token,
                 'version' => (int) ($overlay['version'] ?? 0),
-                'data' => $this->viewData($overlay),
+                'data' => $this->viewData($overlay, $displayed),
+                // Rejouer l'animation d'apparition : uniquement si le
+                // dernier enregistrement est un switch (sinon le
+                // rafraîchissement reste statique, voir la vue).
+                'replay_enter' => (bool) ($overlay['replay_enter'] ?? false),
             ])
             ->header('Cache-Control', 'no-store, no-cache, must-revalidate');
     }
@@ -72,39 +81,30 @@ final class RostersOverlayController extends Controller
     }
 
     /**
-     * Prépare les données de rendu : titres, équipes A / B (nom, avatar,
-     * joueurs par classe avec pseudo, drapeau merc et portrait). Le
-     * portrait vient de la copie locale des images du wiki TF2
+     * Prépare les données de rendu : titres et l'équipe affichée (nom,
+     * avatar, joueurs par classe avec pseudo, drapeau merc et portrait).
+     * Le portrait vient de la copie locale des bustes du wiki TF2
      * (public/_img/classes_portraits), avec repli sur les icônes de
      * classes du site si un portrait manque.
      *
      * @param  array<string, mixed>  $overlay
      * @return array<string, mixed>
      */
-    private function viewData(array $overlay): array
+    private function viewData(array $overlay, string $displayed): array
     {
-        $teams = [];
-        foreach (['a', 'b'] as $side) {
-            $team = is_array($overlay['teams'][$side] ?? null) ? $overlay['teams'][$side] : [];
+        $team = is_array($overlay['teams'][$displayed] ?? null) ? $overlay['teams'][$displayed] : [];
 
-            $players = [];
-            foreach (is_array($team['players'] ?? null) ? $team['players'] : [] as $player) {
-                if (! is_array($player)) {
-                    continue;
-                }
-
-                $players[] = [
-                    'class' => (string) ($player['class'] ?? ''),
-                    'name' => (string) ($player['name'] ?? ''),
-                    'merc' => (bool) ($player['merc'] ?? false),
-                    'portrait' => $this->portrait((string) ($player['class'] ?? '')),
-                ];
+        $players = [];
+        foreach (is_array($team['players'] ?? null) ? $team['players'] : [] as $player) {
+            if (! is_array($player)) {
+                continue;
             }
 
-            $teams[$side] = [
-                'name' => (string) ($team['name'] ?? ''),
-                'avatar' => (string) ($team['avatar'] ?? ''),
-                'players' => $players,
+            $players[] = [
+                'class' => (string) ($player['class'] ?? ''),
+                'name' => (string) ($player['name'] ?? ''),
+                'merc' => (bool) ($player['merc'] ?? false),
+                'portrait' => $this->portrait((string) ($player['class'] ?? '')),
             ];
         }
 
@@ -112,7 +112,12 @@ final class RostersOverlayController extends Controller
             'format' => (string) ($overlay['format'] ?? 'hl'),
             'eyebrow' => (string) ($overlay['eyebrow'] ?? ''),
             'title' => (string) ($overlay['title'] ?? ''),
-            'teams' => $teams,
+            'displayed' => $displayed,
+            'team' => [
+                'name' => (string) ($team['name'] ?? ''),
+                'avatar' => (string) ($team['avatar'] ?? ''),
+                'players' => $players,
+            ],
         ];
     }
 
