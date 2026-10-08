@@ -106,8 +106,8 @@ html, body {
 }
 
 .roster-team {
-    background: var(--surface-dark);
-    border: 1px solid var(--border);
+    /** background: var(--surface-dark);
+    border: 1px solid var(--border); **/
     border-radius: 14px;
     padding: 20px 24px 24px;
     text-shadow: 2px 2px #000;
@@ -149,7 +149,7 @@ html, body {
 .roster-class {
     position: relative;
     background: rgba(255, 255, 255, 0.04);
-    border: 1px solid var(--violet-line);
+    border: 1px solid rgba(255, 137, 248, 0.57);
     border-radius: 10px;
     padding: 10px;
     display: flex;
