@@ -34,9 +34,9 @@
         <a href="/admin/overlay/pickban" class="admin-link-btn">Gérer les pick/ban</a>
     </div>
 
-    <div class="admin-action-card" style="--accent: #d9a544;">
+    <div class="admin-action-card" style="--accent: #ffb3ec;">
         <h4 class="admin-action-card__title"><i class="fa-solid fa-users"></i> Overlay Rosters</h4>
-        <p class="admin-action-card__desc">Présentation des rosters des deux équipes (Highlander 3x3 ou 6v6 en ligne) avec remplissage assisté ETF2L, portraits de classes et badge merc.</p>
+        <p class="admin-action-card__desc">Présentation des rosters (une équipe à la fois, bascule d'un clic dans OBS) : Highlander 3x3 ou 6v6 en ligne, remplissage assisté ETF2L, bustes de classes et badge merc.</p>
         <a href="/admin/overlay/rosters" class="admin-link-btn">Gérer les rosters</a>
     </div>
 </div>

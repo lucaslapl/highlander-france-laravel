@@ -1,20 +1,23 @@
 /* Overlay OBS « rosters d'équipes » (/roster-overlay/{token}) — 1920x1080,
    entièrement transparent pour OBS. Palette et style repris des autres
-   overlays (sombres, Montserrat, or #d9a544 des accents de série) : chaque
-   joueur est présenté devant le portrait de sa classe (copies locales du
-   wiki TF2, public/_img/classes_portraits), les mercs portent un badge
-   doré. Disposition selon le format : Highlander = deux grilles 3x3 des
-   neuf classes (une par équipe), 6v6 = deux rangées de six classes
-   alignées sur toute la largeur. */
+   overlays (thème rose/violet du site) : un seul roster est affiché à la
+   fois, le bouton sous le panneau bascule vers l'autre équipe (clic via
+   « Interagir » dans OBS), la sélection survit au rechargement de
+   rafraîchissement. Chaque joueur est présenté devant le portrait officiel
+   de sa classe (buste du wiki TF2, copie locale dans
+   public/_img/classes_portraits), les mercs portent un badge rose.
+   Disposition selon le format : Highlander = grille 3x3 des neuf classes,
+   6v6 = six classes alignées sur toute la largeur. */
 
 * { margin: 0; padding: 0; box-sizing: border-box; }
 
 :root {
-    --ink: #f5f5f5;
-    --ink-dim: #9aa0a6;
-    --panel-bg: rgba(12, 14, 20, 0.72);
-    --panel-border: rgba(255, 255, 255, 0.08);
-    --gold: #d9a544;
+    --accent: #fbb7fb;
+    --accent-soft: #ffc9ec;
+    --border: #38193d;
+    --surface-dark: rgba(21, 10, 24, 0.92);
+    --violet-bright: #e97fff;
+    --violet-line: rgba(186, 53, 215, 0.57);
 }
 
 html, body {
@@ -23,7 +26,7 @@ html, body {
     overflow: hidden;
     background: transparent;
     font-family: "Montserrat", "Segoe UI", Roboto, Arial, sans-serif;
-    color: var(--ink);
+    color: white;
     cursor: default;
 }
 
@@ -47,8 +50,8 @@ html, body {
 }
 
 /* Rechargement automatique après une mise à jour côté admin (drapeau posé
-   par overlay_rosters.js, voir la vue) : les rosters restent posés sans
-   rejouer l'animation d'entrée. */
+   par overlay_rosters.js, voir la vue) : le roster reste posé sans rejouer
+   l'animation d'entrée. */
 .rosters-no-enter .anim {
     animation: none;
     opacity: 1;
@@ -58,23 +61,23 @@ html, body {
 
 .roster-head {
     position: absolute;
-    top: 40px;
+    top: 36px;
     left: 0;
     width: 100%;
     text-align: center;
 }
 
 .roster-head .eyebrow {
-    font-size: 22px;
+    font-size: 21px;
     font-weight: 800;
     letter-spacing: 0.42em;
     text-transform: uppercase;
-    color: var(--gold);
+    color: var(--accent);
     margin-bottom: 10px;
 }
 
 .roster-head h1 {
-    font-size: 58px;
+    font-size: 50px;
     font-weight: 900;
     letter-spacing: 0.08em;
     text-transform: uppercase;
@@ -85,30 +88,52 @@ html, body {
 .roster-head .title-bar {
     width: 300px;
     height: 4px;
-    margin: 16px auto 0;
+    margin: 14px auto 0;
     border-radius: 2px;
-    background: linear-gradient(90deg, transparent, var(--gold), transparent);
+    background: linear-gradient(90deg, transparent, var(--violet-bright), transparent);
 }
 
-/* ---------- Équipes ---------- */
+/* ---------- Roster affiché (un seul à la fois) ---------- */
 
+/* Colonne centrale : le panneau de l'équipe affichée, puis le bouton de
+   bascule — le flux place le bouton sous le panneau, sans positionnement
+   absolu à caler au pixel. */
 .roster-teams {
     position: absolute;
     top: 0;
     left: 0;
     width: 100%;
-    padding: 216px 40px 0;
+    padding-top: 186px;
     display: flex;
-    justify-content: center;
-    gap: 48px;
+    flex-direction: column;
+    align-items: center;
+    gap: 26px;
 }
 
+/* L'équipe A est affichée par défaut ; la classe html.rosters-active-b
+   (posée par overlay_rosters.js au clic sur le bouton, ou par le script
+   d'amorce de la vue depuis sessionStorage pour survivre au rechargement)
+   bascule sur l'équipe B. Les deux sections restent rendues côté serveur :
+   aucune donnée n'est chargée en JavaScript. */
 .roster-team {
-    background: var(--panel-bg);
-    border: 1px solid var(--panel-border);
+    display: none;
+    background: var(--surface-dark);
+    border: 1px solid var(--border);
     border-radius: 14px;
-    padding: 18px 20px 20px;
+    padding: 20px 24px 24px;
     text-shadow: 2px 2px #000;
+}
+
+.roster-teams .roster-team--a {
+    display: block;
+}
+
+html.rosters-active-b .roster-teams .roster-team--a {
+    display: none;
+}
+
+html.rosters-active-b .roster-teams .roster-team--b {
+    display: block;
 }
 
 .roster-team__head {
@@ -127,7 +152,7 @@ html, body {
 }
 
 .roster-team__name {
-    font-size: 30px;
+    font-size: 32px;
     font-weight: 900;
     letter-spacing: 0.06em;
     text-transform: uppercase;
@@ -139,7 +164,7 @@ html, body {
 .roster-team__classes {
     list-style: none;
     display: grid;
-    gap: 12px;
+    gap: 14px;
 }
 
 /* ---------- Cartes de classe ---------- */
@@ -147,27 +172,29 @@ html, body {
 .roster-class {
     position: relative;
     background: rgba(255, 255, 255, 0.04);
+    border: 1px solid var(--violet-line);
     border-radius: 10px;
-    padding: 12px 10px 10px;
+    padding: 10px;
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 6px;
+    gap: 8px;
 }
 
 .roster-class__portrait {
     width: 100%;
-    max-width: 150px;
+    max-width: 160px;
     aspect-ratio: 1 / 1;
-    object-fit: contain;
+    object-fit: cover;
+    border-radius: 8px;
     filter: drop-shadow(0 6px 10px rgba(0, 0, 0, 0.45));
 }
 
 .roster-class__name {
     width: 100%;
-    min-height: 22px;
+    min-height: 24px;
     text-align: center;
-    font-size: 19px;
+    font-size: 20px;
     font-weight: 800;
     letter-spacing: 0.03em;
     overflow: hidden;
@@ -175,8 +202,8 @@ html, body {
     white-space: nowrap;
 }
 
-/* Badge merc : même traitement doré que les points d'attention de
-   l'overlay de série, lisible d'un coup d'œil pendant le cast. */
+/* Badge merc : même traitement rose que les accents de l'overlay pick/ban,
+   lisible d'un coup d'œil pendant le cast. */
 .roster-class__merc {
     position: absolute;
     top: 8px;
@@ -187,8 +214,9 @@ html, body {
     padding: 2px 7px;
     border-radius: 4px;
     text-transform: uppercase;
-    background: rgba(217, 165, 68, 0.25);
-    color: var(--gold);
+    background: rgba(251, 183, 251, 0.28);
+    color: var(--accent);
+    box-shadow: 0 0 0 1px var(--violet-line);
 }
 
 /* Slot vide (classe non encore affectée) : discret pour ne pas accrocher
@@ -198,37 +226,78 @@ html, body {
 }
 
 .roster-class:not(:has(.roster-class__name:not(:empty))) .roster-class__name {
-    color: var(--ink-dim);
+    color: #b9b4bd;
     opacity: 0.5;
 }
 
-/* ---------- Highlander : deux grilles 3x3 ---------- */
+/* ---------- Bouton de bascule vers l'autre équipe ---------- */
+
+.roster-switch {
+    font-family: inherit;
+    font-size: 16px;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--accent);
+    background: var(--surface-dark);
+    border: 1px solid var(--violet-line);
+    border-radius: 999px;
+    padding: 12px 34px;
+    cursor: pointer;
+    text-shadow: 1px 1px #000;
+}
+
+.roster-switch:hover {
+    border-color: var(--violet-bright);
+    color: var(--accent-soft);
+}
+
+/* Le libellé affiché nomme l'équipe actuellement masquée. */
+.roster-switch__label {
+    display: none;
+}
+
+.roster-switch__label--a {
+    display: inline;
+}
+
+html.rosters-active-b .roster-switch__label--a {
+    display: none;
+}
+
+html.rosters-active-b .roster-switch__label--b {
+    display: inline;
+}
+
+/* ---------- Highlander : grille 3x3 ---------- */
 
 .roster-scene--hl .roster-team {
-    width: 560px;
+    width: 1000px;
 }
 
 .roster-scene--hl .roster-team__classes {
     grid-template-columns: repeat(3, 1fr);
 }
 
-.roster-scene--hl .roster-class__portrait {
-    max-width: 130px;
-}
-
 /* ---------- 6v6 : six classes sur toute la largeur ---------- */
 
-.roster-scene--6v6 .roster-teams {
-    flex-direction: column;
-    align-items: center;
-    gap: 26px;
-}
-
 .roster-scene--6v6 .roster-team {
-    width: 1660px;
-    display: flex;
+    width: 1680px;
+    display: none;
     align-items: center;
     gap: 22px;
+}
+
+.roster-scene--6v6 .roster-teams .roster-team--a {
+    display: flex;
+}
+
+html.rosters-active-b .roster-scene--6v6 .roster-teams .roster-team--a {
+    display: none;
+}
+
+html.rosters-active-b .roster-scene--6v6 .roster-teams .roster-team--b {
+    display: flex;
 }
 
 .roster-scene--6v6 .roster-team__head {
@@ -248,4 +317,8 @@ html, body {
 .roster-scene--6v6 .roster-team__classes {
     flex: 1;
     grid-template-columns: repeat(6, 1fr);
+}
+
+.roster-scene--6v6 .roster-class__portrait {
+    max-width: 200px;
 }

@@ -15,10 +15,11 @@ use Illuminate\Http\Request;
 
 /**
  * Outil « Overlay Rosters » : présentation des rosters des deux équipes
- * d'un match pour les broadcasts OBS, en Highlander (grille 3x3 des neuf
- * classes par équipe) comme en 6v6 (six classes alignées sur toute la
- * largeur). Accessible aux admins et aux rôles caster / prod, aux côtés
- * des autres outils overlay (middleware overlay-tools).
+ * d'un match pour les broadcasts OBS — une équipe affichée à la fois,
+ * bascule par bouton sur l'overlay — en Highlander (grille 3x3 des neuf
+ * classes) comme en 6v6 (six classes alignées sur toute la largeur).
+ * Accessible aux admins et aux rôles caster / prod, aux côtés des autres
+ * outils overlay (middleware overlay-tools).
  *
  * Le remplissage est assisté : noms et avatars des équipes piochés dans
  * une compétition ETF2L du format du match (même conso modèle que les

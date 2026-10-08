@@ -6,9 +6,9 @@
 @section('content')
 @include('admin.partials.panel_back_link')
 
-<div class="admin-header" style="--accent:#d9a544;">
+<div class="admin-header" style="--accent:#e97fff;">
     <h2><i class="fa-solid fa-users"></i> Overlay Rosters (OBS)</h2>
-    <p>Overlays de présentation des rosters des deux équipes pour les broadcasts OBS : créez l'overlay, choisissez le format (Highlander ou 6v6), remplissez les équipes puis affectez chaque joueur à sa classe, et pointez l'URL d'overlay dans OBS Studio (source navigateur web, 1920x1080, fond transparent).</p>
+    <p>Overlays de présentation des rosters des deux équipes pour les broadcasts OBS : créez l'overlay, choisissez le format (Highlander ou 6v6), remplissez les équipes puis affectez chaque joueur à sa classe, et pointez l'URL d'overlay dans OBS Studio (source navigateur web, 1920x1080, fond transparent). L'overlay affiche une seule équipe à la fois ; un bouton sous le panneau bascule vers l'autre (clic via « Interagir » dans OBS).</p>
 </div>
 
 <h3 class="admin-section-title"><i class="fa-solid fa-wand-magic-sparkles"></i> Créer un overlay</h3>
@@ -34,11 +34,11 @@
         <button type="submit" class="admin-btn admin-btn--primary"><i class="fa-solid fa-plus"></i> Créer</button>
     </div>
     <p style="color:#777; font-size:13px; margin:6px 0 0;">
-        Le format fixe la disposition de l'overlay (grille 3x3 des neuf classes par équipe en Highlander,
-        six classes alignées sur toute la largeur en 6v6) et n'est plus modifiable ensuite. L'overlay démarre
-        avec des classes vides : les équipes peuvent être piochées dans une compétition ETF2L du même format,
-        et chaque classe reçoit son joueur depuis le roster de l'équipe — tout reste saisissable à la main
-        (mercs, joueur sans compte ETF2L).
+        Le format fixe la disposition de l'overlay (grille 3x3 des neuf classes en Highlander,
+        six classes alignées sur toute la largeur en 6v6) et n'est plus modifiable ensuite. L'overlay
+        démarre avec des classes vides : les équipes peuvent être piochées dans une compétition ETF2L
+        du même format, et chaque classe reçoit son joueur depuis le roster de l'équipe — tout reste
+        saisissable à la main (mercs, joueur sans compte ETF2L).
     </p>
 </form>
 

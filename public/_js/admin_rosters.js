@@ -36,8 +36,10 @@
     });
 
     /* Choisir un joueur dans le menu d'une classe : son pseudo officiel
-       ETF2L remplit le champ de la classe, le retour au choix neutre ne
-       vide rien (le pseudo saisi à la main reste maître). */
+       ETF2L remplit le champ de la classe (le menu vit dans le slot, le
+       champ est donc son voisin dans le même bloc .js-roster-slot), le
+       retour au choix neutre ne vide rien (le pseudo saisi à la main
+       reste maître). */
     document.addEventListener('change', function (event) {
         var picker = event.target.closest ? event.target.closest('.js-roster-slot-picker') : null;
         if (!picker) {
@@ -77,8 +79,7 @@
     function insertSlotPickers(block, roster) {
         block.querySelectorAll('.js-roster-slot').forEach(function (slot) {
             var host = document.createElement('div');
-            host.style.margin = '0 0 6px';
-            host.style.paddingLeft = '36px';
+            host.style.cssText = 'width:100%; margin-top:6px;';
 
             var select = document.createElement('select');
             select.className = 'form-control js-roster-slot-picker';
@@ -95,7 +96,11 @@
             });
 
             host.appendChild(select);
-            slot.parentNode.insertBefore(host, slot.nextSibling);
+            /* Le menu vit DANS le slot : le gestionnaire de changement le
+               remonte jusqu'au champ de nom du même slot (un menu inséré
+               à côté du slot ne serait rattaché à aucun champ, et le
+               pseudo ne serait jamais enregistré). */
+            slot.appendChild(host);
         });
     }
 

@@ -215,7 +215,13 @@ class RostersOverlayTest extends TestCase
             ->assertSee('MERC')
             // Portraits de classes : copie locale du wiki TF2.
             ->assertSee('_img/classes_portraits/scout.png')
-            ->assertSee('_img/classes_portraits/medic.png');
+            ->assertSee('_img/classes_portraits/medic.png')
+            // Une seule équipe affichée à la fois : le bouton sous le
+            // panneau bascule vers l'équipe masquée (noms dans les deux
+            // libellés, le CSS n'en montre qu'un).
+            ->assertSee('js-roster-switch')
+            ->assertSee('Afficher AKATSUKI')
+            ->assertSee('Afficher DD14');
     }
 
     public function test_l_overlay_6v6_affiche_six_classes_par_equipe(): void
@@ -224,10 +230,13 @@ class RostersOverlayTest extends TestCase
 
         $response = $this->get('/roster-overlay/'.self::TOKEN);
 
-        $response->assertOk();
+        $response->assertOk()
+            ->assertSee('js-roster-switch');
+
         $content = (string) $response->getContent();
         $this->assertSame(1, substr_count($content, 'roster-scene--6v6'));
-        // Deux équipes x six classes : douze cartes de classe.
+        // Les deux équipes restent rendues (une seule affichée à la
+        // fois) : deux fois six classes = douze cartes de classe.
         $this->assertSame(12, substr_count($content, '<li class="roster-class'));
     }
 

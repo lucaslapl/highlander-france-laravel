@@ -19,9 +19,10 @@ use Illuminate\Http\Response;
  * La page est entièrement transparente (1920x1080) et se rafraîchit
  * automatiquement via le polling de /roster-overlay/{token}/version :
  * chaque enregistrement côté admin bump la version. Rendu 100 % côté
- * serveur, aucune donnée n'est chargée en JavaScript. La disposition
- * dépend du format : Highlander = deux grilles 3x3 des neuf classes,
- * 6v6 = six classes alignées sur toute la largeur par équipe.
+ * serveur, aucune donnée n'est chargée en JavaScript. Une seule équipe est
+ * affichée à la fois (bascule par bouton dans OBS), la disposition dépend
+ * du format : Highlander = grille 3x3 des neuf classes, 6v6 = six classes
+ * alignées sur toute la largeur.
  */
 final class RostersOverlayController extends Controller
 {

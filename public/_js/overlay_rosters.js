@@ -1,4 +1,12 @@
-/* Overlay rosters (/roster-overlay/{token}) : auto-rafraîchissement.
+/* Overlay rosters (/roster-overlay/{token}) : bascule d'équipe et
+   auto-rafraîchissement.
+
+   Un seul roster est affiché à la fois : le bouton sous le panneau
+   intervertit les équipes A et B (classe html.rosters-active-b, cliquable
+   depuis OBS via « Interagir » avec la source navigateur) et mémorise la
+   sélection en sessionStorage — le script d'amorce de la vue la restaure
+   au rechargement, aucun flash.
+
    La page interroge /roster-overlay/{token}/version toutes les 5 s ;
    chaque enregistrement côté admin (affectation d'une classe, merc,
    renommage d'équipe) bump la version et la page se recharge entièrement
@@ -16,12 +24,29 @@
     var token = script.dataset.token;
     var version = String(script.dataset.version);
 
+    /* Bascule d'équipe : la classe html.rosters-active-b pilotée ici est
+       la même que celle posée par le script d'amorce de la vue. */
+    var switchButton = document.querySelector('.js-roster-switch');
+
+    if (switchButton) {
+        switchButton.addEventListener('click', function () {
+            var activeB = document.documentElement.classList.toggle('rosters-active-b');
+
+            try {
+                sessionStorage.setItem('hlfr-rosters-team', activeB ? 'b' : 'a');
+            } catch (e) {
+                /* Session inaccessible : la bascule ne survivra pas au
+                   rechargement de rafraîchissement, sans gravité. */
+            }
+        });
+    }
+
     /* Animation d'entrée rejouée quand OBS rend la source visible/active. */
     var lastReplay = Date.now();
 
     function replayEnterAnimation() {
-        var panels = document.querySelectorAll('.anim');
-        if (panels.length === 0) {
+        var panel = document.querySelector('.anim');
+        if (!panel) {
             return;
         }
 
@@ -31,12 +56,12 @@
         }
         lastReplay = now;
 
-        panels.forEach(function (panel) {
-            panel.style.animation = 'none';
-            panel.style.opacity = '1';
-            void panel.offsetWidth;
-            panel.style.animation = '';
-            panel.style.opacity = '';
+        document.querySelectorAll('.anim').forEach(function (element) {
+            element.style.animation = 'none';
+            element.style.opacity = '1';
+            void element.offsetWidth;
+            element.style.animation = '';
+            element.style.opacity = '';
         });
     }
 

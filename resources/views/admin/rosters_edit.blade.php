@@ -10,7 +10,7 @@
     $formatLabel = ($overlay['format'] ?? '') === '6v6' ? '6v6' : 'Highlander';
 @endphp
 
-<div class="admin-header" style="--accent:#d9a544;">
+<div class="admin-header" style="--accent:#e97fff;">
     <h2><i class="fa-solid fa-users"></i> {{ e($overlay['title']) }}</h2>
     <p>
         {{ $formatLabel }} ·
@@ -77,7 +77,10 @@
                             $playerName = (string) ($overlay['teams'][$side]['players'][$i]['name'] ?? '');
                             $isMerc = (bool) ($overlay['teams'][$side]['players'][$i]['merc'] ?? false);
                         @endphp
-                        <div class="js-roster-slot" style="display:flex; gap:8px; align-items:center; margin-bottom:6px;">
+                        {{-- flex-wrap : le menu de joueur ETF2L inséré par
+                             admin_rosters.js dans le slot passe sous la
+                             ligne sans écraser les champs. --}}
+                        <div class="js-roster-slot" style="display:flex; gap:8px; align-items:center; flex-wrap:wrap; margin-bottom:6px;">
                             <img src="/_img/classes_portraits/{{ $slot['class'] }}.png" alt="{{ $slot['label'] }}"
                                  style="width:28px; height:28px; object-fit:contain; flex:none;"
                                  title="{{ $slot['label'] }}">
