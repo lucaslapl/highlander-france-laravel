@@ -380,6 +380,42 @@ class SeriesAdminTest extends TestCase
             ->assertSee('Intervertir les équipes A / B');
     }
 
+    public function test_le_bouton_de_reconciliation_apparait_uniquement_sur_une_serie_live(): void
+    {
+        $this->seedSeries(['koth_product_final']);
+
+        // Série non lancée : pas de bouton (le réconciliateur n'agit que sur les séries live).
+        $this->withSession($this->adminSession())
+            ->get('/admin/series/'.self::TOKEN)
+            ->assertOk()
+            ->assertDontSee('Chercher les logs maintenant');
+
+        $this->withSession($this->adminSession())
+            ->post('/admin/series/'.self::TOKEN.'/status', ['status' => 'live'])
+            ->assertRedirect();
+
+        $this->withSession($this->adminSession())
+            ->get('/admin/series/'.self::TOKEN)
+            ->assertOk()
+            ->assertSee('Chercher les logs maintenant');
+    }
+
+    public function test_la_reconciliation_manuelle_renvoie_le_resume_du_service(): void
+    {
+        // Série non live : le réconciliateur s'arrête avant tout appel HTTP
+        // vers logs.tf et renvoie son résumé en message flash.
+        $this->seedSeries();
+
+        $this->withSession($this->adminSession())
+            ->post('/admin/series/'.self::TOKEN.'/reconcile')
+            ->assertRedirect();
+
+        $this->withSession($this->adminSession())
+            ->get('/admin/series/'.self::TOKEN)
+            ->assertOk()
+            ->assertSee('Aucune série en direct : rien à réconcilier.');
+    }
+
     public function test_suppression_d_une_serie(): void
     {
         $this->seedSeries();

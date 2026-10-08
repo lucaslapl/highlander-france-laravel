@@ -8,6 +8,7 @@ use App\Http\Controllers\Controller;
 use App\Models\SeriesRepository;
 use App\Services\AdminLogger;
 use App\Services\Auth;
+use App\Services\Crons\SeriesReconcileService;
 use App\Services\Etf2lTeamService;
 use App\Services\SeriesScoreService;
 use App\Services\SteamId;
@@ -394,6 +395,32 @@ final class AdminSeriesController extends Controller
         AdminLogger::log('admin_series_void', null, 'SUCCESS (série '.$token.' : annulation '.$data['event'].')');
 
         return back()->with('success', 'Événement annulé.');
+    }
+
+    /**
+     * POST /admin/series/{token}/reconcile — force la réconciliation logs.tf
+     * immédiatement, sans attendre le cron d'une minute (log fraîchement
+     * uploadé en fin de map, rattrapage rapide pendant le cast). Le service
+     * garde son verrou flock : un clic pendant une exécution en cours est
+     * ignoré proprement, et les logs déjà vus ne sont jamais recomptés.
+     */
+    public function reconcile(string $token): RedirectResponse
+    {
+        Auth::requireOverlayTools();
+
+        if ($this->series->find($token) === null) {
+            abort(404);
+        }
+
+        // Le réconciliateur enchaîne des appels HTTP vers logs.tf : la
+        // limite par défaut du web peut être dépassée sur une série lente.
+        set_time_limit(300);
+
+        $summary = (new SeriesReconcileService)->run();
+
+        AdminLogger::log('admin_series_reconcile', null, 'SUCCESS (série '.$token.' : '.$summary.')');
+
+        return back()->with('success', $summary);
     }
 
     /**

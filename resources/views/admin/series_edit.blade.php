@@ -163,6 +163,15 @@
 @endif
 
 <h3 class="admin-section-title"><i class="fa-solid fa-map"></i> Maps de la série</h3>
+@if ($series['status'] === 'live')
+    <form method="POST" action="/admin/series/{{ $series['token'] }}/reconcile" style="margin:0 0 12px;">
+        @csrf
+        <button type="submit" class="admin-btn admin-btn--primary"
+                title="Interroge logs.tf tout de suite au lieu d'attendre la vérification automatique de la minute suivante.">
+            <i class="fa-solid fa-rotate"></i> Chercher les logs maintenant
+        </button>
+    </form>
+@endif
 <div class="admin-table-scroll">
     <table class="admin-table">
         <thead>
