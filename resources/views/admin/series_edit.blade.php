@@ -135,14 +135,14 @@
 </p>
 <p style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
     <code style="background:#111; border:1px solid #333; border-radius:6px; padding:8px 12px; font-size:14px;">
-        {{ url('/series-overlay/'.$series['token']) }}
+        {{ url('/series-overlay/'.$series['token'].'?delay=90') }}
     </code>
-    <a class="admin-link-btn" href="/series-overlay/{{ $series['token'] }}" target="_blank">Prévisualiser</a>
+    <a class="admin-link-btn" href="/series-overlay/{{ $series['token'] }}?delay=90" target="_blank">Prévisualiser</a>
 </p>
 <p style="color:#aaa; font-size:13px;">
-    Cast sur une SourceTV retardée ? Ajoutez <code>?delay=90</code> à cette URL (et à celle de l'overlay stats
-    ci-dessous), avec le retard STV en secondes : les logs rattachés n'apparaissent sur l'overlay qu'une fois
-    montrés par le flux retardé, sinon le score avance de 90 s sur les spectateurs. Les points manuels, eux,
+    L'URL embarque déjà <code>?delay=90</code>, le retard classique d'une SourceTV : les logs rattachés n'apparaissent
+    sur l'overlay qu'une fois montrés par le flux retardé, sinon le score avance de 90 s sur les spectateurs. Ajustez
+    ce nombre au retard STV réel de votre broadcast (ou retirez-le pour un cast sans délai). Les points manuels, eux,
     s'affichent dès leur saisie — entrez-les au moment où ils apparaissent sur le stream.
 </p>
 
@@ -154,9 +154,9 @@
 </p>
 <p style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
     <code style="background:#111; border:1px solid #333; border-radius:6px; padding:8px 12px; font-size:14px;">
-        {{ url('/series-overlay/'.$series['token'].'/match') }}
+        {{ url('/series-overlay/'.$series['token'].'/match?delay=90') }}
     </code>
-    <a class="admin-link-btn" href="/series-overlay/{{ $series['token'] }}/match" target="_blank">Prévisualiser</a>
+    <a class="admin-link-btn" href="/series-overlay/{{ $series['token'] }}/match?delay=90" target="_blank">Prévisualiser</a>
 </p>
 
 @if ($has_avatar['red'] || $has_avatar['blue'])
