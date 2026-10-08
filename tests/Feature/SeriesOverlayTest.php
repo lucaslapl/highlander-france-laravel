@@ -97,8 +97,9 @@ class SeriesOverlayTest extends TestCase
         $initial = $this->get('/series-overlay/'.self::TOKEN.'/version')->assertOk()->json('version');
         $this->assertIsInt($initial);
 
-        // Un point manuel (contestation rattrapée depuis un téléphone) bump
-        // la version : l'overlay OBS se rechargera au polling suivant.
+        // Un point manuel (contestation rattrapée depuis un téléphone) fait
+        // évoluer l'état visible : l'empreinte change et l'overlay OBS se
+        // rechargera au polling suivant.
         (new SeriesRepository)->appendEvent(self::TOKEN, [
             'type' => 'manual',
             'source' => 'manual',
@@ -108,7 +109,103 @@ class SeriesOverlayTest extends TestCase
         ]);
 
         $updated = $this->get('/series-overlay/'.self::TOKEN.'/version')->assertOk()->json('version');
-        $this->assertGreaterThan($initial, $updated);
+        $this->assertNotSame($initial, $updated);
+    }
+
+    public function test_le_delai_stv_masque_un_log_trop_recent(): void
+    {
+        // Cast sur SourceTV retardée (?delay=90) : un log rattaché à l'instant
+        // (fin réelle de la map sur le serveur) ne doit pas s'afficher avant
+        // que le flux STV retardé ne l'ait montré.
+        $this->seedSeries();
+        (new SeriesRepository)->appendEvent(self::TOKEN, [
+            'type' => 'log',
+            'source' => 'logstf',
+            'log_id' => 424242,
+            'map' => 'koth_product_final',
+            'winner' => 'blue',
+            'scores' => ['red' => 1, 'blue' => 3],
+            'title' => 'HLFR : match',
+        ]);
+
+        // Sans délai : la map est décidée pour l'équipe bleue.
+        $html = (string) $this->get('/series-overlay/'.self::TOKEN)->assertOk()->getContent();
+        $this->assertStringContainsString('series-map--decided', $html);
+        $this->assertStringContainsString('series-map__winner">Escouade 6', $html);
+
+        // Avec le délai STV : le log est masqué, la map reste en attente.
+        $html = (string) $this->get('/series-overlay/'.self::TOKEN.'?delay=90')->assertOk()->getContent();
+        $this->assertStringNotContainsString('series-map--decided', $html);
+        $this->assertStringNotContainsString('series-map__winner', $html);
+    }
+
+    public function test_les_points_manuels_passent_au_travers_du_delai_stv(): void
+    {
+        // Les points manuels sont saisis par un humain synchronisé sur le
+        // flux diffusé : ils s'affichent immédiatement, délai STV ou non.
+        $this->seedSeries();
+        (new SeriesRepository)->appendEvent(self::TOKEN, [
+            'type' => 'manual',
+            'source' => 'manual',
+            'map' => 'koth_product_final',
+            'team' => 'red',
+            'note' => '',
+        ]);
+
+        $html = (string) $this->get('/series-overlay/'.self::TOKEN.'?delay=90')->assertOk()->getContent();
+
+        $this->assertStringContainsString('series-map__score">1 – 0', $html);
+    }
+
+    public function test_le_delai_stv_masque_les_stats_de_l_overlay_match(): void
+    {
+        // Les stats de la map terminée sont embarquées dans l'événement du
+        // journal : l'overlay retardé sert celles du dernier log *visible*,
+        // pas celles du dernier log rattaché.
+        $this->seedSeries();
+        (new SeriesRepository)->appendEvent(self::TOKEN, [
+            'type' => 'log',
+            'source' => 'logstf',
+            'log_id' => 4242,
+            'map' => 'koth_product_final',
+            'winner' => 'red',
+            'scores' => ['red' => 3, 'blue' => 1],
+            'title' => 'HLFR : match',
+            'stats' => $this->matchStats(),
+        ]);
+
+        // Sans délai : stats de la map terminée.
+        $html = (string) $this->get('/series-overlay/'.self::TOKEN.'/match')->assertOk()->getContent();
+        $this->assertStringContainsString('Joueur Rouge', $html);
+
+        // Avec le délai STV : le log est encore masqué, repli 0-0 sans stats.
+        $html = (string) $this->get('/series-overlay/'.self::TOKEN.'/match?delay=90')->assertOk()->getContent();
+        $this->assertStringNotContainsString('Joueur Rouge', $html);
+        $this->assertStringContainsString('overlay-team__score--red">0', $html);
+    }
+
+    public function test_la_version_retardee_reflete_l_etat_visible_et_pas_le_compteur(): void
+    {
+        // Avec un délai STV, la version est une empreinte de l'état visible :
+        // un log rattaché mais masqué donne une version différente de la vue
+        // directe — l'overlay retardé ne se rechargera qu'au moment où le log
+        // devient visible, sans écriture nouvelle sur la série.
+        $this->seedSeries();
+        (new SeriesRepository)->appendEvent(self::TOKEN, [
+            'type' => 'log',
+            'source' => 'logstf',
+            'log_id' => 424242,
+            'map' => 'koth_product_final',
+            'winner' => 'blue',
+            'scores' => ['red' => 1, 'blue' => 3],
+            'title' => 'HLFR : match',
+        ]);
+
+        $live = $this->get('/series-overlay/'.self::TOKEN.'/version')->assertOk()->json('version');
+        $stv = $this->get('/series-overlay/'.self::TOKEN.'/version?delay=90')->assertOk()->json('version');
+
+        $this->assertIsInt($stv);
+        $this->assertNotSame($live, $stv);
     }
 
     public function test_des_points_manuels_comptent_le_score_live_d_une_map_koth(): void
@@ -192,7 +289,19 @@ class SeriesOverlayTest extends TestCase
 
     public function test_l_overlay_de_stats_affiche_les_stats_de_la_derniere_map(): void
     {
+        // Flux du réconciliateur sur une série d'avant l'embarquement des
+        // stats dans le journal : log rattaché au journal, payload « stats »
+        // persisté à part — le repli le sert au rendu.
         $this->seedSeries();
+        (new SeriesRepository)->appendEvent(self::TOKEN, [
+            'type' => 'log',
+            'source' => 'logstf',
+            'log_id' => 4242,
+            'map' => 'koth_product_final',
+            'winner' => 'red',
+            'scores' => ['red' => 3, 'blue' => 1],
+            'title' => 'HLFR : match',
+        ]);
         $this->seedStats($this->matchStats());
 
         $html = (string) $this->get('/series-overlay/'.self::TOKEN.'/match')->assertOk()->getContent();

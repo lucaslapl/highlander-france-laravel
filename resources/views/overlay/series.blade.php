@@ -100,6 +100,6 @@
 </div>
 
 <script src="{{ hlfr_asset('/_js/overlay_series.js') }}" defer
-        data-token="{{ $series['token'] }}" data-version="{{ (int) ($series['version'] ?? 0) }}"></script>
+        data-token="{{ $series['token'] }}" data-version="{{ $version }}"></script>
 </body>
 </html>

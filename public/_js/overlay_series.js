@@ -14,6 +14,11 @@
     var token = script.dataset.token;
     var version = String(script.dataset.version);
 
+    /* Cast sur SourceTV retardée : la page est chargée avec ?delay=N (retard
+       STV en secondes) ; le polling de version doit interroger la même vue
+       retardée, on propage donc les paramètres d'URL tels quels. */
+    var versionUrl = '/series-overlay/' + token + '/version' + window.location.search;
+
     /* Animation d'entrée rejouée quand OBS rend la source visible/active. */
     var lastReplay = Date.now();
 
@@ -58,7 +63,7 @@
     }
 
     setInterval(function () {
-        fetch('/series-overlay/' + token + '/version', { cache: 'no-store' })
+        fetch(versionUrl, { cache: 'no-store' })
             .then(function (response) {
                 return response.ok ? response.json() : null;
             })

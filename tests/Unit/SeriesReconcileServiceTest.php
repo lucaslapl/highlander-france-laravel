@@ -174,6 +174,13 @@ class SeriesReconcileServiceTest extends TestCase
         $this->assertSame(101, $stats['log_id']);
         $this->assertSame('cp_steel_f12', $stats['map']);
 
+        // Les stats sont aussi embarquées dans l'événement du journal :
+        // l'overlay retardé (?delay=N) sert celles de la dernière map
+        // visible, pas seulement celles du dernier log rattaché.
+        $eventStats = $series['journal'][0]['stats'] ?? null;
+        $this->assertIsArray($eventStats);
+        $this->assertSame(101, $eventStats['log_id']);
+
         // Couleurs non intervertis sur ce log : l'équipe rouge de série est
         // restée côté Red, son joueur et son score sont à gauche.
         $this->assertSame(2, $stats['teams']['red']['score']);

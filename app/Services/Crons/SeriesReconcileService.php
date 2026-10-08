@@ -167,16 +167,25 @@ final class SeriesReconcileService
                 continue;
             }
 
+            // Payload de stats de l'overlay match de la série, construit
+            // depuis le détail déjà téléchargé (aucun appel réseau en plus)
+            // et réaligné sur les équipes de série (couleurs du log ↔ clés
+            // red/blue de la série). Embarqué dans l'événement du journal :
+            // l'overlay de stats peut alors servir celles de la dernière map
+            // *visible* quand le caster diffuse une SourceTV retardée
+            // (?delay=N, voir SeriesOverlayController::delayedSeries).
+            // Le dernier log appliqué l'emporte : le golden cap remplace la
+            // moitié, la map suivante la précédente.
+            $eventStats = $this->buildMatchStats((int) $logId, $details);
+            if ($eventStats !== null) {
+                $event['stats'] = $eventStats;
+            }
+
             $repo->appendEvent($token, $event);
             $seenUpdates[(string) $logId] = 'applied';
             $applied[] = 'log #'.$logId.' → '.$event['map'].' ('.$event['winner'].')';
 
-            // Payload de stats de l'overlay match de la série, construit
-            // depuis le détail déjà téléchargé (aucun appel réseau en plus)
-            // et réaligné sur les équipes de série (couleurs du log ↔ clés
-            // red/blue de la série). Le dernier log appliqué l'emporte :
-            // le golden cap remplace la moitié, la map suivante la précédente.
-            $matchStats = $this->buildMatchStats((int) $logId, $details);
+            $matchStats = $eventStats ?? $matchStats;
         }
 
         if ($seenUpdates !== []) {

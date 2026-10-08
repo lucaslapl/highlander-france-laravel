@@ -139,6 +139,12 @@
     </code>
     <a class="admin-link-btn" href="/series-overlay/{{ $series['token'] }}" target="_blank">Prévisualiser</a>
 </p>
+<p style="color:#aaa; font-size:13px;">
+    Cast sur une SourceTV retardée ? Ajoutez <code>?delay=90</code> à cette URL (et à celle de l'overlay stats
+    ci-dessous), avec le retard STV en secondes : les logs rattachés n'apparaissent sur l'overlay qu'une fois
+    montrés par le flux retardé, sinon le score avance de 90 s sur les spectateurs. Les points manuels, eux,
+    s'affichent dès leur saisie — entrez-les au moment où ils apparaissent sur le stream.
+</p>
 
 <h3 class="admin-section-title"><i class="fa-solid fa-table-list"></i> Overlay stats de match (automatique)</h3>
 <p style="color:#aaa; font-size:13px;">
