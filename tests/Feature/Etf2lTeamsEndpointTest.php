@@ -79,4 +79,76 @@ class Etf2lTeamsEndpointTest extends TestCase
             'fetched_at' => time(),
         ]);
     }
+
+    // ─── Roster d'une équipe ─────────────────────────────────────────────
+
+    public function test_le_endpoint_roster_est_reserve_aux_roles_overlay(): void
+    {
+        $this->get('/admin/overlay/etf2l/roster?team_id=21747')->assertForbidden();
+        $this->withSession(['steamid' => '76561198012345678'])
+            ->get('/admin/overlay/etf2l/roster?team_id=21747')->assertForbidden();
+    }
+
+    public function test_un_caster_recupere_le_roster_d_une_equipe(): void
+    {
+        $this->seedTeamRoster(21747, ['76561198000552896', '76561198052898676']);
+
+        $response = $this->withSession(['steamid' => '76561198012345678', 'is_caster' => true])
+            ->get('/admin/overlay/etf2l/roster?team_id=21747');
+
+        $response->assertOk()
+            ->assertJson(['roster' => [
+                'id' => 21747,
+                'name' => 'The Piece of Pie',
+                'players' => ['76561198000552896', '76561198052898676'],
+            ]]);
+    }
+
+    public function test_un_roster_sans_parametre_est_rejete(): void
+    {
+        $this->withSession(['steamid' => '76561198012345678', 'is_caster' => true])
+            ->get('/admin/overlay/etf2l/roster')
+            ->assertInvalid(['team_id']);
+    }
+
+    public function test_une_equipe_inconnue_renvoie_un_roster_null(): void
+    {
+        // Cache négatif amorcé pour l'équipe : aucun appel HTTP réel, le
+        // client affiche son message de repli (saisie manuelle possible).
+        DB::table('etf2l_api_cache')->insert([
+            'url' => 'https://api-v2.etf2l.org/team/99999',
+            'payload' => json_encode(['error' => 'hlfr_etf2l_indisponible'], JSON_THROW_ON_ERROR),
+            'fetched_at' => time(),
+        ]);
+
+        $this->withSession(['steamid' => '76561198012345678', 'is_caster' => true])
+            ->get('/admin/overlay/etf2l/roster?team_id=99999')
+            ->assertOk()
+            ->assertJson(['roster' => null]);
+    }
+
+    /**
+     * Amorce le cache ETF2L du roster d'une équipe (endpoint /team/{id}) :
+     * le service n'a alors aucun appel HTTP à faire.
+     *
+     * @param  array<int, string>  $steamids64
+     */
+    private function seedTeamRoster(int $teamId, array $steamids64): void
+    {
+        DB::table('etf2l_api_cache')->insert([
+            'url' => 'https://api-v2.etf2l.org/team/'.$teamId,
+            'payload' => json_encode([
+                'status' => ['code' => 200],
+                'team' => [
+                    'id' => $teamId,
+                    'name' => 'The Piece of Pie',
+                    'players' => array_map(
+                        static fn (string $id64): array => ['name' => 'joueur', 'steam' => ['id64' => $id64]],
+                        $steamids64
+                    ),
+                ],
+            ], JSON_THROW_ON_ERROR),
+            'fetched_at' => time(),
+        ]);
+    }
 }

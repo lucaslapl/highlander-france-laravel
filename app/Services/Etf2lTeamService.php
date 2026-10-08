@@ -20,6 +20,14 @@ use Illuminate\Support\Facades\DB;
  * ETF2L : 60 req/min). Un échec (réseau, 429, 5xx…) est mis en cache
  * négativement quelques minutes pour ne pas marteler l'API. La
  * récupération HTTP est injectable (closure) pour les tests.
+ *
+ * Le roster d'une équipe (SteamIDs de ses joueurs) est également
+ * disponible (endpoint /team/{id}) : il sert de référence d'identité
+ * aux outils overlay qui récupèrent des logs — alignement automatique
+ * des couleurs RED/BLU du log sur les équipes du broadcast (Overlay
+ * Logs, Overlay Scores). Le cache des rosters survit au TTL (simple
+ * upsert) : entre deux saisons, les transferts sont rattrapés au
+ * premier usage suivant l'expiration.
  */
 final class Etf2lTeamService
 {
@@ -30,6 +38,15 @@ final class Etf2lTeamService
 
     /** Durée de vie (s) du cache des équipes d'une compétition. */
     private const TEAMS_TTL_S = 3600;
+
+    /**
+     * Durée de vie (s) du cache du roster d'une équipe. Les transferts
+     * ETF2L sont fréquents entre saisons, rares en cours de saison : le
+     * TTL rafraîchit le roster au premier usage de chaque journée sans
+     * marteler l'API, et l'entrée survit en base au-delà (simple upsert)
+     * pour les usages suivants.
+     */
+    private const ROSTER_TTL_S = 24 * 3600;
 
     /** Durée de vie (s) du cache négatif (API indisponible, throttle 429…). */
     private const FAIL_TTL_S = 120;
@@ -113,11 +130,14 @@ final class Etf2lTeamService
     }
 
     /**
-     * Équipes d'une compétition (nom, avatar, pays), triées par nom, sans
-     * doublon : de quoi remplir les cases d'un bracket ou les lignes d'un
-     * classement. Vide si l'API est indisponible ou la compétition inconnue.
+     * Équipes d'une compétition (identifiant, nom, avatar, pays), triées
+     * par nom, sans doublon : de quoi remplir les cases d'un bracket ou
+     * les lignes d'un classement. L'identifiant ETF2L permet au
+     * remplissage assisté de récupérer ensuite le roster de l'équipe
+     * choisie (voir roster()). Vide si l'API est indisponible ou la
+     * compétition inconnue.
      *
-     * @return array<int, array{name: string, avatar: string, country: string}>
+     * @return array<int, array{id: int, name: string, avatar: string, country: string}>
      */
     public function teams(int $competitionId): array
     {
@@ -153,6 +173,7 @@ final class Etf2lTeamService
 
                 $steam = is_array($entry['steam'] ?? null) ? $entry['steam'] : [];
                 $teams[] = [
+                    'id' => $id,
                     'name' => $name,
                     'avatar' => $this->cleanUrl($steam['avatar'] ?? null),
                     'country' => $this->clip((string) ($entry['country'] ?? ''), 32),
@@ -173,6 +194,74 @@ final class Etf2lTeamService
         });
 
         return $teams;
+    }
+
+    /**
+     * Roster ETF2L d'une équipe (endpoint /team/{id}) : identifiant, nom
+     * et SteamID64 de chaque joueur inscrit, dédupliqués, entrées sans
+     * SteamID exploitable ignorées. Null si l'API est indisponible, si
+     * l'équipe est inconnue ou si son roster est vide.
+     *
+     * @return array{id: int, name: string, players: array<int, string>}|null
+     */
+    public function roster(int $teamId): ?array
+    {
+        if ($teamId <= 0) {
+            return null;
+        }
+
+        $payload = $this->cachedFetch(self::API_URL.'/team/'.$teamId, self::ROSTER_TTL_S);
+        $team = is_array($payload['team'] ?? null) ? $payload['team'] : null;
+        if ($team === null) {
+            return null;
+        }
+
+        $players = [];
+        foreach (is_array($team['players'] ?? null) ? $team['players'] : [] as $player) {
+            if (! is_array($player)) {
+                continue;
+            }
+
+            $steam = is_array($player['steam'] ?? null) ? $player['steam'] : [];
+            $steamid64 = $this->playerSteamId64($steam);
+            if ($steamid64 !== null) {
+                // Clé ET valeur : une clé numérique serait castée en
+                // entier par PHP, les SteamIDs restent des chaînes.
+                $players[$steamid64] = $steamid64;
+            }
+        }
+
+        if ($players === []) {
+            return null;
+        }
+
+        return [
+            'id' => (int) ($team['id'] ?? $teamId),
+            'name' => $this->sanitizeName($team['name'] ?? null) ?? '',
+            'players' => array_values($players),
+        ];
+    }
+
+    /**
+     * SteamID64 d'un joueur ETF2L depuis son bloc « steam » : id64
+     * directement, sinon id2 (STEAM_1:…), sinon id3 ([U:1:…]). Null si
+     * aucun des formats n'est exploitable.
+     *
+     * @param  array<string, mixed>  $steam
+     */
+    private function playerSteamId64(array $steam): ?string
+    {
+        $id64 = trim((string) ($steam['id64'] ?? ''));
+        if (preg_match('/^\d{17}$/', $id64) === 1) {
+            return $id64;
+        }
+
+        $id2 = SteamId::fromSteam2((string) ($steam['id'] ?? ''));
+        if ($id2 !== null) {
+            return $id2;
+        }
+
+        return SteamId::toSteamId64((string) ($steam['id3'] ?? ''));
     }
 
     /**

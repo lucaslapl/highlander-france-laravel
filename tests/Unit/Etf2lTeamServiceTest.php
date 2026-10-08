@@ -10,10 +10,11 @@ use Illuminate\Support\Facades\DB;
 use Tests\TestCase;
 
 /**
- * Équipes ETF2L (API v2) pour le remplissage assisté de l'outil overlay
- * bracket : liste des compétitions Highlander récentes, équipes d'une
- * compétition (nom, avatar, pays) avec pagination, dédoublonnage et tri
- * alphabétique, cache par URL dans etf2l_api_cache. Fetcher HTTP
+ * Équipes ETF2L (API v2) pour le remplissage assisté des outils overlay :
+ * liste des compétitions Highlander récentes, équipes d'une compétition
+ * (nom, avatar, pays, identifiant pour le roster) avec pagination,
+ * dédoublonnage et tri alphabétique, roster d'une équipe (SteamID64 de
+ * ses joueurs), cache par URL dans etf2l_api_cache. Fetcher HTTP
  * injecté : aucun réseau réel, seulement la base de test.
  */
 class Etf2lTeamServiceTest extends TestCase
@@ -114,6 +115,10 @@ class Etf2lTeamServiceTest extends TestCase
         $this->assertSame('https://etf2l.org/dd14.png', $teams[1]['avatar']);
         $this->assertSame('ЭТО МОЁ БОЛОТО', $teams[2]['name']);
         $this->assertCount(3, $teams);
+
+        // L'identifiant ETF2L voyage avec l'équipe : le remplissage assisté
+        // s'en sert pour récupérer son roster (voir ci-dessous).
+        $this->assertSame((string) crc32('DD14'), (string) $teams[1]['id']);
     }
 
     public function test_la_pagination_est_suivie_jusqu_a_la_derniere_page(): void
@@ -231,5 +236,89 @@ class Etf2lTeamServiceTest extends TestCase
 
         $payload = json_decode((string) $row->payload, true);
         $this->assertSame(200, $payload['status']['code'] ?? null);
+    }
+
+    // ─── Roster d'une équipe (endpoint /team/{id}) ────────────────────────
+
+    /**
+     * Payload /team/{id} au format de l'API v2, avec un bloc « steam »
+     * complet (id64, id2 STEAM_1, id3 [U:1:N]) comme dans la vraie
+     * réponse.
+     *
+     * @return array<string, mixed>
+     */
+    private function teamPayload(): array
+    {
+        return [
+            'status' => ['code' => 200],
+            'team' => [
+                'id' => 21747,
+                'name' => '  The Piece of Pie ',
+                'steam' => ['avatar' => 'https://etf2l.org/pie.jpg'],
+                'players' => [
+                    ['id' => 92114, 'name' => 'xine', 'steam' => [
+                        'id64' => '76561198000552896', 'id' => 'STEAM_1:0:20143584', 'id3' => '[U:1:40287168]',
+                    ]],
+                    // Pas de id64 : id2 (STEAM_1:X:Y) converti en SteamID64.
+                    ['id' => 72958, 'name' => 'dexton123', 'steam' => ['id' => 'STEAM_1:0:12345']],
+                    // Doublon du premier joueur via id3 seul : dédupliqué.
+                    ['id' => 72959, 'name' => 'xine alias', 'steam' => ['id3' => '[U:1:40287168]']],
+                    // Aucun SteamID exploitable : ignoré.
+                    ['id' => 72960, 'name' => 'ghost', 'steam' => []],
+                    // Entrée non-tableau : ignorée sans erreur.
+                    'corrompu',
+                ],
+            ],
+        ];
+    }
+
+    public function test_le_roster_est_normalise_et_dedupliqu(): void
+    {
+        $service = $this->service(['/team/21747' => $this->teamPayload()], $calls);
+
+        $roster = $service->roster(21747);
+
+        $this->assertSame(21747, $roster['id']);
+        $this->assertSame('The Piece of Pie', $roster['name']);
+        // xine (id64), dexton123 (id2 converti), le doublon id3 est
+        // dédupliqué et l'entrée sans SteamID ignorée.
+        $this->assertSame(['76561198000552896', '76561197960290418'], $roster['players']);
+        $this->assertSame(1, $calls);
+    }
+
+    public function test_le_roster_est_mis_en_cache_par_url(): void
+    {
+        $service = $this->service(['/team/21747' => $this->teamPayload()], $calls);
+
+        $service->roster(21747);
+        $service->roster(21747);
+
+        $this->assertSame(1, $calls);
+    }
+
+    public function test_un_roster_introuvable_ou_vide_renvoie_null(): void
+    {
+        // API indisponible pour cette équipe.
+        $service = $this->service(['/team/1' => null]);
+        $this->assertNull($service->roster(1));
+
+        // Payload sans bloc « team ».
+        $service = $this->service(['/team/2' => ['status' => ['code' => 200]]]);
+        $this->assertNull($service->roster(2));
+
+        // Roster vide : pas de référence d'identité exploitable.
+        $empty = $this->teamPayload();
+        $empty['team']['players'] = [];
+        $service = $this->service(['/team/3' => $empty]);
+        $this->assertNull($service->roster(3));
+    }
+
+    public function test_un_identifiant_d_equipe_invalide_renvoie_null(): void
+    {
+        $service = $this->service([], $calls);
+
+        $this->assertNull($service->roster(0));
+        $this->assertNull($service->roster(-5));
+        $this->assertSame(0, $calls);
     }
 }

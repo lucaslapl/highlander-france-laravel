@@ -2,7 +2,12 @@
      outils overlay (Logs, Scores, Bracket, Pick/Ban) : choisir une
      compétition puis charger ses équipes — un menu de sélection apparaît
      alors dans chaque bloc .js-etf2l-team du formulaire pour remplir nom,
-     avatar (et pays le cas échéant) d'un clic (admin_etf2l_teams.js).
+     avatar (et pays le cas échéant) d'un clic (admin_etf2l_teams.js). Le
+     menu lie aussi le bloc à l'équipe ETF2L choisie : les outils qui
+     gèrent des logs (Overlay Logs, Scores) récupèrent alors le roster de
+     l'équipe (SteamIDs, en cache côté serveur) pour aligner automatiquement
+     les couleurs rouge/bleu des logs sur les côtés A / B, et l'outil
+     Scores peut rafraîchir les rosters d'un clic entre deux saisons.
      Les contrôleurs passent la liste des compétitions depuis
      Etf2lTeamService::competitions() ; une API indisponible masque le
      chargement sans bloquer la saisie manuelle.
@@ -14,7 +19,8 @@
         <p style="margin:0 0 10px; color:#bbb; font-size:13px;">
             <i class="fa-solid fa-wand-magic-sparkles"></i>
             Choisissez une compétition puis chargez ses équipes : un menu de sélection apparaît dans chaque bloc
-            équipe du formulaire pour remplir nom et avatar d'un clic. La saisie manuelle reste possible à tout moment.
+            équipe du formulaire pour remplir nom et avatar d'un clic — et lier l'équipe à son roster ETF2L
+            (alignement automatique des couleurs de logs sur les côtés A / B). La saisie manuelle reste possible à tout moment.
         </p>
         <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:flex-end;">
             <div style="flex:2; min-width:280px;">

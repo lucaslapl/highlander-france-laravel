@@ -35,6 +35,7 @@
                     quel que soit le côté où le jeu place réellement les équipes.
                 </p>
                 <label class="admin-form-label" for="series-{{ $team }}-name">Nom de l'équipe (acronyme)</label>
+                <input type="hidden" name="{{ $team }}_etf2l_id" class="js-team-field-etf2l-id" value="">
                 <input type="text" id="series-{{ $team }}-name" name="{{ $team }}_name" class="form-control js-team-field-name"
                        placeholder="Ex : IG" maxlength="64" required>
                 <p style="color:#777; font-size:12px; margin:6px 0 0;">
@@ -42,12 +43,13 @@
                     l'overlay est très réduit, un nom complet ne tiendra pas.
                 </p>
                 <label class="admin-form-label" style="margin-top:10px;" for="series-{{ $team }}-players">Joueurs du match (SteamIDs)</label>
-                <textarea id="series-{{ $team }}-players" name="{{ $team }}_players" class="form-control" rows="3"
+                <textarea id="series-{{ $team }}-players" name="{{ $team }}_players" class="form-control js-team-field-players" rows="3"
                           placeholder="76561198012345678&#10;STEAM_1:0:12345" required></textarea>
                 <p style="color:#777; font-size:12px; margin:6px 0 0;">
                     Un à deux SteamIDs de joueurs qui vont jouer le match suffisent : ils servent uniquement à
-                    retrouver avec suffisamment de fiabilité les logs correspondant aux matchs joués.
-                    Formats acceptés : SteamID64, STEAM_1:X:Y ou [U:1:N].
+                    retrouver avec suffisamment de fiabilité les logs correspondant aux matchs joués. Choisissez
+                    l'équipe via le remplissage assisté ETF2L ci-dessus : son roster remplit ce champ tout seul
+                    (corrigible à la main — mercs, saison passée…). Formats acceptés : SteamID64, STEAM_1:X:Y ou [U:1:N].
                 </p>
                 <label class="admin-form-label" style="margin-top:10px;" for="series-{{ $team }}-avatar-url">Avatar par URL externe (optionnel)</label>
                 <input type="url" id="series-{{ $team }}-avatar-url" name="{{ $team }}_avatar_url" class="form-control js-team-field-avatar"

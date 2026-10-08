@@ -117,6 +117,7 @@ Route::middleware('overlay-tools')->prefix('admin')->group(function (): void {
     Route::post('/overlay/{token}/swap', [AdminOverlayController::class, 'swap'])->where('token', '[a-z0-9]{16}');
     Route::post('/overlay/{token}/delete', [AdminOverlayController::class, 'delete'])->where('token', '[a-z0-9]{16}');
     Route::get('/overlay/etf2l/teams', [AdminEtf2lTeamsController::class, 'teams']);
+    Route::get('/overlay/etf2l/roster', [AdminEtf2lTeamsController::class, 'roster']);
     Route::get('/overlay/bracket', [AdminBracketController::class, 'index'])->name('admin.bracket');
     Route::post('/overlay/bracket/create', [AdminBracketController::class, 'create']);
     Route::get('/overlay/bracket/{token}', [AdminBracketController::class, 'edit'])->where('token', '[a-z0-9]{16}');
@@ -132,6 +133,7 @@ Route::middleware('overlay-tools')->prefix('admin')->group(function (): void {
     Route::get('/series/{token}', [AdminSeriesController::class, 'show'])->where('token', '[a-z0-9]{16}');
     Route::post('/series/{token}/status', [AdminSeriesController::class, 'status'])->where('token', '[a-z0-9]{16}');
     Route::post('/series/{token}/teams', [AdminSeriesController::class, 'teams'])->where('token', '[a-z0-9]{16}');
+    Route::post('/series/{token}/rosters', [AdminSeriesController::class, 'rosters'])->where('token', '[a-z0-9]{16}');
     Route::post('/series/{token}/swap', [AdminSeriesController::class, 'swap'])->where('token', '[a-z0-9]{16}');
     Route::post('/series/{token}/point', [AdminSeriesController::class, 'point'])->where('token', '[a-z0-9]{16}');
     Route::post('/series/{token}/void', [AdminSeriesController::class, 'void'])->where('token', '[a-z0-9]{16}');

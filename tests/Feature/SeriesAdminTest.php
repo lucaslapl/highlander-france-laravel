@@ -7,6 +7,7 @@ namespace Tests\Feature;
 use App\Models\SeriesRepository;
 use App\Services\SeriesScoreService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Tests\TestCase;
 
 /**
@@ -87,6 +88,7 @@ class SeriesAdminTest extends TestCase
         $this->get('/admin/series/'.self::TOKEN)->assertForbidden();
         $this->post('/admin/series/'.self::TOKEN.'/status', ['status' => 'live'])->assertForbidden();
         $this->post('/admin/series/'.self::TOKEN.'/teams', ['red_name' => 'LB', 'blue_name' => 'E6'])->assertForbidden();
+        $this->post('/admin/series/'.self::TOKEN.'/rosters')->assertForbidden();
         $this->post('/admin/series/'.self::TOKEN.'/swap')->assertForbidden();
         $this->post('/admin/series/'.self::TOKEN.'/point', ['map' => 'pl_upward_f10', 'team' => 'red'])->assertForbidden();
         $this->post('/admin/series/'.self::TOKEN.'/void', ['event' => 'e1'])->assertForbidden();
@@ -117,11 +119,31 @@ class SeriesAdminTest extends TestCase
         $this->assertSame('Finale playoffs — Les Baguettes vs Escouade 6', $series['title']);
         $this->assertSame('upcoming', $series['status']);
         $this->assertSame(2, $series['wins_needed']);
-        $this->assertSame(['name' => 'Les Baguettes', 'players' => ['76561198000000001', '76561197960290419'], 'avatar_url' => null], $series['teams']['red']);
-        $this->assertSame(['name' => 'Escouade 6', 'players' => ['76561198000000011', '76561197960364493'], 'avatar_url' => null], $series['teams']['blue']);
+        $this->assertSame(['name' => 'Les Baguettes', 'players' => ['76561198000000001', '76561197960290419'], 'avatar_url' => null, 'etf2l_id' => null], $series['teams']['red']);
+        $this->assertSame(['name' => 'Escouade 6', 'players' => ['76561198000000011', '76561197960364493'], 'avatar_url' => null, 'etf2l_id' => null], $series['teams']['blue']);
         // pl_upward : double attaque ; steel : double attaque (A/D connu).
         $this->assertSame('double', $series['maps'][0]['mode']);
         $this->assertSame('double', $series['maps'][1]['mode']);
+    }
+
+    public function test_la_creation_stocke_la_liaison_etf2l_des_equipes(): void
+    {
+        // Remplissage assisté : le menu équipe pousse l'identifiant ETF2L
+        // en champ caché, la série le mémorise pour rafraîchir les
+        // rosters plus tard (transferts entre saisons).
+        $input = $this->createInput();
+        $input['red_etf2l_id'] = '21747';
+        $input['blue_etf2l_id'] = '21748';
+
+        $this->withSession($this->adminSession())
+            ->post('/admin/series/create', $input)
+            ->assertRedirect();
+
+        $seriesList = (new SeriesRepository)->all();
+        $series = (new SeriesRepository)->find((string) $seriesList[0]['token']);
+
+        $this->assertSame(21747, $series['teams']['red']['etf2l_id']);
+        $this->assertSame(21748, $series['teams']['blue']['etf2l_id']);
     }
 
     public function test_creation_rejette_un_steamid_invalide(): void
@@ -271,6 +293,70 @@ class SeriesAdminTest extends TestCase
         $this->assertSame(['76561198000000001', '76561198000000002'], $series['teams']['red']['players']);
         $this->assertSame('Les Baguettes', $series['teams']['blue']['name']);
         $this->assertSame('https://example.com/lb.png', $series['teams']['blue']['avatar_url']);
+        $this->assertSame(['76561198000000011', '76561198000000012'], $series['teams']['blue']['players']);
+    }
+
+    // ─── Liaison ETF2L et rafraîchissement des rosters ────────────────────
+
+    public function test_le_rafraichissement_remplace_les_rosters_depuis_etf2l(): void
+    {
+        $this->seedSeries();
+        $this->withSession($this->adminSession())
+            ->post('/admin/series/'.self::TOKEN.'/teams', [
+                'red_name' => 'LB',
+                'blue_name' => 'E6',
+                'red_etf2l_id' => '21747',
+                'blue_etf2l_id' => '21748',
+            ])
+            ->assertRedirect();
+
+        // Rosters ETF2L servis depuis le cache (aucun réseau réel) : les
+        // transferts de l'intersaison sont rattrapés d'un clic.
+        $this->seedEtf2lTeamRosterCache(21747, ['76561198000000001', '76561198000000009', '76561198000000010']);
+        $this->seedEtf2lTeamRosterCache(21748, ['76561198000000011', '76561198000000019']);
+
+        $this->withSession($this->adminSession())
+            ->post('/admin/series/'.self::TOKEN.'/rosters')
+            ->assertRedirect()
+            ->assertSessionHas('success');
+
+        $series = (new SeriesRepository)->find(self::TOKEN);
+        $this->assertSame(['76561198000000001', '76561198000000009', '76561198000000010'], $series['teams']['red']['players']);
+        $this->assertSame(['76561198000000011', '76561198000000019'], $series['teams']['blue']['players']);
+    }
+
+    public function test_le_rafraichissement_des_rosters_refuse_sans_liaison_etf2l(): void
+    {
+        $this->seedSeries();
+
+        $this->withSession($this->adminSession())
+            ->post('/admin/series/'.self::TOKEN.'/rosters')
+            ->assertRedirect()
+            ->assertSessionHas('error');
+
+        $series = (new SeriesRepository)->find(self::TOKEN);
+        $this->assertSame(['76561198000000001', '76561198000000002'], $series['teams']['red']['players']);
+        $this->assertSame(['76561198000000011', '76561198000000012'], $series['teams']['blue']['players']);
+    }
+
+    public function test_le_rafraichissement_epargne_les_equipes_sans_liaison(): void
+    {
+        $this->seedSeries();
+        $repository = new SeriesRepository;
+        $series = $repository->find(self::TOKEN);
+        $series['teams']['red']['etf2l_id'] = 21747;
+        $repository->save($series);
+
+        $this->seedEtf2lTeamRosterCache(21747, ['76561198000000077']);
+
+        $this->withSession($this->adminSession())
+            ->post('/admin/series/'.self::TOKEN.'/rosters')
+            ->assertRedirect()
+            ->assertSessionHas('success');
+
+        // Seule l'équipe liée est mise à jour, l'autre garde son roster.
+        $series = $repository->find(self::TOKEN);
+        $this->assertSame(['76561198000000077'], $series['teams']['red']['players']);
         $this->assertSame(['76561198000000011', '76561198000000012'], $series['teams']['blue']['players']);
     }
 
@@ -436,6 +522,32 @@ class SeriesAdminTest extends TestCase
      *
      * @param  array<int, string>|null  $maps
      */
+    /**
+     * Amorce le cache ETF2L du roster d'une équipe (endpoint /team/{id},
+     * lu par le rafraîchissement des rosters) : le service n'a alors
+     * aucun appel HTTP à faire.
+     *
+     * @param  array<int, string>  $steamids64
+     */
+    private function seedEtf2lTeamRosterCache(int $teamId, array $steamids64): void
+    {
+        DB::table('etf2l_api_cache')->insert([
+            'url' => 'https://api-v2.etf2l.org/team/'.$teamId,
+            'payload' => json_encode([
+                'status' => ['code' => 200],
+                'team' => [
+                    'id' => $teamId,
+                    'name' => 'Équipe ETF2L '.$teamId,
+                    'players' => array_map(
+                        static fn (string $id64): array => ['name' => 'joueur', 'steam' => ['id64' => $id64]],
+                        $steamids64
+                    ),
+                ],
+            ], JSON_THROW_ON_ERROR),
+            'fetched_at' => time(),
+        ]);
+    }
+
     private function seedSeries(?array $maps = null): void
     {
         $declared = [];

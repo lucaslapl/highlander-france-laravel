@@ -143,6 +143,99 @@ final class OverlayStatsService
     }
 
     /**
+     * Aligne les côtés du payload sur deux rosters de référence
+     * (SteamID64 des joueurs de chaque équipe). logs.tf classe les deux
+     * équipes en rouge/bleu arbitrairement : si les couleurs du log sont
+     * inversées par rapport aux rosters (l'équipe A a joué BLU), les
+     * côtés du payload sont intervertis pour que chaque clé red/blue
+     * porte bien les stats de l'équipe attendue — les noms et avatars
+     * personnalisés sont appliqués par clé ensuite et restent donc juste.
+     *
+     * Chaque roster doit être identifiable sans ambiguïté : au moins un
+     * de ses joueurs dans le log, couleur majoritaire stricte, et deux
+     * couleurs distinctes entre les rosters (même logique que le
+     * réconciliateur des séries, à tolérance mercs près). En cas
+     * d'ambiguïté ou de roster vide, le payload est retourné inchangé :
+     * l'admin garde la main via le bouton d'interversion.
+     *
+     * @param  array<string, mixed>  $payload
+     * @param  array<int, string>  $redRosterSteamid64  Roster de l'équipe A (côté red du payload)
+     * @param  array<int, string>  $blueRosterSteamid64  Roster de l'équipe B (côté blue du payload)
+     * @return array{payload: array<string, mixed>, swapped: bool, ambiguous: bool}
+     */
+    public static function alignTeamsByRosters(array $payload, array $redRosterSteamid64, array $blueRosterSteamid64): array
+    {
+        if ($redRosterSteamid64 === [] || $blueRosterSteamid64 === []) {
+            return ['payload' => $payload, 'swapped' => false, 'ambiguous' => true];
+        }
+
+        $rosters = [
+            'red' => self::steamid3Set($redRosterSteamid64),
+            'blue' => self::steamid3Set($blueRosterSteamid64),
+        ];
+
+        // Couverture de chaque roster par couleur du log : la couleur
+        // majoritaire stricte identifie l'équipe, sinon c'est ambigu.
+        $colors = [];
+        foreach (['red', 'blue'] as $teamKey) {
+            $coverage = ['red' => 0, 'blue' => 0];
+            foreach (['red', 'blue'] as $color) {
+                foreach (is_array($payload['players'][$color] ?? null) ? $payload['players'][$color] : [] as $player) {
+                    if (isset($rosters[$teamKey][(string) ($player['steamid3'] ?? '')])) {
+                        $coverage[$color]++;
+                    }
+                }
+            }
+
+            if ($coverage['red'] === 0 && $coverage['blue'] === 0) {
+                return ['payload' => $payload, 'swapped' => false, 'ambiguous' => true];
+            }
+
+            if ($coverage['red'] > $coverage['blue']) {
+                $colors[$teamKey] = 'red';
+            } elseif ($coverage['blue'] > $coverage['red']) {
+                $colors[$teamKey] = 'blue';
+            } else {
+                return ['payload' => $payload, 'swapped' => false, 'ambiguous' => true];
+            }
+        }
+
+        if ($colors['red'] === $colors['blue']) {
+            return ['payload' => $payload, 'swapped' => false, 'ambiguous' => true];
+        }
+
+        // L'équipe A (roster red) doit être portée par la clé red : si
+        // elle a joué l'autre couleur, les côtés s'échangent.
+        $swapped = $colors['red'] === 'blue';
+
+        return [
+            'payload' => $swapped ? self::swapTeams($payload) : $payload,
+            'swapped' => $swapped,
+            'ambiguous' => false,
+        ];
+    }
+
+    /**
+     * Set de SteamID3 (clés des joueurs dans les réponses logs.tf)
+     * depuis une liste de SteamID64.
+     *
+     * @param  array<int, string>  $steamids64
+     * @return array<string, true>
+     */
+    private static function steamid3Set(array $steamids64): array
+    {
+        $set = [];
+        foreach ($steamids64 as $steamid64) {
+            $steamid64 = trim((string) $steamid64);
+            if (preg_match('/^\d{17}$/', $steamid64) === 1) {
+                $set[SteamId::toSteamId3($steamid64)] = true;
+            }
+        }
+
+        return $set;
+    }
+
+    /**
      * Remplace, quand il est résoluble, le pseudo en jeu de chaque joueur
      * par son pseudo ETF2L (les joueurs sans compte ETF2L — mercs, etc. —
      * conservent le pseudo du log).

@@ -31,6 +31,7 @@
         @foreach (['red' => 'A', 'blue' => 'B'] as $team => $label)
             <div class="js-etf2l-team" style="flex:1; min-width:300px; border:1px solid #333; border-radius:8px; padding:14px;">
                 <h4 style="margin:0 0 10px; color:#bbb;">Équipe {{ $label }}</h4>
+                <input type="hidden" name="{{ $team }}_etf2l_id" class="js-team-field-etf2l-id" value="">
                 <label class="admin-form-label" for="overlay-{{ $team }}-name">Nom affiché (optionnel)</label>
                 <input type="text" id="overlay-{{ $team }}-name" name="{{ $team }}_name" class="form-control js-team-field-name"
                        placeholder="{{ $team === 'red' ? 'RED par défaut' : 'BLU par défaut' }}" maxlength="64">
@@ -44,7 +45,9 @@
         Les scores, joueurs, classes et stats medics sont récupérés depuis l'API logs.tf. Noms et avatars saisis ici sont appliqués dès la création : tout est prêt avant le stream, et reste modifiable ensuite.
     </p>
     <p style="color:#777; font-size:13px; margin:6px 0 0;">
-        logs.tf classe les équipes en « rouge » et « bleu » sans lien avec votre layout : ici elles sont simplement A et B, et si les côtés ne conviennent pas, la page de l'overlay créé propose un bouton d'interversion.
+        logs.tf classe les équipes en « rouge » et « bleu » arbitrairement : choisissez vos équipes via le remplissage
+        assisté ETF2L et leurs rosters alignent automatiquement l'équipe A à gauche — le bouton d'interversion de la
+        page de l'overlay reste le repli si les équipes sont saisies à la main.
     </p>
 </form>
 

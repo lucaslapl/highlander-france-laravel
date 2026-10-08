@@ -22,9 +22,13 @@ use Illuminate\Support\Str;
  *
  * Chaque overlay possède son propre token et son URL publique
  * (/overlay/{token}) à pointer dans OBS via une source navigateur web.
- * Les équipes sont présentées comme A / B (logs.tf les classe en
- * rouge/bleu de façon arbitraire, sans lien avec le layout du broadcast :
- * le bouton d'interversion de la page d'édition échange noms et avatars).
+ * Les équipes sont présentées comme A / B : les couleurs rouge/bleu du
+ * log logs.tf sont arbitraires, mais le remplissage assisté ETF2L
+ * retrouve le roster de chaque équipe et le service aligne
+ * automatiquement les côtés du payload sur ces rosters (voir
+ * OverlayStatsService::alignTeamsByRosters) — le bouton d'interversion
+ * de la page d'édition reste le repli manuel et échange alors tout un
+ * côté (nom, avatar, score, stats, roster).
  * Les noms d'équipes et avatars (URL externe) sont personnalisables, avec
  * le même remplissage assisté ETF2L que les autres outils overlay
  * (compétition → équipes via Etf2lTeamService) ; la vue overlay se
@@ -84,6 +88,11 @@ final class AdminOverlayController extends Controller
      * un identifiant saisi, récupère les stats logs.tf et crée l'overlay.
      * Les noms d'équipes et avatars par URL saisis dès la génération sont
      * appliqués au payload, pour préparer l'overlay en amont du stream.
+     *
+     * Si les deux équipes sont liées à ETF2L (remplissage assisté), leurs
+     * rosters sont récupérés et les côtés du payload sont alignés
+     * automatiquement : l'équipe A atterrit toujours du côté A, quelle
+     * que soit la couleur que le jeu lui a donnée sur ce log.
      */
     public function generate(Request $request): RedirectResponse
     {
@@ -95,6 +104,8 @@ final class AdminOverlayController extends Controller
             'blue_name' => ['nullable', 'string', 'max:'.self::MAX_NAME_LEN],
             'red_avatar_url' => ['nullable', 'url:http,https', 'max:500'],
             'blue_avatar_url' => ['nullable', 'url:http,https', 'max:500'],
+            'red_etf2l_id' => ['nullable', 'integer', 'min:1'],
+            'blue_etf2l_id' => ['nullable', 'integer', 'min:1'],
         ]);
 
         $logId = $this->parseLogId((string) $data['log']);
@@ -107,17 +118,49 @@ final class AdminOverlayController extends Controller
             return back()->with('error', "Log logs.tf #$logId introuvable ou sans données de joueurs.");
         }
 
+        // Alignement des couleurs du log sur les rosters ETF2L (s'ils ont
+        // pu être récupérés) : chaque clé red/blue du payload porte alors
+        // les stats de l'équipe correspondante, avant application des
+        // personnalisations saisies (noms, avatars) qui suivent les clés.
+        $rosters = $this->fetchRosters($data);
+        $alignment = OverlayStatsService::alignTeamsByRosters(
+            $payload,
+            $rosters['red']['players'] ?? [],
+            $rosters['blue']['players'] ?? [],
+        );
+        $payload = $alignment['payload'];
+
         $token = bin2hex(random_bytes(8));
         $overlay = array_merge($payload, [
             'token' => $token,
             'created_at' => time(),
             'teams' => $this->withGenerationInputs($payload['teams'], $data),
         ]);
+        $this->attachRosters($overlay['teams'], $data, $rosters);
 
         $this->overlays->save($overlay);
         AdminLogger::log('admin_overlay_generate', null, 'SUCCESS (overlay '.$token.' depuis logs.tf #'.$logId.')');
 
-        return redirect('/admin/overlay/'.$token)->with('success', "Overlay créé pour le log logs.tf #$logId.");
+        $message = "Overlay créé pour le log logs.tf #$logId.";
+        if ($alignment['swapped']) {
+            $message .= ' Côtés alignés automatiquement sur les rosters ETF2L (couleurs du log inversées).';
+        } elseif ($alignment['ambiguous'] && $this->bothEtf2lIds($data)) {
+            // Deux causes distinctes d'ambiguïté : le roster n'a pas pu
+            // être récupéré (API indisponible) ou il est trop peu couvert
+            // par ce log (mauvaises équipes, mercs massifs).
+            $unavailable = [];
+            foreach (['red' => 'A', 'blue' => 'B'] as $team => $label) {
+                if ($rosters[$team] === null) {
+                    $unavailable[] = 'équipe '.$label;
+                }
+            }
+
+            $message .= $unavailable !== []
+                ? ' Roster ETF2L indisponible ('.implode(', ', $unavailable).') : alignement automatique impossible, vérifiez les côtés.'
+                : ' Attention : les rosters ETF2L sont peu couverts par ce log, l\'alignement des côtés est incertain — vérifiez l\'aperçu.';
+        }
+
+        return redirect('/admin/overlay/'.$token)->with('success', $message);
     }
 
     /**
@@ -139,8 +182,12 @@ final class AdminOverlayController extends Controller
     }
 
     /**
-     * POST /admin/overlay/{token}/update — noms des équipes A / B et
-     * avatars par URL externe.
+     * POST /admin/overlay/{token}/update — noms des équipes A / B,
+     * avatars par URL externe et liaison ETF2L : si une équipe est liée
+     * à son équipe ETF2L (remplissage assisté), son roster est récupéré
+     * et stocké dans l'overlay pour l'alignement automatique des côtés
+     * aux prochains rafraîchissements. Sans liaison saisie, le roster
+     * éventuellement stocké est conservé tel quel.
      */
     public function update(Request $request, string $token): RedirectResponse
     {
@@ -153,6 +200,8 @@ final class AdminOverlayController extends Controller
             'blue_name' => ['required', 'string', 'max:'.self::MAX_NAME_LEN],
             'red_avatar_url' => ['nullable', 'url:http,https', 'max:500'],
             'blue_avatar_url' => ['nullable', 'url:http,https', 'max:500'],
+            'red_etf2l_id' => ['nullable', 'integer', 'min:1'],
+            'blue_etf2l_id' => ['nullable', 'integer', 'min:1'],
         ]);
 
         $overlay['teams']['red']['name'] = trim((string) $data['red_name']);
@@ -160,18 +209,38 @@ final class AdminOverlayController extends Controller
         $overlay['teams']['red']['avatar_url'] = $this->cleanUrl($data['red_avatar_url'] ?? null);
         $overlay['teams']['blue']['avatar_url'] = $this->cleanUrl($data['blue_avatar_url'] ?? null);
 
+        // Liaison ETF2L : le roster sert de référence d'identité, il ne
+        // remplace ni le nom ni l'avatar saisis (liberté de personnalisation).
+        $rosters = $this->fetchRosters($data);
+        $this->attachRosters($overlay['teams'], $data, $rosters);
+
         $this->overlays->save($overlay);
+
+        // Une liaison demandée mais introuvable (API indisponible) ne
+        // bloque pas l'enregistrement des noms : le roster éventuellement
+        // déjà stocké est conservé et l'admin est prévenu pour réessayer.
+        $unavailable = [];
+        foreach (['red' => 'A', 'blue' => 'B'] as $team => $label) {
+            if ((int) ($data[$team.'_etf2l_id'] ?? 0) > 0 && $rosters[$team] === null) {
+                $unavailable[] = 'équipe '.$label;
+            }
+        }
+
+        if ($unavailable !== []) {
+            return back()->with('success', 'Overlay mis à jour.')
+                ->with('error', 'Roster ETF2L indisponible ('.implode(', ', $unavailable).') : la liaison n\'a pas pu être enregistrée, réessayez plus tard.');
+        }
 
         return back()->with('success', 'Overlay mis à jour.');
     }
 
     /**
      * POST /admin/overlay/{token}/swap — intervertit les équipes A et B
-     * côté personnalisation : noms et avatars par URL (ainsi que les
-     * avatars historiques uploadés, s'il en reste). Les scores et les
-     * stats des joueurs ne bougent pas : logs.tf classe les équipes en
-     * rouge/bleu arbitrairement, ce bouton sert à aligner l'affichage
-     * sur le layout souhaité du broadcast.
+     * côté affichage : tout un côté change de main (noms, avatars par
+     * URL et historiques, score, stats des joueurs et des medics,
+     * rosters ETF2L) pour que chaque équipe rejoigne l'autre côté de
+     * l'écran. Les rosters voyagent avec leur équipe : le prochain
+     * rafraîchissement depuis logs.tf conserve ce nouvel ordre.
      */
     public function swap(string $token): RedirectResponse
     {
@@ -179,24 +248,21 @@ final class AdminOverlayController extends Controller
 
         $overlay = $this->requireOverlay($token);
 
-        $redName = (string) $overlay['teams']['red']['name'];
-        $redAvatarUrl = $overlay['teams']['red']['avatar_url'] ?? null;
-
-        $overlay['teams']['red']['name'] = (string) $overlay['teams']['blue']['name'];
-        $overlay['teams']['red']['avatar_url'] = $overlay['teams']['blue']['avatar_url'] ?? null;
-        $overlay['teams']['blue']['name'] = $redName;
-        $overlay['teams']['blue']['avatar_url'] = $redAvatarUrl;
+        $overlay = OverlayStatsService::swapTeams($overlay);
 
         $this->overlays->save($overlay);
         $this->overlays->swapAvatars($token);
         AdminLogger::log('admin_overlay_swap', null, 'SUCCESS (overlay '.$token.')');
 
-        return back()->with('success', 'Équipes interverties : noms et avatars A / B échangés.');
+        return back()->with('success', 'Équipes interverties : chaque équipe rejoint l\'autre côté de l\'overlay (nom, avatar, score, stats).');
     }
 
     /**
      * POST /admin/overlay/{token}/refresh — relit le log logs.tf (scores et
-     * stats à jour, ex. fin de map) en conservant noms et avatars.
+     * stats à jour, ex. fin de map) en conservant noms, avatars et rosters,
+     * puis réaligne les couleurs du log sur les rosters stockés : l'ordre
+     * d'affichage choisi (automatique ou via le bouton d'interversion)
+     * traverse les rafraîchissements.
      */
     public function refresh(Request $request, string $token): RedirectResponse
     {
@@ -209,10 +275,19 @@ final class AdminOverlayController extends Controller
             return back()->with('error', 'Impossible de relire le log logs.tf, réessayez plus tard.');
         }
 
-        // Les personnalisations (noms, avatars) priment sur le refresh.
-        $overlay = array_merge($overlay, $payload, [
+        // Les couleurs rouge/bleu d'un log sont arbitraires : les rosters
+        // stockés remettent chaque équipe sur son côté avant fusion des
+        // personnalisations (noms, avatars), qui suivent les clés red/blue.
+        $alignment = OverlayStatsService::alignTeamsByRosters(
+            $payload,
+            is_array($overlay['teams']['red']['roster'] ?? null) ? $overlay['teams']['red']['roster'] : [],
+            is_array($overlay['teams']['blue']['roster'] ?? null) ? $overlay['teams']['blue']['roster'] : [],
+        );
+
+        // Les personnalisations (noms, avatars, rosters) priment sur le refresh.
+        $overlay = array_merge($overlay, $alignment['payload'], [
             'token' => $token,
-            'teams' => $this->mergeTeams($overlay['teams'], $payload['teams']),
+            'teams' => $this->mergeTeams($overlay['teams'], $alignment['payload']['teams']),
         ]);
         $this->overlays->save($overlay);
 
@@ -286,7 +361,7 @@ final class AdminOverlayController extends Controller
     }
 
     /**
-     * Conserve noms et avatars personnalisés, met à jour les scores.
+     * Conserve noms, avatars et rosters personnalisés, met à jour les scores.
      *
      * @param  array<string, array<string, mixed>>  $current
      * @param  array<string, array<string, mixed>>  $fresh
@@ -297,9 +372,76 @@ final class AdminOverlayController extends Controller
         foreach (['red', 'blue'] as $team) {
             $fresh[$team]['name'] = $current[$team]['name'] ?? $fresh[$team]['name'];
             $fresh[$team]['avatar_url'] = $current[$team]['avatar_url'] ?? null;
+            $fresh[$team]['etf2l_id'] = $current[$team]['etf2l_id'] ?? null;
+            $fresh[$team]['roster'] = is_array($current[$team]['roster'] ?? null) ? $current[$team]['roster'] : [];
         }
 
         return $fresh;
+    }
+
+    /**
+     * Récupère les rosters ETF2L des deux équipes depuis les
+     * identifiants soumis par le remplissage assisté (absents si les
+     * équipes ont été saisies à la main). Null par équipe : pas de
+     * liaison, ou API indisponible — l'alignement automatique des
+     * côtés devient alors impossible, l'admin garde la main via le
+     * bouton d'interversion.
+     *
+     * @param  array<string, mixed>  $data
+     * @return array{red: array{id: int, name: string, players: array<int, string>}|null, blue: array{id: int, name: string, players: array<int, string>}|null}
+     */
+    private function fetchRosters(array $data): array
+    {
+        $rosters = ['red' => null, 'blue' => null];
+
+        foreach (['red', 'blue'] as $team) {
+            $id = (int) ($data[$team.'_etf2l_id'] ?? 0);
+            if ($id <= 0) {
+                continue;
+            }
+
+            try {
+                $roster = $this->etf2lTeams->roster($id);
+            } catch (\Throwable) {
+                $roster = null;
+            }
+
+            if ($roster !== null) {
+                $rosters[$team] = $roster;
+            }
+        }
+
+        return $rosters;
+    }
+
+    /**
+     * Attache la liaison ETF2L aux équipes de l'overlay : identifiant
+     * et roster (SteamID64 des joueurs) stockés dans le payload, pour
+     * l'alignement automatique des couleurs de log aux rafraîchissements.
+     *
+     * @param  array<string, array<string, mixed>>  $teams
+     * @param  array<string, mixed>  $data
+     * @param  array{red: array{id: int, name: string, players: array<int, string>}|null, blue: array{id: int, name: string, players: array<int, string>}|null}  $rosters
+     */
+    private function attachRosters(array &$teams, array $data, array $rosters): void
+    {
+        foreach (['red', 'blue'] as $team) {
+            $id = (int) ($data[$team.'_etf2l_id'] ?? 0);
+            if ($id > 0 && $rosters[$team] !== null) {
+                $teams[$team]['etf2l_id'] = $id;
+                $teams[$team]['roster'] = $rosters[$team]['players'];
+            }
+        }
+    }
+
+    /**
+     * Les deux équipes sont-elles liées à ETF2L dans la saisie ?
+     *
+     * @param  array<string, mixed>  $data
+     */
+    private function bothEtf2lIds(array $data): bool
+    {
+        return (int) ($data['red_etf2l_id'] ?? 0) > 0 && (int) ($data['blue_etf2l_id'] ?? 0) > 0;
     }
 
     /**

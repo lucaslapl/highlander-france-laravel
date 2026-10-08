@@ -23,9 +23,11 @@ use Illuminate\Support\Str;
  * ajustements manuels (point de map, annulation d'un événement, renommage
  * des équipes et avatars par URL) pour les contestations et les cas que
  * l'automatisme ne couvre pas. Le remplissage assisté des équipes est le
- * même que pour les autres outils overlay (compétition → équipes ETF2L).
- * Accessible aux admins et aux rôles caster / prod (hub des overlays
- * /admin/overlays-stream).
+ * même que pour les autres outils overlay (compétition → équipes ETF2L) :
+ * il remplit aussi les rosters (SteamIDs) depuis ETF2L et lie chaque
+ * équipe à son identifiant, pour rafraîcher les rosters entre saisons
+ * (transferts) sans les ressaisir à la main. Accessible aux admins et
+ * aux rôles caster / prod (hub des overlays /admin/overlays-stream).
  */
 final class AdminSeriesController extends Controller
 {
@@ -77,7 +79,10 @@ final class AdminSeriesController extends Controller
      *
      * Les noms d'équipes sont attendus sous forme d'acronyme (peu d'espace
      * sur l'overlay). Un à deux SteamIDs de joueurs du match par équipe
-     * suffisent à retrouver les logs. Les SteamIDs acceptés : SteamID64,
+     * suffisent à retrouver les logs ; le remplissage assisté ETF2L
+     * remplit tout seul le roster complet et lie chaque équipe à son
+     * identifiant ETF2L (rafraîchissement des rosters possible après
+     * création, voir rosters()). Les SteamIDs acceptés : SteamID64,
      * « STEAM_1:X:Y » ou « [U:1:N] », un par ligne ou séparés par des
      * virgules. Les maps acceptent un mode explicite (« double » /
      * « single ») en second mot de la ligne, sinon le mode est déduit
@@ -97,6 +102,8 @@ final class AdminSeriesController extends Controller
             'maps' => ['required', 'string', 'max:2000'],
             'red_avatar_url' => ['nullable', 'url:http,https', 'max:500'],
             'blue_avatar_url' => ['nullable', 'url:http,https', 'max:500'],
+            'red_etf2l_id' => ['nullable', 'integer', 'min:1'],
+            'blue_etf2l_id' => ['nullable', 'integer', 'min:1'],
         ]);
 
         $red = $this->parsePlayers((string) $data['red_players']);
@@ -118,8 +125,8 @@ final class AdminSeriesController extends Controller
 
         $token = bin2hex(random_bytes(8));
         $teams = [
-            'red' => ['name' => trim((string) $data['red_name']), 'players' => $red['players'], 'avatar_url' => $this->cleanUrl($data['red_avatar_url'] ?? null)],
-            'blue' => ['name' => trim((string) $data['blue_name']), 'players' => $blue['players'], 'avatar_url' => $this->cleanUrl($data['blue_avatar_url'] ?? null)],
+            'red' => ['name' => trim((string) $data['red_name']), 'players' => $red['players'], 'avatar_url' => $this->cleanUrl($data['red_avatar_url'] ?? null), 'etf2l_id' => (int) ($data['red_etf2l_id'] ?? 0) ?: null],
+            'blue' => ['name' => trim((string) $data['blue_name']), 'players' => $blue['players'], 'avatar_url' => $this->cleanUrl($data['blue_avatar_url'] ?? null), 'etf2l_id' => (int) ($data['blue_etf2l_id'] ?? 0) ?: null],
         ];
 
         $this->series->save([
@@ -219,7 +226,9 @@ final class AdminSeriesController extends Controller
 
     /**
      * POST /admin/series/{token}/teams — renomme les équipes après création
-     * (correction d'un acronyme erroné) et met à jour leur avatar par URL.
+     * (correction d'un acronyme erroné), met à jour leur avatar par URL et
+     * leur liaison ETF2L (remplissage assisté) : c'est cette liaison qui
+     * permet de rafraîchir les rosters depuis ETF2L (voir rosters()).
      */
     public function teams(Request $request, string $token): RedirectResponse
     {
@@ -235,17 +244,99 @@ final class AdminSeriesController extends Controller
             'blue_name' => ['required', 'string', 'max:'.self::MAX_NAME_LEN],
             'red_avatar_url' => ['nullable', 'url:http,https', 'max:500'],
             'blue_avatar_url' => ['nullable', 'url:http,https', 'max:500'],
+            'red_etf2l_id' => ['nullable', 'integer', 'min:1'],
+            'blue_etf2l_id' => ['nullable', 'integer', 'min:1'],
         ]);
 
         $series['teams']['red']['name'] = trim((string) $data['red_name']);
         $series['teams']['blue']['name'] = trim((string) $data['blue_name']);
         $series['teams']['red']['avatar_url'] = $this->cleanUrl($data['red_avatar_url'] ?? null);
         $series['teams']['blue']['avatar_url'] = $this->cleanUrl($data['blue_avatar_url'] ?? null);
+
+        // Liaison ETF2L : sans saisie (équipes manuelles), la liaison
+        // existante est conservée — le remplissage assisté ne la vide pas.
+        foreach (['red', 'blue'] as $team) {
+            $etf2lId = (int) ($data[$team.'_etf2l_id'] ?? 0);
+            if ($etf2lId > 0) {
+                $series['teams'][$team]['etf2l_id'] = $etf2lId;
+            }
+        }
+
         $this->series->save($series);
 
         AdminLogger::log('admin_series_teams', null, 'SUCCESS (série '.$token.' : renommage en '.$data['red_name'].' / '.$data['blue_name'].')');
 
         return back()->with('success', 'Noms d\'équipes mis à jour — l\'overlay se rafraîchit tout seul.');
+    }
+
+    /**
+     * POST /admin/series/{token}/rosters — remplace le roster de chaque
+     * équipe par son roster ETF2L courant (transferts entre saisons,
+     * joueur ajouté en cours de saison, mercs officialisés). Nécessite
+     * la liaison ETF2L de l'équipe (remplissage assisté à la création ou
+     * au renommage) : les rosters sont la référence d'identité du
+     * réconciliateur, ils ne s'échangent jamais entre les côtés.
+     */
+    public function rosters(string $token): RedirectResponse
+    {
+        Auth::requireOverlayTools();
+
+        $series = $this->series->find($token);
+        if ($series === null) {
+            abort(404);
+        }
+
+        $updated = [];
+        $missing = [];
+        $failed = [];
+
+        foreach (['red', 'blue'] as $team) {
+            $etf2lId = (int) ($series['teams'][$team]['etf2l_id'] ?? 0);
+            $name = (string) $series['teams'][$team]['name'];
+
+            if ($etf2lId <= 0) {
+                $missing[] = $name;
+
+                continue;
+            }
+
+            try {
+                $roster = $this->etf2lTeams->roster($etf2lId);
+            } catch (\Throwable) {
+                $roster = null;
+            }
+
+            if ($roster === null) {
+                $failed[] = $name;
+
+                continue;
+            }
+
+            $series['teams'][$team]['players'] = $roster['players'];
+            $updated[] = $name.' ('.count($roster['players']).' joueurs)';
+        }
+
+        if ($updated === []) {
+            $reason = $missing !== [] && $failed === []
+                ? 'équipe(s) non liée(s) à ETF2L : '.implode(', ', $missing)
+                : 'API ETF2L indisponible';
+
+            return back()->with('error', 'Impossible de rafraîchir les rosters ('.$reason.').');
+        }
+
+        $this->series->save($series);
+
+        $message = 'Rosters ETF2L mis à jour : '.implode(', ', $updated).'.';
+        if ($failed !== []) {
+            $message .= ' Roster indisponible pour '.implode(', ', $failed).', réessayez plus tard.';
+        }
+        if ($missing !== []) {
+            $message .= ' Équipe(s) non liée(s) à ETF2L : '.implode(', ', $missing).'.';
+        }
+
+        AdminLogger::log('admin_series_rosters', null, 'SUCCESS (série '.$token.' : '.$message.')');
+
+        return back()->with('success', $message);
     }
 
     /**

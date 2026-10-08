@@ -14,13 +14,14 @@
 <div style="border:2px solid #9b6dff; border-radius:10px; padding:16px; margin-bottom:24px; background:rgba(155,109,255,0.08);">
     <h4 style="margin:0 0 8px;"><i class="fa-solid fa-right-left"></i> Les équipes sont-elles du bon côté ?</h4>
     <p style="margin:0 0 12px; font-size:14px; line-height:1.5;">
-        logs.tf classe les deux équipes en « rouge » et « bleu » de façon arbitraire, sans lien avec votre layout de
-        broadcast : l'équipe A affichée à gauche de l'overlay n'est donc pas forcément celle que vous voulez à gauche.
-        Ce bouton échange <strong>uniquement les noms et les avatars</strong> des équipes A et B — les scores, les stats
-        des joueurs et des medics ne bougent pas, et l'overlay se rafraîchit immédiatement dans OBS.
+        logs.tf classe les deux équipes en « rouge » et « bleu » de façon arbitraire : quand les équipes sont liées à
+        ETF2L (remplissage assisté), leurs rosters alignent automatiquement l'équipe A sur le côté A, y compris à
+        chaque rafraîchissement du log. Sans liaison ETF2L, ce bouton échange <strong>tout un côté</strong> — noms,
+        avatars, score, stats des joueurs et des medics — pour que chaque équipe rejoigne l'autre côté de l'écran ;
+        le prochain rafraîchissement conserve ce nouvel ordre.
     </p>
     <form method="POST" action="/admin/overlay/{{ $overlay['token'] }}/swap"
-          onsubmit="return confirm('Intervertir les équipes A et B (noms et avatars) ?');">
+          onsubmit="return confirm('Intervertir les équipes A et B (chacune rejoint l\'autre côté de l\'overlay) ?');">
         @csrf
         <button type="submit" class="admin-btn admin-btn--primary">
             <i class="fa-solid fa-right-left"></i> Intervertir les équipes A / B
@@ -32,10 +33,16 @@
 <form method="POST" action="/admin/overlay/{{ $overlay['token'] }}/update" class="admin-form-stack admin-form-stack--wide">
     @csrf
     @include('admin.partials.etf2l_teams', ['competitions' => $competitions, 'prefix' => 'overlay'])
+    <p style="color:#777; font-size:13px; margin:0 0 10px;">
+        Choisissez une équipe ETF2L dans le menu de chaque bloc : l'overlay est lié à son roster et les couleurs des
+        prochains logs se réalignent toutes seules sur les côtés A / B (roster conservé en cache côté serveur).
+    </p>
     <div class="admin-form-row" style="display:flex; gap:24px; flex-wrap:wrap;">
         @foreach (['red' => 'A', 'blue' => 'B'] as $team => $label)
             <div class="js-etf2l-team" style="flex:1; min-width:300px; border:1px solid #333; border-radius:8px; padding:14px;">
                 <h4 style="margin:0 0 10px; color:#bbb;">Équipe {{ $label }} — {{ (int) $overlay['teams'][$team]['score'] }} pts</h4>
+                <input type="hidden" name="{{ $team }}_etf2l_id" class="js-team-field-etf2l-id"
+                       value="{{ (int) ($overlay['teams'][$team]['etf2l_id'] ?? 0) ?: '' }}">
                 <label class="admin-form-label">Nom affiché</label>
                 <input type="text" name="{{ $team }}_name" class="form-control js-team-field-name"
                        value="{{ e($overlay['teams'][$team]['name']) }}" maxlength="64" required>

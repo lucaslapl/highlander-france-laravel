@@ -4,14 +4,19 @@
    interroge /admin/overlay/etf2l/teams?competition_id=N puis insère un
    menu de sélection dans chaque bloc .js-etf2l-team du formulaire, qui
    remplit les champs .js-team-field-name / .js-team-field-avatar /
-   .js-team-field-country d'un clic. Les scripts qui clonent des blocs
-   équipe (éditeur bracket) équipent les nouveaux blocs en appelant
-   window.hlfrEtf2lFillTeamPickers(). */
+   .js-team-field-country d'un clic. Le champ caché optionnel
+   .js-team-field-etf2l-id reçoit l'identifiant ETF2L de l'équipe
+   choisie (liaison côté serveur pour l'alignement automatique des
+   couleurs de logs sur les rosters), et le champ optionnel
+   .js-team-field-players (séries) est rempli avec les SteamIDs du
+   roster via /admin/overlay/etf2l/roster?team_id=N. Les scripts qui
+   clonent des blocs équipe (éditeur bracket) équipent les nouveaux
+   blocs en appelant window.hlfrEtf2lFillTeamPickers(). */
 
 (function () {
     'use strict';
 
-    /* Équipes chargées [{name, avatar, country}] ; le menu inséré dans
+    /* Équipes chargées [{id, name, avatar, country}] ; le menu inséré dans
        chaque bloc équipe remplit nom, avatar et pays d'un clic. */
     var etf2lTeams = [];
 
@@ -110,5 +115,47 @@
                 input.value = team ? (team[field] || '') : '';
             }
         });
+
+        // Liaison ETF2L : l'identifiant suit l'équipe choisie (vide si le
+        // menu revient sur le choix neutre), le serveur s'en sert pour
+        // récupérer le roster et aligner les couleurs des logs.
+        var etf2lIdInput = block ? block.querySelector('.js-team-field-etf2l-id') : null;
+        if (etf2lIdInput) {
+            etf2lIdInput.value = team ? (team.id || '') : '';
+        }
+
+        // Roster : uniquement pour les blocs qui exposent un champ de
+        // joueurs (séries) — les SteamIDs remplissent alors le champ,
+        // prêts à être corrigés à la main (mercs, saisons passées).
+        var playersField = block ? block.querySelector('.js-team-field-players') : null;
+        if (playersField) {
+            fillRosterPlayers(playersField, team ? team.id : 0);
+        }
     });
+
+    function fillRosterPlayers(textarea, teamId) {
+        if (!teamId) {
+            textarea.value = '';
+
+            return;
+        }
+        textarea.readOnly = true;
+        fetch('/admin/overlay/etf2l/roster?team_id=' + encodeURIComponent(teamId), {
+            headers: { 'Accept': 'application/json' },
+            credentials: 'same-origin'
+        })
+            .then(function (response) { return response.json(); })
+            .then(function (data) {
+                var roster = (data && data.roster) || null;
+                textarea.value = roster && roster.players ? roster.players.join('\n') : '';
+                textarea.placeholder = roster ? '' : 'Roster ETF2L indisponible : saisissez les SteamIDs à la main.';
+            })
+            .catch(function () {
+                textarea.value = '';
+                textarea.placeholder = 'Roster ETF2L indisponible : saisissez les SteamIDs à la main.';
+            })
+            .finally(function () {
+                textarea.readOnly = false;
+            });
+    }
 }());

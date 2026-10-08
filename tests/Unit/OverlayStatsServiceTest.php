@@ -301,4 +301,120 @@ class OverlayStatsServiceTest extends TestCase
             ]],
         ];
     }
+
+    // ─── Alignement des couleurs du log sur les rosters ───────────────────
+
+    /**
+     * Payload minimal façon buildPayload : l'alignement ne regarde que
+     * les steamid3 des joueurs, les scores voyagent avec les équipes.
+     *
+     * @return array<string, mixed>
+     */
+    private function alignmentPayload(): array
+    {
+        return [
+            'teams' => [
+                'red' => ['name' => 'RED', 'score' => 1],
+                'blue' => ['name' => 'BLU', 'score' => 4],
+            ],
+            'players' => [
+                'red' => [
+                    ['steamid3' => '[U:1:101]', 'name' => 'R1'],
+                    ['steamid3' => '[U:1:102]', 'name' => 'R2'],
+                ],
+                'blue' => [
+                    ['steamid3' => '[U:1:201]', 'name' => 'B1'],
+                    ['steamid3' => '[U:1:202]', 'name' => 'B2'],
+                ],
+            ],
+            'medics' => [
+                'red' => ['heal' => 100, 'count' => 1],
+                'blue' => ['heal' => 200, 'count' => 1],
+            ],
+        ];
+    }
+
+    /**
+     * SteamID64 équivalents des steamid3 du payload ([U:1:N] ↔ 76561197960265728+N).
+     *
+     * @param  array<int, string>  $steamids3
+     * @return array<int, string>
+     */
+    private function rosterOf(array $steamids3): array
+    {
+        return array_map(static fn (string $id3): string => SteamId::toSteamId64($id3), $steamids3);
+    }
+
+    public function test_les_rosters_confirment_les_couleurs_du_log(): void
+    {
+        $payload = $this->alignmentPayload();
+        $redRoster = $this->rosterOf(['[U:1:101]', '[U:1:102]']);
+        $blueRoster = $this->rosterOf(['[U:1:201]', '[U:1:202]']);
+
+        $alignment = OverlayStatsService::alignTeamsByRosters($payload, $redRoster, $blueRoster);
+
+        $this->assertFalse($alignment['swapped']);
+        $this->assertFalse($alignment['ambiguous']);
+        $this->assertSame($payload, $alignment['payload']);
+    }
+
+    public function test_les_rosters_inversent_les_couleurs_du_log(): void
+    {
+        $payload = $this->alignmentPayload();
+
+        // L'équipe A (roster rouge) a joué BLU sur ce log : les côtés
+        // s'échangent pour que la clé red porte toujours l'équipe A.
+        $redRoster = $this->rosterOf(['[U:1:201]', '[U:1:202]']);
+        $blueRoster = $this->rosterOf(['[U:1:101]', '[U:1:102]']);
+
+        $alignment = OverlayStatsService::alignTeamsByRosters($payload, $redRoster, $blueRoster);
+
+        $this->assertTrue($alignment['swapped']);
+        $this->assertFalse($alignment['ambiguous']);
+        $this->assertSame('[U:1:201]', $alignment['payload']['players']['red'][0]['steamid3']);
+        $this->assertSame(4, $alignment['payload']['teams']['red']['score']);
+        $this->assertSame(1, $alignment['payload']['teams']['blue']['score']);
+        $this->assertSame(200, $alignment['payload']['medics']['red']['heal']);
+    }
+
+    public function test_un_roster_absent_du_log_rend_l_alignement_ambigu(): void
+    {
+        $payload = $this->alignmentPayload();
+        $redRoster = $this->rosterOf(['[U:1:901]', '[U:1:902]']);
+        $blueRoster = $this->rosterOf(['[U:1:201]', '[U:1:202]']);
+
+        $alignment = OverlayStatsService::alignTeamsByRosters($payload, $redRoster, $blueRoster);
+
+        $this->assertFalse($alignment['swapped']);
+        $this->assertTrue($alignment['ambiguous']);
+        $this->assertSame($payload, $alignment['payload']);
+    }
+
+    public function test_une_couverture_a_egalite_rend_l_alignement_ambigu(): void
+    {
+        $payload = $this->alignmentPayload();
+
+        // Un joueur du roster rouge de chaque côté du log : impossible
+        // de trancher, le payload reste tel quel (repli manuel).
+        $redRoster = $this->rosterOf(['[U:1:101]', '[U:1:201]']);
+        $blueRoster = $this->rosterOf(['[U:1:102]', '[U:1:202]']);
+
+        $alignment = OverlayStatsService::alignTeamsByRosters($payload, $redRoster, $blueRoster);
+
+        $this->assertFalse($alignment['swapped']);
+        $this->assertTrue($alignment['ambiguous']);
+        $this->assertSame($payload, $alignment['payload']);
+    }
+
+    public function test_sans_roster_complet_l_alignement_est_ambigu(): void
+    {
+        $payload = $this->alignmentPayload();
+
+        // Un seul roster : pas de référence, aucun échange hasardeux.
+        $alignment = OverlayStatsService::alignTeamsByRosters($payload, $this->rosterOf(['[U:1:101]']), []);
+
+        $this->assertFalse($alignment['swapped']);
+        $this->assertTrue($alignment['ambiguous']);
+        $this->assertSame($payload, $alignment['payload']);
+    }
 }

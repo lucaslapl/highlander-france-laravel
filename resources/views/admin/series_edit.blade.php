@@ -94,11 +94,26 @@
     La couleur (A = côté gauche de l'overlay, B = côté droit) n'a aucune importance sur le match : elle ne fixe
     que l'ordre d'affichage, les logs font ensuite le travail.
 </p>
+<p style="color:#aaa; font-size:13px;">
+    La liaison ETF2L (remplissage assisté ci-dessus) sert de référence aux rosters : elle permet de rafraîchir les
+    rosters des deux équipes d'un clic — transferts entre saisons, joueur ajouté en cours de saison — sans ressaisir
+    les SteamIDs à la main. Sans liaison, les rosters saisis à la création restent valables tels quels.
+</p>
+<form method="POST" action="/admin/series/{{ $series['token'] }}/rosters" style="margin:0 0 14px;"
+      onsubmit="return confirm('Remplacer les rosters des deux équipes par leurs rosters ETF2L actuels ?');">
+    @csrf
+    <button type="submit" class="admin-btn"
+            title="Récupère les SteamIDs actuels des deux équipes depuis ETF2L (nécessite la liaison des équipes via le remplissage assisté).">
+        <i class="fa-solid fa-arrows-rotate"></i> Rafraîchir les rosters depuis ETF2L
+    </button>
+</form>
 <form method="POST" action="/admin/series/{{ $series['token'] }}/teams" class="admin-form-stack admin-form-stack--wide">
     @csrf
     <div style="display:flex; gap:16px; flex-wrap:wrap;">
         @foreach (['red' => 'A', 'blue' => 'B'] as $team => $label)
             <div class="js-etf2l-team" style="border:1px solid #333; border-radius:8px; padding:14px; flex:1; min-width:280px;">
+                <input type="hidden" name="{{ $team }}_etf2l_id" class="js-team-field-etf2l-id"
+                       value="{{ (int) ($series['teams'][$team]['etf2l_id'] ?? 0) ?: '' }}">
                 <label class="admin-form-label" for="team-{{ $team }}-name">Nom équipe {{ $label }} (acronyme)</label>
                 <input type="text" id="team-{{ $team }}-name" name="{{ $team }}_name" class="form-control js-team-field-name"
                        value="{{ e($series['teams'][$team]['name']) }}" maxlength="64" required>
