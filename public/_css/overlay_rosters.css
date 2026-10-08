@@ -1,0 +1,251 @@
+/* Overlay OBS « rosters d'équipes » (/roster-overlay/{token}) — 1920x1080,
+   entièrement transparent pour OBS. Palette et style repris des autres
+   overlays (sombres, Montserrat, or #d9a544 des accents de série) : chaque
+   joueur est présenté devant le portrait de sa classe (copies locales du
+   wiki TF2, public/_img/classes_portraits), les mercs portent un badge
+   doré. Disposition selon le format : Highlander = deux grilles 3x3 des
+   neuf classes (une par équipe), 6v6 = deux rangées de six classes
+   alignées sur toute la largeur. */
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+:root {
+    --ink: #f5f5f5;
+    --ink-dim: #9aa0a6;
+    --panel-bg: rgba(12, 14, 20, 0.72);
+    --panel-border: rgba(255, 255, 255, 0.08);
+    --gold: #d9a544;
+}
+
+html, body {
+    width: 1920px;
+    height: 1080px;
+    overflow: hidden;
+    background: transparent;
+    font-family: "Montserrat", "Segoe UI", Roboto, Arial, sans-serif;
+    color: var(--ink);
+    cursor: default;
+}
+
+#scene {
+    position: relative;
+    width: 1920px;
+    height: 1080px;
+}
+
+/* ---------- Apparition des éléments ---------- */
+
+.anim {
+    opacity: 0;
+    animation: rise 0.7s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+    animation-delay: var(--d, 0s);
+}
+
+@keyframes rise {
+    from { opacity: 0; transform: translateY(26px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+
+/* Rechargement automatique après une mise à jour côté admin (drapeau posé
+   par overlay_rosters.js, voir la vue) : les rosters restent posés sans
+   rejouer l'animation d'entrée. */
+.rosters-no-enter .anim {
+    animation: none;
+    opacity: 1;
+}
+
+/* ---------- Titre ---------- */
+
+.roster-head {
+    position: absolute;
+    top: 40px;
+    left: 0;
+    width: 100%;
+    text-align: center;
+}
+
+.roster-head .eyebrow {
+    font-size: 22px;
+    font-weight: 800;
+    letter-spacing: 0.42em;
+    text-transform: uppercase;
+    color: var(--gold);
+    margin-bottom: 10px;
+}
+
+.roster-head h1 {
+    font-size: 58px;
+    font-weight: 900;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: white;
+    text-shadow: 0 4px 24px rgba(0, 0, 0, 0.6);
+}
+
+.roster-head .title-bar {
+    width: 300px;
+    height: 4px;
+    margin: 16px auto 0;
+    border-radius: 2px;
+    background: linear-gradient(90deg, transparent, var(--gold), transparent);
+}
+
+/* ---------- Équipes ---------- */
+
+.roster-teams {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    padding: 216px 40px 0;
+    display: flex;
+    justify-content: center;
+    gap: 48px;
+}
+
+.roster-team {
+    background: var(--panel-bg);
+    border: 1px solid var(--panel-border);
+    border-radius: 14px;
+    padding: 18px 20px 20px;
+    text-shadow: 2px 2px #000;
+}
+
+.roster-team__head {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    margin-bottom: 16px;
+    min-height: 56px;
+}
+
+.roster-team__avatar {
+    width: 56px;
+    height: 56px;
+    object-fit: contain;
+    flex: none;
+}
+
+.roster-team__name {
+    font-size: 30px;
+    font-weight: 900;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.roster-team__classes {
+    list-style: none;
+    display: grid;
+    gap: 12px;
+}
+
+/* ---------- Cartes de classe ---------- */
+
+.roster-class {
+    position: relative;
+    background: rgba(255, 255, 255, 0.04);
+    border-radius: 10px;
+    padding: 12px 10px 10px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+}
+
+.roster-class__portrait {
+    width: 100%;
+    max-width: 150px;
+    aspect-ratio: 1 / 1;
+    object-fit: contain;
+    filter: drop-shadow(0 6px 10px rgba(0, 0, 0, 0.45));
+}
+
+.roster-class__name {
+    width: 100%;
+    min-height: 22px;
+    text-align: center;
+    font-size: 19px;
+    font-weight: 800;
+    letter-spacing: 0.03em;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* Badge merc : même traitement doré que les points d'attention de
+   l'overlay de série, lisible d'un coup d'œil pendant le cast. */
+.roster-class__merc {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    font-size: 12px;
+    font-weight: 800;
+    letter-spacing: 0.06em;
+    padding: 2px 7px;
+    border-radius: 4px;
+    text-transform: uppercase;
+    background: rgba(217, 165, 68, 0.25);
+    color: var(--gold);
+}
+
+/* Slot vide (classe non encore affectée) : discret pour ne pas accrocher
+   l'œil pendant le cast. */
+.roster-class:not(:has(.roster-class__name:not(:empty))) {
+    opacity: 0.55;
+}
+
+.roster-class:not(:has(.roster-class__name:not(:empty))) .roster-class__name {
+    color: var(--ink-dim);
+    opacity: 0.5;
+}
+
+/* ---------- Highlander : deux grilles 3x3 ---------- */
+
+.roster-scene--hl .roster-team {
+    width: 560px;
+}
+
+.roster-scene--hl .roster-team__classes {
+    grid-template-columns: repeat(3, 1fr);
+}
+
+.roster-scene--hl .roster-class__portrait {
+    max-width: 130px;
+}
+
+/* ---------- 6v6 : six classes sur toute la largeur ---------- */
+
+.roster-scene--6v6 .roster-teams {
+    flex-direction: column;
+    align-items: center;
+    gap: 26px;
+}
+
+.roster-scene--6v6 .roster-team {
+    width: 1660px;
+    display: flex;
+    align-items: center;
+    gap: 22px;
+}
+
+.roster-scene--6v6 .roster-team__head {
+    flex: 0 0 250px;
+    flex-direction: column;
+    justify-content: center;
+    gap: 8px;
+    margin-bottom: 0;
+    text-align: center;
+}
+
+.roster-scene--6v6 .roster-team__name {
+    white-space: normal;
+    font-size: 26px;
+}
+
+.roster-scene--6v6 .roster-team__classes {
+    flex: 1;
+    grid-template-columns: repeat(6, 1fr);
+}

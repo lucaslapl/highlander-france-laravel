@@ -97,12 +97,14 @@ final class Etf2lTeamService
     }
 
     /**
-     * Compétitions Highlander des 200 derniers jours, de la plus récente
-     * à la plus ancienne (saisons, playoffs, qualifiers, one-night-cups).
+     * Compétitions des 200 derniers jours, de la plus récente à la plus
+     * ancienne (saisons, playoffs, qualifiers, one-night-cups). Le type
+     * filtre la liste côté API ETF2L : « Highlander » par défaut (outils
+     * existants), « 6v6 » pour l'outil Overlay Rosters en format 6v6.
      *
      * @return array<int, array{id: int, name: string, archived: bool}>
      */
-    public function competitions(): array
+    public function competitions(string $type = 'Highlander'): array
     {
         $since = date('Y-m-d', time() - 200 * 86400);
         $payload = $this->cachedFetch(self::API_URL.'/competition/list?limit=100&since='.$since, self::LIST_TTL_S);
@@ -110,7 +112,7 @@ final class Etf2lTeamService
 
         $out = [];
         foreach ($raw as $entry) {
-            if (! is_array($entry) || ($entry['type'] ?? '') !== 'Highlander') {
+            if (! is_array($entry) || ($entry['type'] ?? '') !== $type) {
                 continue;
             }
 
@@ -199,10 +201,13 @@ final class Etf2lTeamService
     /**
      * Roster ETF2L d'une équipe (endpoint /team/{id}) : identifiant, nom
      * et SteamID64 de chaque joueur inscrit, dédupliqués, entrées sans
-     * SteamID exploitable ignorées. Null si l'API est indisponible, si
-     * l'équipe est inconnue ou si son roster est vide.
+     * SteamID exploitable ignorées. « names » donne le pseudo ETF2L de
+     * chaque joueur (clé = SteamID64) pour le remplissage assisté de
+     * l'outil Overlay Rosters — absent si le joueur n'a pas de pseudo
+     * exploitable. Null si l'API est indisponible, si l'équipe est
+     * inconnue ou si son roster est vide.
      *
-     * @return array{id: int, name: string, players: array<int, string>}|null
+     * @return array{id: int, name: string, players: array<int, string>, names: array<string, string>}|null
      */
     public function roster(int $teamId): ?array
     {
@@ -217,6 +222,7 @@ final class Etf2lTeamService
         }
 
         $players = [];
+        $names = [];
         foreach (is_array($team['players'] ?? null) ? $team['players'] : [] as $player) {
             if (! is_array($player)) {
                 continue;
@@ -228,6 +234,15 @@ final class Etf2lTeamService
                 // Clé ET valeur : une clé numérique serait castée en
                 // entier par PHP, les SteamIDs restent des chaînes.
                 $players[$steamid64] = $steamid64;
+
+                // Premier pseudo rencontré : le doublon dédupliqué ne
+                // remplace pas le pseudo du joueur d'origine.
+                if (! isset($names[$steamid64])) {
+                    $name = $this->sanitizeName($player['name'] ?? null);
+                    if ($name !== null) {
+                        $names[$steamid64] = $name;
+                    }
+                }
             }
         }
 
@@ -239,6 +254,7 @@ final class Etf2lTeamService
             'id' => (int) ($team['id'] ?? $teamId),
             'name' => $this->sanitizeName($team['name'] ?? null) ?? '',
             'players' => array_values($players),
+            'names' => $names,
         ];
     }
 

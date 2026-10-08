@@ -6,7 +6,7 @@
 @section('content')
 <div class="admin-header" style="--accent:#9b6dff;">
     <h2><i class="fa-solid fa-tv"></i> Overlays Stream</h2>
-    <p>Les quatre outils d'overlay OBS pour les broadcasts Highlander France, au même endroit.</p>
+    <p>Les cinq outils d'overlay OBS pour les broadcasts Highlander France, au même endroit.</p>
 </div>
 
 <div class="admin-cards-grid">
@@ -32,6 +32,12 @@
         <h4 class="admin-action-card__title"><i class="fa-solid fa-map"></i> Overlay Pick/Ban</h4>
         <p class="admin-action-card__desc">Pick / ban de maps (3 picks + 3 bans ou 5 picks + 1 ban) avec remplissage assisté ETF2L : équipes, avatars et maps officielles.</p>
         <a href="/admin/overlay/pickban" class="admin-link-btn">Gérer les pick/ban</a>
+    </div>
+
+    <div class="admin-action-card" style="--accent: #d9a544;">
+        <h4 class="admin-action-card__title"><i class="fa-solid fa-users"></i> Overlay Rosters</h4>
+        <p class="admin-action-card__desc">Présentation des rosters des deux équipes (Highlander 3x3 ou 6v6 en ligne) avec remplissage assisté ETF2L, portraits de classes et badge merc.</p>
+        <a href="/admin/overlay/rosters" class="admin-link-btn">Gérer les rosters</a>
     </div>
 </div>
 @endsection

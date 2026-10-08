@@ -94,6 +94,19 @@ class Etf2lTeamServiceTest extends TestCase
         ], $competitions);
     }
 
+    public function test_les_competitions_6v6_sont_listees_avec_le_filtre_de_type(): void
+    {
+        $service = $this->service(['competition/list' => $this->competitionsPayload()]);
+
+        $competitions = $service->competitions('6v6');
+
+        // Seule la compétition 6v6 passe le filtre de type : les outils
+        // Highlander existants ne la voient pas (comportement inchangé).
+        $this->assertSame([
+            ['id' => 1053, 'name' => '6v6 Season 53', 'archived' => false],
+        ], $competitions);
+    }
+
     public function test_les_equipes_sont_normalisees_triees_et_dedoublonnees(): void
     {
         $page1 = $this->teamsPayload([
@@ -283,6 +296,12 @@ class Etf2lTeamServiceTest extends TestCase
         // xine (id64), dexton123 (id2 converti), le doublon id3 est
         // dédupliqué et l'entrée sans SteamID ignorée.
         $this->assertSame(['76561198000552896', '76561197960290418'], $roster['players']);
+        // Pseudos officiels par SteamID64 pour l'outil Overlay Rosters :
+        // le doublon dédupliqué garde le pseudo du joueur d'origine.
+        $this->assertSame([
+            '76561198000552896' => 'xine',
+            '76561197960290418' => 'dexton123',
+        ], $roster['names']);
         $this->assertSame(1, $calls);
     }
 

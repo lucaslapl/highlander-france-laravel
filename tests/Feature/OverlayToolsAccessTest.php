@@ -83,7 +83,7 @@ class OverlayToolsAccessTest extends TestCase
 
     // ─── Contenu du hub des overlays ────────────────────────────────────────
 
-    public function test_le_hub_ne_montre_que_le_titre_et_les_quatre_outils(): void
+    public function test_le_hub_ne_montre_que_le_titre_et_les_cinq_outils(): void
     {
         $response = $this->withSession(['steamid' => '76561198012345678', 'is_caster' => true])
             ->get('/admin/overlays-stream');
@@ -94,6 +94,7 @@ class OverlayToolsAccessTest extends TestCase
             ->assertSee('Overlay Scores')
             ->assertSee('Overlay Bracket')
             ->assertSee('Overlay Pick/Ban')
+            ->assertSee('Overlay Rosters')
             // Aucune statistique du site ne doit fuir sur ce hub.
             ->assertDontSee('Nombre de joueurs dans la base de données')
             ->assertDontSee('Joueurs enregistrés')
