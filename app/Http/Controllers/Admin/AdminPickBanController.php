@@ -300,24 +300,26 @@ final class AdminPickBanController extends Controller
      * Maps actives de la table etf2l_maps pour le remplissage assisté de
      * l'éditeur : nom, libellé affiché et URL de la miniature (copiée du
      * storage vers le dossier web si absente, comme la page publique des
-     * maps).
+     * maps). Le format (6v6 / HL 9v9) est volontairement omis du libellé
+     * et la liste est triée alphabétiquement pour faciliter la sélection.
      *
      * @return array<int, array{name: string, label: string, image: string}>
      */
     private function editorMaps(): array
     {
         $out = [];
-        foreach ((new Etf2lMapRepository)->activeByCategory() as $category => $maps) {
+        foreach ((new Etf2lMapRepository)->activeByCategory() as $maps) {
             foreach ($maps as $map) {
                 $thumbnail = trim((string) ($map['thumbnail'] ?? ''));
                 $out[] = [
                     'name' => (string) $map['name'],
-                    'label' => trim(((string) ($map['label'] ?? '')) !== '' ? (string) $map['label'] : (string) $map['name'])
-                        .' — '.($category === '9v9' ? 'HL 9v9' : '6v6'),
+                    'label' => trim(((string) ($map['label'] ?? '')) !== '' ? (string) $map['label'] : (string) $map['name']),
                     'image' => $thumbnail !== '' ? $this->thumbnailUrl($thumbnail) : '',
                 ];
             }
         }
+
+        usort($out, fn (array $a, array $b): int => strcasecmp($a['label'], $b['label']));
 
         return $out;
     }
