@@ -141,7 +141,7 @@ html, body {
 .roster-team__classes {
     list-style: none;
     display: grid;
-    gap: 60px;
+    gap: 75px;
 }
 
 /* ---------- Cartes de classe ---------- */
