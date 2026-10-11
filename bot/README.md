@@ -2,9 +2,7 @@
 
 Bot Node.js (discord.js v14) qui pousse le nombre de membres du serveur Discord
 vers le site (`/api/discord/member-count`) à chaque arrivée/départ, plus une
-sync de sécurité au démarrage et toutes les 6 h. Il surveille aussi les streams
-Twitch de Highlander France (via le cache `/api/twitch-live` du site) et poste
-une annonce automatique quand un stream démarre.
+sync de sécurité au démarrage et toutes les 6 h.
 
 ## Structure
 
@@ -13,14 +11,13 @@ src/
 ├── index.js              # Point d'entrée : bootstrap incassable + events + login
 ├── config.js             # Lecture/validation des variables d'environnement
 ├── events/               # Un fichier = un event (chargement automatique)
-│   ├── ready.js          # Sync initiale + sync périodique + démarrage moniteur Twitch
+│   ├── ready.js          # Sync initiale + sync périodique
 │   ├── guildMemberAdd.js
 │   └── guildMemberRemove.js
 ├── services/
-│   ├── siteSync.js       # Push vers le site + debounce anti-raid + état /health
-│   └── twitchMonitor.js  # Poll /api/twitch-live, détection de transition, annonce
+│   └── siteSync.js       # Push vers le site + debounce anti-raid + état /health
 └── web/
-    ├── server.js         # Routeur HTTP (/, /login, /callback, /admin/sync, /admin/stream/*, /health)
+    ├── server.js         # Routeur HTTP (/, /login, /callback, /admin/sync, /health)
     ├── auth.js           # OAuth2 Discord, sessions, vérification des rôles
     └── views.js          # Templates HTML de la page d'administration
 tools/
@@ -29,39 +26,6 @@ tools/
 
 Ajouter une feature = ajouter un fichier dans `events/` (ou un dossier
 `commands/` le moment venu) — rien d'autre à modifier.
-
-## Annonce automatique de stream
-
-Le bot interroge `/api/twitch-live` du site (cache alimenté par le cron
-`app:sync-twitch`) toutes les 60 s. Quand une **nouvelle diffusion** est
-observée sur la chaîne `highlanderfrance`, il envoie un message d'annonce dans
-le salon configuré. La fin du stream n'est pas annoncée.
-
-La détection s'appuie sur le `started_at` de la diffusion : l'annonce part dès
-que ce dernier diffère de celui déjà annoncé. Elle est **auto-réparante** : un
-état temporairement bloqué (simulation du simulateur non réinitialisée,
-redémarrage du bot pendant un stream, erreur de poll passagère) déclenche
-quand même l'annonce, sans jamais doubler la même diffusion. Le premier poll au
-démarrage marque l'état courant **sans** annoncer, pour éviter les fausses
-annonces : seule une diffusion ultérieure, avec un `started_at` différent,
-déclenche une annonce.
-
-Configuration (`.env` ou UI Plesk) :
-
-| Variable | Description | Défaut |
-|---|---|---|
-| `TWITCH_LIVE_API_URL` | Endpoint du site | `https://highlanderfrance.tf/api/twitch-live` |
-| `TWITCH_LIVE_API_TOKEN` | Token partagé optionnel (Bearer) | *(vide)* |
-| `STREAM_ANNOUNCE_CHANNEL_ID` | ID du salon Discord | `1477355924002701313` |
-| `STREAM_ANNOUNCE_MENTION` | Mention (`@everyone`, `@here`, `<@&Rôle>`) | `@everyone` |
-| `STREAM_ANNOUNCE_MESSAGE` | Template du message | message avec `{title}`, `{viewers}`, `{url}`, `{channel}` |
-
-La config (salon, mention, message) est modifiable et **persistée** dans
-`bot/data/stream_config.json` (hors versionnement) via la page d'admin :
-section **Annonce Stream** avec boutons *Sauvegarder* et *Tester l'annonce*.
-
-L'état du moniteur (actif/inactif, en direct ou non, dernier poll) est visible
-sur le dashboard et dans `/health`.
 
 ## Page d'administration
 
@@ -164,7 +128,6 @@ Plesk (dans le dossier du sous-domaine), donc sans accès SSH :
 |---|---|
 | `npm run pm2:status` | État des process PM2 (online, uptime, redémarrages) |
 | `npm run pm2:logsdump` | Dump des 200 dernières lignes de logs, **sans** rester en mode « follow » |
-| `npm run pm2:twitchlogs` | `pm2 logs` (5000 dernières lignes) filtré sur `[twitchMonitor]` : vide ⇒ filtre/démarrage à vérifier, voir `pm2:logsdump` |
 | `npm run pm2:health` | État live du bot via `http://127.0.0.1:3000/health` (probe `node:fetch`, fonctionne sans curl ni reverse proxy) |
 | `npm run pm2:restart` | Redémarre Octave (nécessaire après un déploiement de `bot/src/`) |
 | `npm run pm2:resurrect` | Restaure les process mémorisés par `pm2 save` (après reboot) |
@@ -203,6 +166,5 @@ Deux options :
 | Push `HTTP 403` | `SITE_WEBHOOK_TOKEN` ≠ `DISCORD_WEBHOOK_TOKEN` côté site |
 | Push `HTTP 403` avec log `guild_id inattendu` | `DISCORD_GUILD_ID` du site ne correspond pas |
 | App hors ligne sur Discord | Process PM2 arrêté (`npm run pm2:status` puis `npm run pm2:start`) |
-| Stream en direct, cache du site à jour, mais aucune annonce | État du moniteur bloqué ou nouvelle diffusion non détectée → `npm run pm2:logsdump` pour la cause, `npm run pm2:restart` pour repartir sur une base saine |
 | Page d'admin inaccessible | Reverse proxy nginx absent ou Passenger désactivé sans proxy (cf. §4) |
 | Bot hors ligne après un reboot | `pm2 resurrect` non lancé au boot (cf. §4) |

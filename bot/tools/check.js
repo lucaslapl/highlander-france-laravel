@@ -17,7 +17,7 @@ console.log('');
 
 console.log('=== Variables d\'environnement ===');
 
-for (const name of ['PORT', 'DISCORD_TOKEN', 'GUILD_ID', 'SITE_WEBHOOK_URL', 'SITE_WEBHOOK_TOKEN', 'SYNC_INTERVAL_MINUTES', 'TWITCH_LIVE_API_URL', 'STREAM_ANNOUNCE_CHANNEL_ID']) {
+for (const name of ['PORT', 'DISCORD_TOKEN', 'GUILD_ID', 'SITE_WEBHOOK_URL', 'SITE_WEBHOOK_TOKEN', 'SYNC_INTERVAL_MINUTES']) {
     const value = process.env[name];
 
     if (value === undefined || value === '') {
@@ -40,7 +40,6 @@ for (const file of [
     'src/events/ready.js',
     'src/events/guildMemberAdd.js',
     'src/events/guildMemberRemove.js',
-    'src/services/twitchMonitor.js',
 ]) {
     try {
         statSync(path.join(root, file));
