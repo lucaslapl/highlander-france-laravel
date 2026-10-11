@@ -12,6 +12,7 @@ src/
 ├── config.js             # Lecture/validation des variables d'environnement
 ├── events/               # Un fichier = un event (chargement automatique)
 │   ├── ready.js          # Sync initiale + sync périodique
+│   ├── shardResume.js    # Re-sync après une reconnexion gateway
 │   ├── guildMemberAdd.js
 │   └── guildMemberRemove.js
 ├── services/
@@ -25,7 +26,9 @@ tools/
 ```
 
 Ajouter une feature = ajouter un fichier dans `events/` (ou un dossier
-`commands/` le moment venu) — rien d'autre à modifier.
+`commands/` le moment venu) — rien d'autre à modifier. Chaque handler reçoit
+le client en premier argument, suivi des arguments de l'event Discord
+(certaines events, comme `shardResume`, ne fournissent pas le client eux-mêmes).
 
 ## Page d'administration
 

@@ -1,7 +1,8 @@
-import dotenv from 'dotenv';
-
-dotenv.config();
-
+/**
+ * Lecture des variables d'environnement. Le .env local est chargé par
+ * src/index.js AVANT l'import de ce module (dotenv y est isolé pour ne pas
+ * casser le bootstrap en mode dégradé) — ne pas recharger dotenv ici.
+ */
 function intOr(name, fallback) {
     const parsed = Number.parseInt(process.env[name] ?? '', 10);
 
@@ -13,7 +14,6 @@ export const config = {
     guildId: process.env.GUILD_ID ?? '',
     siteWebhookUrl: process.env.SITE_WEBHOOK_URL ?? '',
     siteWebhookToken: process.env.SITE_WEBHOOK_TOKEN ?? '',
-    port: intOr('PORT', 3000),
     syncIntervalMinutes: intOr('SYNC_INTERVAL_MINUTES', 360),
     minPushIntervalMs: intOr('MIN_PUSH_INTERVAL_SECONDS', 60) * 1000,
 

@@ -38,13 +38,7 @@ function fail(stage, error) {
 
 let readSyncHealth = null;
 
-const port = Number.parseInt(process.env.PORT ?? '', 10) || 3000;
-
 const server = http.createServer(createRequestHandler(deps));
-
-server.listen(port, () => {
-    console.log(`[bot] Serveur HTTP keep-alive en écoute sur le port ${port}`);
-});
 
 process.on('unhandledRejection', (reason) => {
     console.error('[bot] Rejet de promesse non géré :', reason);
@@ -56,6 +50,7 @@ process.on('uncaughtException', (error) => {
 
 async function main() {
     // .env local (optionnel : en prod les variables viennent de l'UI Plesk).
+    // Chargé AVANT l'écoute HTTP pour que PORT (entre autres) y soit défini.
     try {
         const dotenvModule = await import('dotenv');
         const loadEnv = dotenvModule.default?.config ?? dotenvModule.config;
@@ -64,6 +59,14 @@ async function main() {
     } catch (error) {
         fail('dotenv', error);
     }
+
+    // Écoute HTTP après dotenv (PORT du .env local honoré) mais avant le
+    // reste du bootstrap : /health doit répondre même en mode dégradé.
+    const port = Number.parseInt(process.env.PORT ?? '', 10) || 3000;
+
+    server.listen(port, () => {
+        console.log(`[bot] Serveur HTTP keep-alive en écoute sur le port ${port}`);
+    });
 
     let config;
     let configErrors;
@@ -128,10 +131,13 @@ async function main() {
         for (const file of readdirSync(eventsDir).filter((f) => f.endsWith('.js'))) {
             const event = (await import(pathToFileURL(path.join(eventsDir, file)))).default;
 
+            // Le client est toujours passé en premier argument au handler,
+            // suivi des arguments de l'event : certaines events (shardResume)
+            // ne fournissent pas le client dans leurs arguments propres.
             if (event.once) {
-                client.once(event.name, (...args) => event.execute(...args));
+                client.once(event.name, (...args) => event.execute(client, ...args));
             } else {
-                client.on(event.name, (...args) => event.execute(...args));
+                client.on(event.name, (...args) => event.execute(client, ...args));
             }
         }
     } catch (error) {

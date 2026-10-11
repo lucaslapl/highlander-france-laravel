@@ -38,6 +38,7 @@ for (const file of [
     'src/config.js',
     'src/services/siteSync.js',
     'src/events/ready.js',
+    'src/events/shardResume.js',
     'src/events/guildMemberAdd.js',
     'src/events/guildMemberRemove.js',
 ]) {

@@ -15,6 +15,10 @@ const SESSION_COOKIE = 'octave_session';
 const SESSION_TTL_MS = 12 * 60 * 60 * 1000;
 const STATE_TTL_MS = 10 * 60 * 1000;
 
+// Timeout des appels vers l'API Discord : un appel qui « pend » ne doit pas
+// laisser la requête HTTP du panel ou le flux OAuth en attente indéfinie.
+const FETCH_TIMEOUT_MS = 10_000;
+
 /** @type {Map<string, object>} id => session */
 const sessions = new Map();
 
@@ -66,9 +70,13 @@ export async function exchangeCode(oauthConfig, code) {
         method: 'POST',
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
         body,
+        signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
     });
 
     if (!response.ok) {
+        // Corps consommé même en erreur, sinon undici garde la connexion.
+        await response.text();
+
         throw new Error(`Échange du code d'autorisation refusé (HTTP ${response.status})`);
     }
 
@@ -80,9 +88,13 @@ export async function exchangeCode(oauthConfig, code) {
 export async function fetchIdentity(accessToken) {
     const response = await fetch('https://discord.com/api/v10/users/@me', {
         headers: { Authorization: `Bearer ${accessToken}` },
+        signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
     });
 
     if (!response.ok) {
+        // Corps consommé même en erreur, sinon undici garde la connexion.
+        await response.text();
+
         throw new Error(`Identité Discord inaccessible (HTTP ${response.status})`);
     }
 
@@ -96,14 +108,22 @@ export async function fetchIdentity(accessToken) {
 export async function fetchGuildMember(botToken, guildId, userId) {
     const response = await fetch(
         `https://discord.com/api/v10/guilds/${guildId}/members/${userId}`,
-        { headers: { Authorization: `Bot ${botToken}` } }
+        {
+            headers: { Authorization: `Bot ${botToken}` },
+            signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
+        }
     );
 
+    // Corps consommé dans toutes les branches, sinon undici garde la connexion.
     if (response.status === 404) {
+        await response.text();
+
         return null;
     }
 
     if (!response.ok) {
+        await response.text();
+
         throw new Error(`Membre de guilde inaccessible (HTTP ${response.status})`);
     }
 
