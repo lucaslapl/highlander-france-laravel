@@ -74,8 +74,8 @@
     <p style="color:#aaa; font-style:italic;">Aucun log pour l'instant. Chargez-en un ci-dessus.</p>
 @else
     <p style="color:#777; font-size:13px; margin:0 0 10px;">
-        Anciens overlays à token individuel : le bouton « Charger ce log » recharge leur log dans l'overlay unique,
-        sans toucher à l'URL OBS.
+        Chaque log chargé rejoint cette liste (anciens overlays à token individuel compris) : le bouton « Charger ce log »
+        recharge son log dans l'overlay unique, sans toucher à l'URL OBS et sans rappel logs.tf.
     </p>
     <div class="admin-table-scroll">
         <table class="admin-table">

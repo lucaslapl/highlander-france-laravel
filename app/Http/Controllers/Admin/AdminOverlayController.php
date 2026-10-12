@@ -24,10 +24,13 @@ use Illuminate\Http\Request;
  * ou bouton « Charger ce log » sur un log déjà généré) remplace le
  * contenu — mêmes équipes couleur pour couleur, le visuel suit le log
  * — et la vue OBS se rafraîchit toute seule (polling de version côté
- * navigateur). Les overlays à token individuel créés avant cette URL
- * unique restent listés comme historique de logs rechargeables, et
- * leurs pages publiques /overlay/{token} continuent de fonctionner
- * pour les sources OBS déjà configurées.
+ * navigateur). Chaque log chargé rejoint l'historique « Logs déjà
+ * générés » (un log rechargé y rafraîchit son entrée au lieu de la
+ * dupliquer), d'où le bouton « Charger ce log » : recharger un ancien
+ * log sans le retaper. Les overlays à token individuel créés avant
+ * cette URL unique restent listés comme historique de logs
+ * rechargeables, et leurs pages publiques /overlay/{token} continuent
+ * de fonctionner pour les sources OBS déjà configurées.
  *
  * Les noms et avatars d'équipes sont résolus automatiquement à chaque
  * chargement de log : les joueurs votent pour leurs équipes ETF2L
@@ -75,8 +78,9 @@ final class AdminOverlayController extends Controller
      * POST /admin/overlay/load — extrait l'ID du log depuis une URL ou un
      * identifiant saisi, récupère les stats logs.tf et les charge dans
      * l'overlay unique (/overlay/match-logs) : l'URL OBS ne change pas,
-     * seul le visuel est remplacé. Les noms d'équipes ETF2L sont résolus
-     * automatiquement.
+     * seul le visuel est remplacé. Le log rejoint aussi l'historique « Logs
+     * déjà générés » (entrée rafraîchie s'il y figure déjà). Les noms
+     * d'équipes ETF2L sont résolus automatiquement.
      */
     public function loadLog(Request $request): RedirectResponse
     {
@@ -96,8 +100,20 @@ final class AdminOverlayController extends Controller
             return back()->with('error', "Log logs.tf #$logId introuvable ou sans données de joueurs.");
         }
 
+        // Le log rejoint l'historique (« Logs déjà générés ») : un log
+        // rechargé rafraîchit son entrée existante au lieu de la dupliquer.
+        $history = $this->overlays->findByLogId($logId);
+        if ($history === null) {
+            $this->overlays->save(array_merge($payload, [
+                'token' => bin2hex(random_bytes(8)),
+                'created_at' => time(),
+            ]));
+        } else {
+            $this->overlays->save(OverlayStatsService::mergePayload($history, $payload));
+        }
+
         $overlay = $this->saveToUniqueOverlay($payload);
-        AdminLogger::log('admin_overlay_load', null, 'SUCCESS (overlay unique ← logs.tf #'.$logId.')');
+        AdminLogger::log('admin_overlay_load', null, 'SUCCESS (overlay unique ← logs.tf #'.$logId.', historique mis à jour)');
 
         return back()->with('success', "Log logs.tf #$logId chargé dans l'overlay unique : l'URL OBS ne change pas, l'overlay s'est mis à jour tout seul.".$this->teamNamesMessage($overlay));
     }

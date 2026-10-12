@@ -254,6 +254,23 @@ class OverlayTest extends TestCase
         $this->assertSame((int) 4059225, (int) (new OverlayRepository)->find(self::TOKEN)['log_id']);
     }
 
+    public function test_l_historique_dedoublonne_par_log_et_ignore_l_overlay_unique(): void
+    {
+        $this->seedOverlay();
+
+        // L'overlay unique porte le même log : il ne compte pas dans la
+        // recherche d'historique — recharger le log par lien doit
+        // rafraîchir l'entrée existante, pas la dupliquer.
+        $fixture = $this->overlayFixture();
+        $fixture['token'] = OverlayRepository::MATCH_LOGS_TOKEN;
+        (new OverlayRepository)->save($fixture);
+
+        $repo = new OverlayRepository;
+
+        $this->assertSame(self::TOKEN, (string) $repo->findByLogId(4059225)['token']);
+        $this->assertNull($repo->findByLogId(9999999));
+    }
+
     public function test_les_pages_d_edition_par_overlay_ont_disparu(): void
     {
         $this->seedOverlay();

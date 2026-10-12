@@ -50,6 +50,26 @@ final class OverlayRepository
     }
 
     /**
+     * Payload complet de l'entrée d'historique portant un log logs.tf
+     * donné (l'overlay unique exclu : il vit avec le log courant), ou null.
+     * Sert à ne pas dupliquer un log dans « Logs déjà générés » quand il
+     * est rechargé par lien.
+     *
+     * @return array<string, mixed>|null
+     */
+    public function findByLogId(int $logId): ?array
+    {
+        foreach ($this->all() as $entry) {
+            if (($entry['token'] ?? '') !== self::MATCH_LOGS_TOKEN
+                && (int) ($entry['log_id'] ?? 0) === $logId) {
+                return $this->find((string) $entry['token']);
+            }
+        }
+
+        return null;
+    }
+
+    /**
      * Payload complet d'un overlay, ou null si le token est inconnu.
      *
      * @return array<string, mixed>|null
