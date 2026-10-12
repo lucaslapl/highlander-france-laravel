@@ -259,8 +259,11 @@ class OverlayTest extends TestCase
         // autres outils overlay (Bracket, Pick/Ban) : compétition ETF2L →
         // équipes chargées via /admin/overlay/etf2l/teams. La mémoire des
         // « équipes déjà castées » a disparu au profit de ce mécanisme.
+        // Les compétitions Highlander et 6v6 sont proposées côte à côte,
+        // les 6v6 portant leur marqueur pour se distinguer dans le menu.
         $this->seedEtf2lCompetitionsCache([
             ['id' => 42, 'type' => 'Highlander', 'name' => 'HLFR Test Cup', 'archived' => false],
+            ['id' => 43, 'type' => '6v6', 'name' => 'HLFR Test Cup 6v6', 'archived' => false],
         ]);
 
         $session = $this->adminSession();
@@ -269,6 +272,7 @@ class OverlayTest extends TestCase
             ->assertOk()
             ->assertSee('Remplissage assisté')
             ->assertSee('HLFR Test Cup')
+            ->assertSee('HLFR Test Cup 6v6 (6v6)')
             ->assertSee('overlay-load-teams')
             ->assertDontSee('Équipes déjà castées');
 

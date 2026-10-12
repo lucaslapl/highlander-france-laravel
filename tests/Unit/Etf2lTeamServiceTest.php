@@ -88,9 +88,9 @@ class Etf2lTeamServiceTest extends TestCase
         $competitions = $service->competitions();
 
         $this->assertSame([
-            ['id' => 1060, 'name' => 'Crit or Treat! Highlander One-Night-Cup', 'archived' => false],
-            ['id' => 1050, 'name' => 'Highlander Season 36: High', 'archived' => false],
-            ['id' => 975, 'name' => 'Highlander Season 34: High Playoffs', 'archived' => true],
+            ['id' => 1060, 'name' => 'Crit or Treat! Highlander One-Night-Cup', 'archived' => false, 'type' => 'Highlander'],
+            ['id' => 1050, 'name' => 'Highlander Season 36: High', 'archived' => false, 'type' => 'Highlander'],
+            ['id' => 975, 'name' => 'Highlander Season 34: High Playoffs', 'archived' => true, 'type' => 'Highlander'],
         ], $competitions);
     }
 
@@ -100,11 +100,32 @@ class Etf2lTeamServiceTest extends TestCase
 
         $competitions = $service->competitions('6v6');
 
-        // Seule la compétition 6v6 passe le filtre de type : les outils
-        // Highlander existants ne la voient pas (comportement inchangé).
+        // Seule la compétition 6v6 passe le filtre de type : l'outil
+        // Overlay Rosters en format 6v6 ne voit qu'elle.
         $this->assertSame([
-            ['id' => 1053, 'name' => '6v6 Season 53', 'archived' => false],
+            ['id' => 1053, 'name' => '6v6 Season 53', 'archived' => false, 'type' => '6v6'],
         ], $competitions);
+    }
+
+    public function test_les_competitions_des_deux_formats_sont_fusionnees_pour_les_outils_overlay(): void
+    {
+        $service = $this->service(['competition/list' => $this->competitionsPayload()], $calls);
+
+        $competitions = $service->competitionsBothFormats();
+
+        // Highlander d'abord, puis 6v6 : le remplissage assisté des
+        // outils overlay couvre les deux formats, chaque entrée portant
+        // son format pour le marqueur du menu.
+        $this->assertSame([
+            ['id' => 1060, 'name' => 'Crit or Treat! Highlander One-Night-Cup', 'archived' => false, 'type' => 'Highlander'],
+            ['id' => 1050, 'name' => 'Highlander Season 36: High', 'archived' => false, 'type' => 'Highlander'],
+            ['id' => 975, 'name' => 'Highlander Season 34: High Playoffs', 'archived' => true, 'type' => 'Highlander'],
+            ['id' => 1053, 'name' => '6v6 Season 53', 'archived' => false, 'type' => '6v6'],
+        ], $competitions);
+
+        // Les deux formats lisent la même liste mise en cache : un seul
+        // appel HTTP réel, le rate-limit ETF2L n'est pas doublé.
+        $this->assertSame(1, $calls);
     }
 
     public function test_les_equipes_sont_normalisees_triees_et_dedoublonnees(): void

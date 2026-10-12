@@ -53,16 +53,16 @@ final class AdminOverlayController extends Controller
     }
 
     /**
-     * Compétitions ETF2L pour le remplissage assisté (liste vide si l'API
-     * est indisponible : la boîte est masquée, la saisie manuelle reste
-     * possible).
+     * Compétitions ETF2L (Highlander et 6v6) pour le remplissage assisté
+     * (liste vide si l'API est indisponible : la boîte est masquée, la
+     * saisie manuelle reste possible).
      *
-     * @return array<int, array{id: int, name: string, archived: bool}>
+     * @return array<int, array{id: int, name: string, archived: bool, type: string}>
      */
     private function competitions(): array
     {
         try {
-            return $this->etf2lTeams->competitions();
+            return $this->etf2lTeams->competitionsBothFormats();
         } catch (\Throwable) {
             return [];
         }

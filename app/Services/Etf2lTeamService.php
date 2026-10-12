@@ -11,7 +11,7 @@ use Illuminate\Support\Facades\DB;
  * « Overlay Bracket » : les brackets et classements restent construits à
  * la main, mais les noms, avatars et pays des équipes peuvent être
  * piochés dans une compétition ETF2L — liste des compétitions
- * Highlander récentes, équipes d'une compétition (endpoint
+ * Highlander et 6v6 récentes, équipes d'une compétition (endpoint
  * /competition/{id}/teams, paginé).
  *
  * Conso modèle Etf2lNameResolver : réponses mises en cache dans la
@@ -99,10 +99,12 @@ final class Etf2lTeamService
     /**
      * Compétitions des 200 derniers jours, de la plus récente à la plus
      * ancienne (saisons, playoffs, qualifiers, one-night-cups). Le type
-     * filtre la liste côté API ETF2L : « Highlander » par défaut (outils
-     * existants), « 6v6 » pour l'outil Overlay Rosters en format 6v6.
+     * filtre la liste côté API ETF2L : « Highlander » par défaut (outil
+     * Overlay Rosters en format Highlander), « 6v6 » pour l'outil Overlay
+     * Rosters en format 6v6. Chaque entrée porte son format pour que le
+     * menu du remplissage assisté les distingue (voir competitionsBothFormats).
      *
-     * @return array<int, array{id: int, name: string, archived: bool}>
+     * @return array<int, array{id: int, name: string, archived: bool, type: string}>
      */
     public function competitions(string $type = 'Highlander'): array
     {
@@ -125,10 +127,30 @@ final class Etf2lTeamService
                 'id' => (int) ($entry['id'] ?? 0),
                 'name' => $name,
                 'archived' => (bool) ($entry['archived'] ?? false),
+                'type' => $type,
             ];
         }
 
         return $out;
+    }
+
+    /**
+     * Compétitions Highlander puis 6v6 des 200 derniers jours : le
+     * remplissage assisté partagé des outils overlay (Logs, Scores,
+     * Bracket, Pick/Ban) couvre ainsi les deux formats — les compétitions
+     * 6v6 portent leur marqueur « 6v6 » pour se distinguer dans le menu,
+     * le chargement des équipes d'une compétition étant ensuite
+     * indifférent au format (voir teams()). Les deux appels lisent le
+     * même URL d'API mise en cache : un seul appel HTTP réel au plus.
+     *
+     * @return array<int, array{id: int, name: string, archived: bool, type: string}>
+     */
+    public function competitionsBothFormats(): array
+    {
+        return array_merge(
+            $this->competitions('Highlander'),
+            $this->competitions('6v6'),
+        );
     }
 
     /**

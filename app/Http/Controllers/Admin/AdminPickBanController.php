@@ -138,7 +138,7 @@ final class AdminPickBanController extends Controller
 
         $competitions = [];
         try {
-            $competitions = $this->etf2lTeams->competitions();
+            $competitions = $this->etf2lTeams->competitionsBothFormats();
         } catch (\Throwable) {
             // API indisponible : le remplissage assisté sera masqué, le
             // reste de l'éditeur reste utilisable.

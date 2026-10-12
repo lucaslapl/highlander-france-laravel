@@ -9,8 +9,11 @@
      les couleurs rouge/bleu des logs sur les côtés A / B, et l'outil
      Scores peut rafraîchir les rosters d'un clic entre deux saisons.
      Les contrôleurs passent la liste des compétitions depuis
-     Etf2lTeamService::competitions() ; une API indisponible masque le
-     chargement sans bloquer la saisie manuelle.
+     Etf2lTeamService::competitionsBothFormats() (Highlander puis 6v6,
+     marquées « (6v6) » dans le menu) ou ::competitions() pour l'outil
+     Overlay Rosters, dont le format est déjà fixé par l'overlay ; une
+     API indisponible masque le chargement sans bloquer la saisie
+     manuelle.
      Variables attendues : $competitions, $prefix (préfixe d'identifiants
      unique par page : overlay, series, bracket, pickban). --}}
 <h3 class="admin-section-title"><i class="fa-solid fa-user-group"></i> Remplissage assisté (équipes ETF2L)</h3>
@@ -25,10 +28,16 @@
         <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:flex-end;">
             <div style="flex:2; min-width:280px;">
                 <label class="admin-form-label" for="{{ $prefix }}-teams-competition">Compétition ETF2L</label>
+                @php
+                    // Le marqueur « (6v6) » n'apparaît que si le menu mélange les deux
+                    // formats : l'éditeur Overlay Rosters reçoit une liste mono-format
+                    // (celle de son overlay) et n'a pas besoin de la précision.
+                    $mixedFormats = count(array_unique(array_column($competitions, 'type'))) > 1;
+                @endphp
                 <select id="{{ $prefix }}-teams-competition" class="form-control js-etf2l-competition">
                     @foreach ($competitions as $competition)
                         <option value="{{ (int) $competition['id'] }}">
-                            {{ e($competition['name']) }}{{ $competition['archived'] ? ' (archivée)' : '' }}
+                            {{ e($competition['name']) }}@if ($mixedFormats && ($competition['type'] ?? '') === '6v6') (6v6)@endif{{ $competition['archived'] ? ' (archivée)' : '' }}
                         </option>
                     @endforeach
                 </select>
