@@ -207,31 +207,93 @@
 
     @else
 
-        <h3 class="admin-section-title"><i class="fa-solid fa-list-ol"></i> Lignes du classement</h3>
-        <p style="color:#777; font-size:13px; margin:0 0 10px;">
-            L'ordre du formulaire fait le classement (le rang est calculé à l'affichage). Les équipes du top X sont
-            surlignées en vert sur l'overlay ; 0 désactive le surlignage.
+        <h3 class="admin-section-title"><i class="fa-solid fa-list-ol"></i> Classement</h3>
+        <p style="color:#777; font-size:13px; margin:0 0 12px;">
+            L'ordre des lignes fait le classement (le rang est calculé à l'affichage) : cliquez sur une ligne pour
+            la remplir, la déplacer ou la supprimer. L'aperçu reprend l'habillage de l'overlay — médailles pour
+            le top 3, surlignage vert des qualifiés au-delà (top X), colonne « Pén » si une pénalité existe.
         </p>
-        <div class="admin-form-row" style="max-width:220px;">
-            <label class="admin-form-label">Top X surligné</label>
-            <input type="number" name="top_x" class="form-control" min="0" max="20"
-                   value="{{ (int) ($bracket['top_x'] ?? 0) }}">
+        <noscript>
+            <p style="color:#ff8080;">L'éditeur visuel nécessite JavaScript : sans lui, les lignes du classement ne seraient pas enregistrées.</p>
+        </noscript>
+
+        <div class="bkv-layout">
+            <div class="bkv-canvas bkt-canvas" id="bkt-canvas"></div>
+            <aside class="bkv-panel">
+                <div class="bkv-panel-hint" id="bkt-panel-hint">
+                    Cliquez sur une ligne du classement pour éditer son équipe, ses statistiques et ses points.
+                </div>
+
+                <div id="bkt-row-section" hidden>
+                    <h4 id="bkt-row-title">Ligne</h4>
+
+                    <div class="js-etf2l-team" style="border:1px solid #333; border-radius:8px; padding:12px;">
+                        <h5 style="margin:0 0 8px; color:#bbb;">Équipe</h5>
+                        <label class="admin-form-label">Nom</label>
+                        <input type="text" id="bkt-name" class="form-control js-team-field-name" maxlength="64">
+                        <label class="admin-form-label" style="margin-top:8px;">Avatar par URL (optionnel)</label>
+                        <input type="url" id="bkt-avatar" class="form-control js-team-field-avatar"
+                               maxlength="500" placeholder="https://…/logo.png">
+                        <label class="admin-form-label" style="margin-top:8px;">Pays (optionnel)</label>
+                        <input type="text" id="bkt-country" class="form-control js-team-field-country"
+                               maxlength="32" placeholder="France">
+                    </div>
+
+                    <label class="admin-form-label" style="margin-top:12px;">Statistiques</label>
+                    <div style="display:flex; gap:8px; flex-wrap:wrap;">
+                        <div style="flex:1; min-width:64px;">
+                            <label class="admin-form-label">MJ</label>
+                            <input type="number" id="bkt-played" class="form-control" min="0" max="9999">
+                        </div>
+                        <div style="flex:1; min-width:64px;">
+                            <label class="admin-form-label">G</label>
+                            <input type="number" id="bkt-won" class="form-control" min="0" max="9999">
+                        </div>
+                        <div style="flex:1; min-width:64px;">
+                            <label class="admin-form-label">P</label>
+                            <input type="number" id="bkt-lost" class="form-control" min="0" max="9999">
+                        </div>
+                        <div style="flex:1; min-width:64px;">
+                            <label class="admin-form-label">Pts</label>
+                            <input type="number" id="bkt-score" class="form-control" min="0" max="9999">
+                        </div>
+                        <div style="flex:1; min-width:64px;">
+                            <label class="admin-form-label">Pén</label>
+                            <input type="number" id="bkt-penalty" class="form-control" min="0" max="9999">
+                        </div>
+                    </div>
+
+                    <div class="bkv-panel-buttons">
+                        <button type="button" class="admin-btn" id="bkt-row-up" title="Monter la ligne">
+                            <i class="fa-solid fa-arrow-up"></i>
+                        </button>
+                        <button type="button" class="admin-btn" id="bkt-row-down" title="Descendre la ligne">
+                            <i class="fa-solid fa-arrow-down"></i>
+                        </button>
+                        <button type="button" class="admin-btn admin-btn--danger" id="bkt-row-delete">
+                            <i class="fa-solid fa-trash"></i> Supprimer la ligne
+                        </button>
+                    </div>
+                </div>
+            </aside>
         </div>
-        <div id="table-rows">
-            @foreach ($bracket['rows'] as $row)
-                @include('admin.partials.bracket_row', ['row' => $row, 'index' => $loop->index])
-            @endforeach
+
+        <div class="bkv-toolbar">
+            <div style="width:170px;">
+                <label class="admin-form-label">Top X surligné</label>
+                <input type="number" id="bkt-top-x" class="form-control" min="0" max="20"
+                       value="{{ (int) ($bracket['top_x'] ?? 0) }}">
+            </div>
+            <button type="button" class="admin-btn" id="bkt-add-row"><i class="fa-solid fa-plus"></i> Ajouter une ligne</button>
         </div>
-        <div style="margin-top:12px;">
-            <button type="button" class="admin-btn" id="table-add-row"><i class="fa-solid fa-plus"></i> Ajouter une ligne</button>
-        </div>
-        <template id="tpl-table-row">
-            @include('admin.partials.bracket_row', [
-                'row' => ['name' => '', 'avatar' => '', 'country' => '', 'played' => 0, 'won' => 0, 'lost' => 0, 'score' => 0, 'penalty' => 0],
-                'index' => '__RIDX__',
-                'tpl' => true,
-            ])
-        </template>
+
+        {{-- État de l'éditeur : lignes du classement et top X, sérialisés
+             en POST au moment d'enregistrer (admin_table_editor.js). --}}
+        <script type="application/json" id="bkt-data">{!! json_encode([
+            'rows' => $bracket['rows'] ?? [],
+            'top_x' => (int) ($bracket['top_x'] ?? 0),
+        ], JSON_HEX_TAG | JSON_UNESCAPED_UNICODE) !!}</script>
+        <div id="bkt-serialized" aria-hidden="true"></div>
 
     @endif
 
@@ -255,6 +317,6 @@
     <script src="{{ hlfr_asset('/_js/bracket_layout.js') }}" defer></script>
     <script src="{{ hlfr_asset('/_js/admin_bracket_editor.js') }}" defer></script>
 @else
-    <script src="{{ hlfr_asset('/_js/admin_bracket.js') }}" defer></script>
+    <script src="{{ hlfr_asset('/_js/admin_table_editor.js') }}" defer></script>
 @endif
 @endsection

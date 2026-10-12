@@ -28,12 +28,14 @@
     background: transparent;
 }
 
-/* ─── Éditeur visuel « Overlay Bracket » ────────────────────────────── */
+/* ─── Éditeurs visuels « Overlay Bracket » et « Overlay Classement » ──── */
 
-/* Éditeur visuel du bracket de playoffs (/admin/overlay/bracket/{token},
-   type bracket) : canvas interactif rendu par le même moteur que l'overlay
-   OBS (bracket_layout.js) + panneau latéral d'édition. Préfixe .bkv-
-   (bracket visual editor). */
+/* Conteneurs communs aux deux éditeurs visuels de l'outil Overlay
+   Bracket (/admin/overlay/bracket/{token}) : canvas interactif + panneau
+   latéral, rendus par les mêmes moteurs que les overlays OBS
+   (bracket_layout.js pour le bracket, habillage d'overlay_table.css
+   pour le classement). Préfixe .bkv- (bracket visual editor), les styles
+   propres au classement portent .bkt- plus bas. */
 
 .bkv-generator {
     display: flex;
@@ -269,4 +271,157 @@
     gap: 10px;
     flex-wrap: wrap;
     margin-top: 14px;
+}
+
+/* ─── Éditeur visuel « Overlay Classement » (type table) ─────────────── */
+
+/* Aperçu du classement « poule » dans l'éditeur visuel : même habillage
+   que l'overlay OBS (overlay_table.css) — médailles or / argent / bronze
+   sur le top 3, alternance violette des lignes, surlignage vert des
+   qualifiés au-delà du top 3. Préfixe .bkt- (bracket table). Le canvas
+   défile si le classement dépasse sa hauteur. */
+
+.bkt-canvas {
+    overflow-y: auto;
+    overflow-x: hidden;
+}
+
+.bkt-standings {
+    width: 100%;
+    max-width: 760px;
+    margin: 20px auto;
+    background: rgba(21, 10, 24, 0.92);
+    border-left: 4px solid #fbb7fb;
+    border-radius: 10px;
+    overflow: hidden;
+}
+
+.bkt-standings table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.bkt-standings th {
+    padding: 10px 8px;
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: #fbb7fb;
+    border-bottom: 1px solid #5f235f;
+    text-align: center;
+}
+
+.bkt-standings th.team-col {
+    text-align: left;
+}
+
+.bkt-standings td {
+    padding: 7px 8px;
+    font-size: 13px;
+    font-weight: 700;
+    color: #eee;
+    text-align: center;
+    border-bottom: 1px solid rgba(186, 53, 215, 0.25);
+    font-variant-numeric: tabular-nums;
+}
+
+.bkt-standings tr {
+    cursor: pointer;
+}
+
+.bkt-standings td.rank {
+    width: 34px;
+    font-weight: 900;
+    color: #ffc9ec;
+}
+
+.bkt-standings td.team-col {
+    text-align: left;
+}
+
+.bkt-standings .team-cell {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.bkt-standings .team-cell img {
+    width: 20px;
+    height: 20px;
+    border-radius: 4px;
+    object-fit: cover;
+    flex: none;
+    background: rgba(0, 0, 0, 0.3);
+}
+
+.bkt-standings .team-cell .team-name {
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.bkt-standings td.points {
+    font-size: 15px;
+    font-weight: 900;
+    color: #ffc9ec;
+}
+
+.bkt-standings td.penalty {
+    color: rgba(255, 255, 255, 0.6);
+}
+
+/* Alternance violette, puis médailles (les règles plus bas priment),
+   puis survol et sélection (toujours en dernier pour rester visibles). */
+.bkt-standings tbody tr:nth-child(even) td {
+    background: rgba(122, 62, 138, 0.22);
+}
+
+.bkt-standings tbody tr:nth-child(1) td {
+    background: rgba(246, 196, 83, 0.16);
+}
+
+.bkt-standings tbody tr:nth-child(1) td.rank {
+    color: #f6c453;
+    box-shadow: inset 4px 0 0 #f6c453;
+}
+
+.bkt-standings tbody tr:nth-child(2) td {
+    background: rgba(207, 214, 221, 0.13);
+}
+
+.bkt-standings tbody tr:nth-child(2) td.rank {
+    color: #cfd6dd;
+    box-shadow: inset 4px 0 0 #cfd6dd;
+}
+
+.bkt-standings tbody tr:nth-child(3) td {
+    background: rgba(205, 138, 78, 0.15);
+}
+
+.bkt-standings tbody tr:nth-child(3) td.rank {
+    color: #cd8a4e;
+    box-shadow: inset 4px 0 0 #cd8a4e;
+}
+
+.bkt-standings tbody tr.qualified:nth-child(n+4) td {
+    background: rgba(42, 74, 42, 0.55);
+}
+
+.bkt-standings tbody tr.qualified:nth-child(n+4) td.rank {
+    color: #8c8;
+    box-shadow: inset 4px 0 0 #8c8;
+}
+
+.bkt-standings tbody tr:hover td {
+    background: rgba(155, 109, 255, 0.14);
+}
+
+.bkt-standings tbody tr.bkt-row--selected td {
+    background: rgba(155, 109, 255, 0.28);
+}
+
+.bkt-standings tbody tr.bkt-row--selected td.rank {
+    box-shadow: inset 4px 0 0 #9b6dff;
 }

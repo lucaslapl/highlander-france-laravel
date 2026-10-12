@@ -282,7 +282,7 @@ class BracketOverlayTest extends TestCase
         $this->assertStringContainsString('/bracket-overlay/'.self::TOKEN, $html);
     }
 
-    public function test_la_page_editeur_admin_rend_le_formulaire_classement(): void
+    public function test_la_page_editeur_admin_rend_l_editeur_visuel_classement(): void
     {
         $this->seedBracket([
             'kind' => 'table',
@@ -297,9 +297,46 @@ class BracketOverlayTest extends TestCase
         $response->assertOk();
 
         $html = (string) $response->getContent();
-        $this->assertStringContainsString('Lignes du classement', $html);
-        $this->assertStringContainsString('DD14', $html);
+        // Éditeur visuel : le classement est amorcé en JSON, l'aperçu est
+        // rendu par admin_table_editor.js.
+        $this->assertStringContainsString('"name":"DD14"', $html);
+        $this->assertStringContainsString('admin_table_editor.js', $html);
         $this->assertStringContainsString('Top X surligné', $html);
+        $this->assertStringContainsString('Ajouter une ligne', $html);
+        $this->assertStringContainsString('/bracket-overlay/'.self::TOKEN, $html);
+    }
+
+    public function test_l_enregistrement_depuis_l_editeur_visuel_conserve_le_schema_post_classement(): void
+    {
+        $this->seedBracket(['kind' => 'table', 'rows' => [], 'top_x' => 0]);
+
+        // Schéma sérialisé par l'éditeur visuel (admin_table_editor.js) :
+        // identique au formulaire historique, le contrôleur n'a pas changé.
+        $this->withSession(['steamid' => '76561198012345678', 'is_admin' => true])
+            ->post('/admin/overlay/bracket/'.self::TOKEN.'/update', [
+                'eyebrow' => 'ETF2L Highlander Saison 36',
+                'title' => 'Division 2',
+                'accent' => 'Poule',
+                'top_x' => 2,
+                'rows' => [
+                    [
+                        'name' => 'DD14', 'avatar' => '', 'country' => 'France',
+                        'played' => 10, 'won' => 9, 'lost' => 1, 'score' => 27, 'penalty' => 0,
+                    ],
+                    [
+                        'name' => 'AKATSUKI', 'avatar' => '', 'country' => '',
+                        'played' => 10, 'won' => 7, 'lost' => 3, 'score' => 21, 'penalty' => 2,
+                    ],
+                ],
+            ])
+            ->assertRedirect();
+
+        $bracket = (new BracketRepository)->find(self::TOKEN);
+        $this->assertSame('table', $bracket['kind']);
+        $this->assertSame(2, $bracket['top_x']);
+        $this->assertSame('DD14', $bracket['rows'][0]['name']);
+        $this->assertSame(27, $bracket['rows'][0]['score']);
+        $this->assertSame(2, $bracket['rows'][1]['penalty']);
     }
 
     public function test_l_enregistrement_depuis_l_editeur_visuel_conserve_le_schema_post(): void
