@@ -17,6 +17,15 @@ namespace App\Models;
  */
 final class OverlayRepository
 {
+    /**
+     * Token réservé de l'overlay unique servi par l'URL fixe
+     * /overlay/match-logs : l'outil « Overlay Logs » charge chaque log
+     * dans cet overlay-là, l'URL OBS ne change jamais. Il suit le même
+     * format que les tokens aléatoires (16 caractères [a-z0-9]) : toutes
+     * les mécaniques (payload, version, avatars) sont partagées.
+     */
+    public const MATCH_LOGS_TOKEN = 'matchlogs0verlay';
+
     /** Extensions d'avatar autorisées (fichiers historiques). */
     private const AVATAR_EXTENSIONS = ['jpg', 'png', 'webp'];
 
@@ -133,6 +142,28 @@ final class OverlayRepository
     {
         foreach (self::AVATAR_EXTENSIONS as $ext) {
             @unlink($this->avatarDir($token).'/'.$team.'.'.$ext);
+        }
+    }
+
+    /**
+     * Copie les avatars uploadés d'un overlay vers un autre (silencieux si
+     * la source n'en a pas). Utilisé par le bouton « Charger ce log » :
+     * les avatars historiques suivent le log dans l'overlay unique.
+     */
+    public function copyAvatars(string $fromToken, string $toToken): void
+    {
+        foreach (['red', 'blue'] as $team) {
+            $avatar = $this->avatar($fromToken, $team);
+            if ($avatar === null || $this->hasAvatar($toToken, $team)) {
+                continue;
+            }
+
+            $targetDir = $this->avatarDir($toToken);
+            if (! is_dir($targetDir)) {
+                @mkdir($targetDir, 0755, true);
+            }
+
+            @copy($avatar['path'], $targetDir.'/'.$team.'.'.$avatar['ext']);
         }
     }
 

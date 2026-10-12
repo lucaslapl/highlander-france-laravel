@@ -94,6 +94,13 @@ Route::post('/api/discord/member-count', [ServerHookController::class, 'discordM
 Route::get('/live/{server}', [PageController::class, 'liveMatch']);
 
 // ─── Overlays OBS (source navigateur web, accès par token) ───────────────────
+// Overlay unique « Overlay Logs » : URL fixe, sans token — tous les logs
+// y sont chargés depuis l'outil admin, seule l'URL de départ compte.
+Route::get('/overlay/match-logs', [OverlayController::class, 'showFixed']);
+Route::get('/overlay/match-logs/version', [OverlayController::class, 'versionFixed']);
+Route::get('/overlay/match-logs/avatar/{team}', [OverlayController::class, 'avatarFixed'])->whereIn('team', ['red', 'blue']);
+// Overlays individuels historiques : conservés pour les sources OBS
+// déjà configurées sur un /overlay/{token} avant l'URL unique.
 Route::get('/overlay/{token}', [OverlayController::class, 'show'])->where('token', '[a-z0-9]{16}');
 Route::get('/overlay/{token}/version', [OverlayController::class, 'version'])->where('token', '[a-z0-9]{16}');
 Route::get('/overlay/{token}/avatar/{team}', [OverlayController::class, 'avatar'])->where('token', '[a-z0-9]{16}')->whereIn('team', ['red', 'blue']);
@@ -114,10 +121,9 @@ Route::get('/roster-overlay/{token}/version', [RostersOverlayController::class, 
 Route::middleware('overlay-tools')->prefix('admin')->group(function (): void {
     Route::get('/overlays-stream', [AdminPanelController::class, 'index'])->name('admin.overlays_stream');
     Route::get('/overlay', [AdminOverlayController::class, 'index'])->name('admin.overlay');
-    Route::post('/overlay/generate', [AdminOverlayController::class, 'generate']);
-    Route::get('/overlay/{token}', [AdminOverlayController::class, 'edit'])->where('token', '[a-z0-9]{16}');
-    Route::post('/overlay/{token}/refresh', [AdminOverlayController::class, 'refresh'])->where('token', '[a-z0-9]{16}');
-    Route::post('/overlay/{token}/load', [AdminOverlayController::class, 'load'])->where('token', '[a-z0-9]{16}');
+    Route::post('/overlay/load', [AdminOverlayController::class, 'loadLog']);
+    Route::post('/overlay/refresh', [AdminOverlayController::class, 'refresh']);
+    Route::post('/overlay/{token}/load', [AdminOverlayController::class, 'loadFromHistory'])->where('token', '[a-z0-9]{16}');
     Route::post('/overlay/{token}/delete', [AdminOverlayController::class, 'delete'])->where('token', '[a-z0-9]{16}');
     Route::get('/overlay/etf2l/teams', [AdminEtf2lTeamsController::class, 'teams']);
     Route::get('/overlay/etf2l/roster', [AdminEtf2lTeamsController::class, 'roster']);

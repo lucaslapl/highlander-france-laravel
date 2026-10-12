@@ -9,10 +9,12 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
 /**
- * Outil « Overlay Logs » : accès réservé aux admins côté panel, vue overlay
- * publique par token (OBS), chargement de logs dans un overlay existant
- * (URL OBS stable) et suppression. Noms et avatars d'équipes ne sont plus
- * saisis : résolution ETF2L automatique au chargement des logs (voir
+ * Outil « Overlay Logs » : accès réservé aux admins côté panel, overlay
+ * unique servi par l'URL fixe /overlay/match-logs (tous les logs y sont
+ * chargés, l'URL OBS ne change jamais), vues overlays publiques par token
+ * (sources OBS historiques), bouton « Charger ce log » sur l'historique
+ * et suppression. Noms et avatars d'équipes ne sont pas saisis :
+ * résolution ETF2L automatique au chargement des logs (voir
  * OverlayStatsServiceTest), repli RED / BLU.
  */
 class OverlayTest extends TestCase
@@ -100,39 +102,47 @@ class OverlayTest extends TestCase
     public function test_le_panel_overlay_est_reserve_aux_admins(): void
     {
         $this->get('/admin/overlay')->assertForbidden();
-        $this->post('/admin/overlay/generate', ['log' => '4059225'])->assertForbidden();
-        $this->get('/admin/overlay/'.self::TOKEN)->assertForbidden();
-        $this->post('/admin/overlay/'.self::TOKEN.'/load', ['log' => '4059225'])->assertForbidden();
+        $this->post('/admin/overlay/load', ['log' => '4059225'])->assertForbidden();
+        $this->post('/admin/overlay/refresh')->assertForbidden();
+        $this->post('/admin/overlay/'.self::TOKEN.'/load')->assertForbidden();
         $this->post('/admin/overlay/'.self::TOKEN.'/delete')->assertForbidden();
     }
 
-    public function test_l_index_admin_liste_les_overlays(): void
+    public function test_l_outil_affiche_l_url_unique_et_les_logs_deja_generes(): void
     {
         $this->seedOverlay();
 
         $this->withSession($this->adminSession())
             ->get('/admin/overlay')
             ->assertOk()
+            // Une seule URL OBS pour tous les logs, sans token.
+            ->assertSee(url('/overlay/match-logs'), false)
+            ->assertSee('Charger un log')
+            ->assertSee('Charger ce log')
             ->assertSee('4059225')
-            ->assertSee(url('/overlay/'.self::TOKEN))
             // La création est minimale (juste le log) : les noms d'équipes
             // sont identifiés automatiquement sur ETF2L à chaque chargement.
             ->assertDontSee('red_name')
             ->assertDontSee('blue_name')
             ->assertDontSee('Remplissage assisté')
             ->assertDontSee('js-etf2l-fill')
-            // L'URL OBS d'un overlay est stable : la page liste ne propose
-            // plus d'interversion, tout se joue au chargement des logs.
+            // Les couleurs du log sont suivies telles quelles : plus de
+            // bouton d'interversion, tout se joue au chargement des logs.
             ->assertDontSee('Intervertir');
     }
 
-    public function test_la_generation_rejette_une_saisie_invalide(): void
+    public function test_le_chargement_d_un_log_rejette_une_saisie_invalide(): void
     {
-        $this->withSession($this->adminSession())
-            ->post('/admin/overlay/generate', ['log' => 'n-importe-quoi'])
-            ->assertRedirect();
+        $this->seedOverlay();
 
-        $this->assertSame([], (new OverlayRepository)->all());
+        $this->withSession($this->adminSession())
+            ->post('/admin/overlay/load', ['log' => 'n-importe-quoi'])
+            ->assertRedirect()
+            ->assertSessionHas('error');
+
+        // Aucun overlay unique créé, l'historique est intact.
+        $this->assertNull((new OverlayRepository)->find(OverlayRepository::MATCH_LOGS_TOKEN));
+        $this->assertNotNull((new OverlayRepository)->find(self::TOKEN));
     }
 
     public function test_un_token_overlay_inconnu_renvoie_404(): void
@@ -201,29 +211,59 @@ class OverlayTest extends TestCase
             ->assertJsonStructure(['version']);
     }
 
-    // ─── Édition ──────────────────────────────────────────────────────────
+    // ─── Overlay unique /overlay/match-logs ─────────────────────────────────
 
-    public function test_la_page_d_edition_permet_de_charger_un_log_sans_intervention_manuelle(): void
+    public function test_l_url_unique_est_transparente_tant_qu_aucun_log_n_est_charge(): void
+    {
+        $response = $this->get('/overlay/match-logs');
+
+        $response->assertOk();
+        // Page 100 % transparente pour OBS : pas de stage, seul le polling
+        // de version est présent — le premier log chargé la rechargera.
+        $this->assertStringNotContainsString('overlay-stage', (string) $response->getContent());
+        $this->assertStringContainsString('/overlay/match-logs/version', (string) $response->getContent());
+        $this->assertStringContainsString('no-store', (string) $response->headers->get('Cache-Control'));
+
+        $this->get('/overlay/match-logs/version')->assertOk()->assertJson(['version' => 0]);
+        $this->get('/overlay/match-logs/avatar/red')->assertNotFound();
+    }
+
+    public function test_le_bouton_charger_ce_log_remplit_l_url_unique(): void
     {
         $this->seedOverlay();
 
         $this->withSession($this->adminSession())
-            ->get('/admin/overlay/'.self::TOKEN)
-            ->assertOk()
-            // Le chargement d'un log remplace le contenu de l'overlay, l'URL
-            // OBS (token) ne change jamais.
-            ->assertSee('Charger un nouveau log')
-            ->assertSee('action="/admin/overlay/'.self::TOKEN.'/load"', false)
-            ->assertSee('L\'URL OBS de cet overlay ne change jamais', false)
-            // Ni remplissage assisté, ni interversion, ni personnalisation :
-            // la seule saisie est le lien du log, noms et avatars ETF2L
-            // sont résolus automatiquement.
-            ->assertDontSee('Remplissage assisté')
-            ->assertDontSee('js-etf2l-fill')
-            ->assertDontSee('Intervertir')
-            ->assertDontSee('Personnalisation')
-            ->assertDontSee('red_avatar_url')
-            ->assertDontSee('blue_avatar_url');
+            ->post('/admin/overlay/'.self::TOKEN.'/load')
+            ->assertRedirect()
+            ->assertSessionHas('success');
+
+        // L'overlay unique porte le log de l'historique, sous l'URL fixe.
+        $response = $this->get('/overlay/match-logs');
+
+        $response->assertOk();
+        $this->assertStringContainsString('ScoutFR', (string) $response->getContent());
+        $this->assertStringContainsString('35 000', (string) $response->getContent());
+
+        // La version est bumpée : la page OBS (vide ou déjà affichée)
+        // se recharge toute seule.
+        $version = (int) $this->get('/overlay/match-logs/version')->json('version');
+        $this->assertGreaterThan(0, $version);
+
+        // L'overlay d'origine reste intact et consultable.
+        $this->get('/overlay/'.self::TOKEN)->assertOk();
+        $this->assertSame((int) 4059225, (int) (new OverlayRepository)->find(self::TOKEN)['log_id']);
+    }
+
+    public function test_les_pages_d_edition_par_overlay_ont_disparu(): void
+    {
+        $this->seedOverlay();
+        $session = $this->adminSession();
+
+        // Tout passe par l'URL unique : plus de génération ni de page par
+        // overlay, l'outil liste les logs et les recharge dans l'unique.
+        $this->withSession($session)->post('/admin/overlay/generate', ['log' => '4059225'])->assertNotFound();
+        $this->withSession($session)->get('/admin/overlay/'.self::TOKEN)->assertNotFound();
+        $this->withSession($session)->post('/admin/overlay/'.self::TOKEN.'/refresh')->assertNotFound();
     }
 
     public function test_la_route_de_personnalisation_des_avatars_a_disparu(): void
@@ -242,21 +282,11 @@ class OverlayTest extends TestCase
         $this->assertNull($after['teams']['red']['avatar_url'] ?? null);
     }
 
-    public function test_le_chargement_de_log_rejette_une_saisie_invalide(): void
+    public function test_le_chargement_depuis_l_historique_sur_un_token_inconnu_renvoie_404(): void
     {
-        $this->seedOverlay();
-
-        $before = (new OverlayRepository)->find(self::TOKEN);
-
         $this->withSession($this->adminSession())
-            ->post('/admin/overlay/'.self::TOKEN.'/load', ['log' => 'n-importe-quoi'])
-            ->assertRedirect()
-            ->assertSessionHas('error');
-
-        $after = (new OverlayRepository)->find(self::TOKEN);
-        // L'overlay est intact : même log, même version.
-        $this->assertSame($before['log_id'], $after['log_id']);
-        $this->assertSame((int) $before['version'], (int) $after['version']);
+            ->post('/admin/overlay/'.self::TOKEN.'/load')
+            ->assertNotFound();
     }
 
     public function test_l_upload_d_avatar_n_est_plus_propose(): void
@@ -273,14 +303,14 @@ class OverlayTest extends TestCase
             ->post('/admin/overlay/'.self::TOKEN.'/avatar/delete', ['team' => 'red'])
             ->assertNotFound();
 
-        // La page d'édition ne propose plus de champ fichier.
+        // La page de l'outil ne propose plus de champ fichier.
         $this->withSession($session)
-            ->get('/admin/overlay/'.self::TOKEN)
+            ->get('/admin/overlay')
             ->assertOk()
             ->assertDontSee('type="file"', false);
     }
 
-    public function test_la_suppression_efface_l_overlay_et_sa_vue(): void
+    public function test_la_suppression_efface_le_log_de_l_historique_et_sa_vue(): void
     {
         $this->seedOverlay();
 

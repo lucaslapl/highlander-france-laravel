@@ -14,11 +14,20 @@ use Symfony\Component\HttpFoundation\BinaryFileResponse;
 /**
  * Vue overlay publique pour OBS Studio (source navigateur web).
  *
- * L'URL contient un token aléatoire (16 caractères) : pas d'authentification
- * par session — OBS ne peut pas s'authentifier — mais l'URL est impossible
- * à deviner et ne contient aucune donnée sensible (stats de match publiques
- * sur logs.tf). La page est entièrement transparente (1920x1080) et se
- * rafraîchit automatiquement via le polling de /overlay/{token}/version.
+ * Deux types d'URL, toutes deux sans authentification par session — OBS ne
+ * peut pas s'authentifier — et sans donnée sensible (stats de match
+ * publiques sur logs.tf) :
+ *
+ *  - /overlay/match-logs : URL UNIQUE de l'outil « Overlay Logs ». Tous les
+ *    logs y sont chargés (lien saisi ou « Charger ce log » depuis l'outil
+ *    admin) et seul le visuel change : à pointer une seule fois dans OBS,
+ *    jamais à retoucher.
+ *  - /overlay/{token} : overlays individuels historiques (token aléatoire
+ *    de 16 caractères, impossible à deviner), conservés pour les sources
+ *    OBS déjà configurées.
+ *
+ * Les pages sont entièrement transparentes (1920x1080) et se rafraîchissent
+ * automatiquement via le polling de leur endpoint /version.
  */
 final class OverlayController extends Controller
 {
@@ -33,7 +42,7 @@ final class OverlayController extends Controller
     }
 
     /**
-     * GET /overlay/{token} — page d'overlay (à pointer dans OBS).
+     * GET /overlay/{token} — page d'overlay historique (à pointer dans OBS).
      */
     public function show(string $token): Response
     {
@@ -42,13 +51,40 @@ final class OverlayController extends Controller
             abort(404);
         }
 
-        // Les bests sont recalculés au rendu (et non figés dans le JSON) :
-        // un changement de logique s'applique aux overlays existants.
+        return $this->render($overlay, '/overlay/'.$token);
+    }
+
+    /**
+     * GET /overlay/match-logs — overlay unique de l'outil « Overlay Logs ».
+     * Tant qu'aucun log n'a été chargé, la page est entièrement transparente
+     * et poll sa version : dès que le premier log arrive, elle se recharge
+     * toute seule et affiche les stats.
+     */
+    public function showFixed(): Response
+    {
+        $overlay = $this->overlays->find(OverlayRepository::MATCH_LOGS_TOKEN);
+        if ($overlay === null) {
+            return response()
+                ->view('overlay.match_empty')
+                ->header('Cache-Control', 'no-store, no-cache, must-revalidate');
+        }
+
+        return $this->render($overlay, '/overlay/match-logs');
+    }
+
+    /**
+     * Rendu commun : bests recalculés au rendu (et non figés dans le JSON) —
+     * un changement de logique s'applique aux overlays existants — et nom de
+     * map raccourci (« koth_product_final » → « Product ») pour la même
+     * raison. $baseUrl porte l'URL publique (fixe ou à token) : version et
+     * avatars sont servis sous la même forme que la page.
+     *
+     * @param  array<string, mixed>  $overlay
+     */
+    private function render(array $overlay, string $baseUrl): Response
+    {
         $this->stats->applyBestStats($overlay);
 
-        // Nom de map raccourci au rendu (« koth_product_final » → « Product »)
-        // pour la même raison : les overlays existants en profitent sans
-        // avoir à être régénérés depuis logs.tf.
         if (($overlay['map'] ?? '') !== '') {
             $overlay['map'] = MatchFormat::mapDisplay((string) $overlay['map']);
         }
@@ -57,19 +93,20 @@ final class OverlayController extends Controller
             ->view('overlay.match', [
                 'title' => 'Overlay stats - '.($overlay['title'] !== '' ? $overlay['title'] : 'logs.tf #'.$overlay['log_id']),
                 'overlay' => $overlay,
-                'avatars' => $this->avatarUrls($overlay),
+                'avatars' => $this->avatarUrls($overlay, $baseUrl),
+                'versionUrl' => $baseUrl.'/version',
             ])
             ->header('Cache-Control', 'no-store, no-cache, must-revalidate');
     }
 
     /**
      * URL d'avatar effective par équipe : URL externe si renseignée, sinon
-     * l'avatar uploadé servi par /overlay/{token}/avatar/{team}.
+     * l'avatar uploadé servi par {baseUrl}/avatar/{team}.
      *
      * @param  array<string, mixed>  $overlay
      * @return array<string, string|null>
      */
-    private function avatarUrls(array $overlay): array
+    private function avatarUrls(array $overlay, string $baseUrl): array
     {
         $urls = [];
 
@@ -78,7 +115,7 @@ final class OverlayController extends Controller
             if ($external !== '') {
                 $urls[$team] = $external;
             } elseif ($this->overlays->hasAvatar((string) $overlay['token'], $team)) {
-                $urls[$team] = '/overlay/'.$overlay['token'].'/avatar/'.$team;
+                $urls[$team] = $baseUrl.'/avatar/'.$team;
             } else {
                 $urls[$team] = null;
             }
@@ -98,8 +135,25 @@ final class OverlayController extends Controller
             abort(404);
         }
 
+        return $this->versionResponse((int) ($overlay['version'] ?? 0));
+    }
+
+    /**
+     * GET /overlay/match-logs/version — version de l'overlay unique, 0 tant
+     * qu'aucun log n'a été chargé (la page vide poll et se recharge au
+     * premier chargement).
+     */
+    public function versionFixed(): JsonResponse
+    {
+        $overlay = $this->overlays->find(OverlayRepository::MATCH_LOGS_TOKEN);
+
+        return $this->versionResponse((int) ($overlay['version'] ?? 0));
+    }
+
+    private function versionResponse(int $version): JsonResponse
+    {
         return response()
-            ->json(['version' => (int) ($overlay['version'] ?? 0)])
+            ->json(['version' => $version])
             ->header('Cache-Control', 'no-store');
     }
 
@@ -114,6 +168,23 @@ final class OverlayController extends Controller
             abort(404);
         }
 
+        return $this->avatarResponse($avatar);
+    }
+
+    /**
+     * GET /overlay/match-logs/avatar/{team} — avatar d'équipe de l'overlay
+     * unique, sous la même URL fixe que la page.
+     */
+    public function avatarFixed(string $team): BinaryFileResponse
+    {
+        return $this->avatar(OverlayRepository::MATCH_LOGS_TOKEN, $team);
+    }
+
+    /**
+     * @param  array{path: string, ext: string}  $avatar
+     */
+    private function avatarResponse(array $avatar): BinaryFileResponse
+    {
         return response()->file($avatar['path'], [
             'Cache-Control' => 'no-cache, must-revalidate',
         ]);
