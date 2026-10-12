@@ -12,8 +12,9 @@ use Tests\TestCase;
 
 /**
  * Résolution des pseudos ETF2L par SteamID (endpoint /api/server/etf2l-names,
- * consommé par le plugin hlfr_etf2l_rename). Fetcher HTTP injecté : aucun
- * réseau réel, seulement la base de test.
+ * consommé par le plugin hlfr_etf2l_rename) et des équipes candidates d'un
+ * log (vote de noms automatiques de l'Overlay Logs). Fetcher HTTP injecté :
+ * aucun réseau réel, seulement la base de test.
  */
 class Etf2lNameResolverTest extends TestCase
 {
@@ -302,5 +303,120 @@ class Etf2lNameResolverTest extends TestCase
 
         $this->assertSame(['name' => 'ViaApi', 'etf2l_id' => 42], $resolved[$steamid3]);
         $this->assertSame([$steamid3], array_keys($resolved));
+    }
+
+    // ─── Équipes candidates d'un log (vote Overlay Logs) ──────────────────
+
+    /**
+     * Payload API player avec une équipe de club Highlander courante.
+     *
+     * @return array<string, mixed>
+     */
+    private function playerPayloadWithTeam(string $name, int $id, array $teams): array
+    {
+        $payload = $this->playerPayload($name, $id);
+        $payload['player']['teams'] = $teams;
+
+        return $payload;
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function apiTeam(string $name, string $type): array
+    {
+        return ['name' => $name, 'tag' => 'X', 'type' => $type];
+    }
+
+    /**
+     * Amorce le roster synchronisé d'une équipe (etf2l_teams/etf2l_players).
+     *
+     * @param  array<int, string>  $steamids64
+     */
+    private function seedSyncedRoster(int $teamId, string $name, string $country, array $steamids64): void
+    {
+        DB::table('etf2l_teams')->insert([
+            'team_id' => $teamId,
+            'name' => $name,
+            'country' => $country,
+            'tag' => null,
+        ]);
+
+        foreach ($steamids64 as $steamid64) {
+            DB::table('etf2l_players')->insert([
+                'team_id' => $teamId,
+                'player_id' => random_int(1000, 999999),
+                'name' => 'joueur',
+                'steamid64' => $steamid64,
+            ]);
+        }
+    }
+
+    public function test_team_candidates_combine_rosters_sync_et_payload_api(): void
+    {
+        // Roster synchronisé : équipe de club (le nom diffère du pays).
+        $this->seedSyncedRoster(900, 'Les Baguettes', 'France', [self::SID64_PSYCHO]);
+
+        // Payload API en cache : équipe de club Highlander courante,
+        // devant une équipe nationale ignorée.
+        $this->seedApiCache(self::SID64_AUTRE, $this->playerPayloadWithTeam('Autre', 42, [
+            $this->apiTeam("\n France", 'National Highlander Team'),
+            $this->apiTeam('The Piece of Pie', 'Highlander Team'),
+        ]));
+
+        $resolved = (new Etf2lNameResolver)->teamCandidatesBySteamId3([
+            SteamId::toSteamId3(self::SID64_PSYCHO),
+            SteamId::toSteamId3(self::SID64_AUTRE),
+        ]);
+
+        $this->assertSame(['Les Baguettes'], $resolved[SteamId::toSteamId3(self::SID64_PSYCHO)]);
+        $this->assertSame(['The Piece of Pie'], $resolved[SteamId::toSteamId3(self::SID64_AUTRE)]);
+    }
+
+    public function test_team_candidates_exclut_les_equipes_nationales_des_rosters(): void
+    {
+        // « France » : le nom d'une équipe nationale est celui de son
+        // pays — l'heuristique nom/pays l'écarte du vote.
+        $this->seedSyncedRoster(15176, "\n France", ' France ', [self::SID64_PSYCHO]);
+
+        $resolved = (new Etf2lNameResolver)->teamCandidatesBySteamId3([
+            SteamId::toSteamId3(self::SID64_PSYCHO),
+        ]);
+
+        $this->assertArrayNotHasKey(SteamId::toSteamId3(self::SID64_PSYCHO), $resolved);
+    }
+
+    public function test_team_candidates_ignore_le_cache_perime_et_les_erreurs(): void
+    {
+        // Payload trouvé mais périmé (au-delà des 24 h).
+        $this->seedApiCache(
+            self::SID64_PSYCHO,
+            $this->playerPayloadWithTeam('Psycho', 112835, [$this->apiTeam('Les Baguettes', 'Highlander Team')]),
+            25 * 3600,
+        );
+
+        // Cache d'indisponibilité récent : aucune équipe à en tirer.
+        $this->seedApiCache(self::SID64_AUTRE, ['error' => 'hlfr_etf2l_indisponible']);
+
+        $resolved = (new Etf2lNameResolver)->teamCandidatesBySteamId3([
+            SteamId::toSteamId3(self::SID64_PSYCHO),
+            SteamId::toSteamId3(self::SID64_AUTRE),
+        ]);
+
+        $this->assertSame([], $resolved);
+    }
+
+    public function test_team_candidates_deduplique_les_noms_par_joueur(): void
+    {
+        // Deux équipes aux noms identiques (après assainissement) pour un
+        // même joueur : un seul vote pour ce nom.
+        $this->seedSyncedRoster(900, ' Les Baguettes ', 'France', [self::SID64_PSYCHO]);
+        $this->seedSyncedRoster(901, 'Les Baguettes', 'France', [self::SID64_PSYCHO]);
+
+        $resolved = (new Etf2lNameResolver)->teamCandidatesBySteamId3([
+            SteamId::toSteamId3(self::SID64_PSYCHO),
+        ]);
+
+        $this->assertSame(['Les Baguettes'], $resolved[SteamId::toSteamId3(self::SID64_PSYCHO)]);
     }
 }

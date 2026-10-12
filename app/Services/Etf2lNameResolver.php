@@ -26,6 +26,12 @@ use Illuminate\Support\Facades\DB;
  * Les pseudos sont assainis avant renvoi (suppression des caractères de
  * contrôle, taille plafonnée) : ils seront affichés en jeu comme noms de
  * joueurs. La récupération HTTP est injectable (closure) pour les tests.
+ *
+ * Le service expose aussi teamCandidatesBySteamId3() : les équipes ETF2L
+ * auxquelles appartient chaque joueur d'un log (rosters synchronisés +
+ * payloads API en cache), sans aucun appel HTTP — le vote de couverture
+ * qui en déduit les noms d'équipes d'un overlay vit dans
+ * OverlayStatsService.
  */
 final class Etf2lNameResolver
 {
@@ -114,6 +120,110 @@ final class Etf2lNameResolver
         foreach ($this->resolve($steamids2) as $steamid2 => $hit) {
             foreach ($aliases[$steamid2] ?? [] as $steamid3) {
                 $out[$steamid3] = $hit;
+            }
+        }
+
+        return $out;
+    }
+
+    /**
+     * Équipes ETF2L candidates de chaque joueur d'un log, pour le vote de
+     * couverture d'OverlayStatsService (noms d'équipes automatiques de
+     * l'Overlay Logs) : équipes dont le roster synchronisé contient le
+     * joueur (etf2l_players jointe à etf2l_teams pour le nom), plus son
+     * équipe de club Highlander courante si son payload API est déjà en
+     * cache (fraîcheur 24 h).
+     *
+     * Aucun appel HTTP : la résolution des pseudos qui précède
+     * (resolveBySteamId3) met généralement les payloads en cache ; les
+     * joueurs sans payload restent simplement sans candidat API.
+     *
+     * Les équipes nationales sont exclues : leurs rosters couvrent des
+     * nations entières (ex. « France ») et noieraient le vote de tout
+     * match français. Côté base, le nom d'une équipe nationale est celui
+     * de son pays : la confusion nom/pays sert d'heuristique ; côté API,
+     * le type de l'équipe porte la mention « National ».
+     *
+     * @param  array<int, string>  $steamids3  SteamID3 « [U:1:…] » (les entrées invalides sont ignorées)
+     * @return array<string, array<int, string>> noms d'équipes par SteamID3, sans doublon
+     */
+    public function teamCandidatesBySteamId3(array $steamids3): array
+    {
+        $aliases = [];
+        $steamids64 = [];
+
+        foreach ($steamids3 as $steamid3) {
+            $steamid64 = SteamId::toSteamId64((string) $steamid3);
+            if ($steamid64 === null) {
+                continue;
+            }
+
+            $aliases[$steamid64][] = (string) $steamid3;
+            $steamids64[$steamid64] = $steamid64;
+        }
+
+        if ($steamids64 === []) {
+            return [];
+        }
+
+        $candidates = [];
+
+        // Rosters synchronisés : toutes les équipes contenant le joueur
+        // votent (les anciennes équipes aussi — le vote majoritaire du
+        // service garde l'équipe couvrant le mieux chaque côté du log).
+        $rows = DB::table('etf2l_players as p')
+            ->join('etf2l_teams as t', 'p.team_id', '=', 't.team_id')
+            ->whereIn('p.steamid64', array_keys($steamids64))
+            ->whereNotNull('t.name')
+            ->get(['p.steamid64', 't.name', 't.country']);
+
+        foreach ($rows as $row) {
+            $steamid64 = (string) $row->steamid64;
+
+            $name = $this->sanitizeName($row->name);
+            if ($name === null || strcasecmp($name, trim((string) ($row->country ?? ''))) === 0) {
+                continue;
+            }
+
+            $candidates[$steamid64][$name] = true;
+        }
+
+        // Payloads API en cache : l'équipe de club Highlander courante du
+        // joueur (aucun appel réseau, le cache d'indisponibilité et les
+        // réponses « introuvable » ne portent pas d'équipe).
+        $urls = [];
+        foreach (array_keys($steamids64) as $steamid64) {
+            $urls[] = self::API_URL.$steamid64;
+        }
+
+        $cached = DB::table('etf2l_api_cache')
+            ->whereIn('url', $urls)
+            ->where('fetched_at', '>', time() - self::CACHE_TTL_FOUND_S)
+            ->get(['url', 'payload']);
+
+        foreach ($cached as $row) {
+            $decoded = json_decode((string) $row->payload, true);
+            if (! is_array($decoded) || ($decoded['error'] ?? null) === self::UNAVAILABLE_ERROR) {
+                continue;
+            }
+
+            $team = $this->teamFromPayload($decoded);
+            if ($team !== null) {
+                // Le payload ne porte pas le SteamID : la seule équipe
+                // courante du joueur complète les rosters ci-dessus.
+                // La clé par URL étant unique, chaque ligne correspond à
+                // un joueur différent — indexation par URL.
+                $steamid64 = substr((string) $row->url, strlen(self::API_URL));
+                $candidates[$steamid64][$team] = true;
+            }
+        }
+
+        // Retour au format SteamID3 (clés du payload logs.tf), doublons
+        // dédupliqués par nom.
+        $out = [];
+        foreach ($candidates as $steamid64 => $names) {
+            foreach ($aliases[$steamid64] ?? [] as $steamid3) {
+                $out[$steamid3] = array_keys($names);
             }
         }
 
@@ -398,6 +508,39 @@ final class Etf2lNameResolver
     private function isNotFoundPayload(array $payload): bool
     {
         return (int) ($payload['status']['code'] ?? 0) === 404;
+    }
+
+    /**
+     * Équipe de club Highlander courante d'un payload API player (première
+     * entrée « Highlander » non nationale de player.teams), ou null. Les
+     * équipes nationales (rosters par nation) et les formats 6v6 sont
+     * écartés : l'identité d'un joueur sur un log Highlander est son
+     * équipe de club Highlander.
+     *
+     * @param  array<string, mixed>  $payload
+     */
+    private function teamFromPayload(array $payload): ?string
+    {
+        $player = $payload['player'] ?? null;
+        $teams = is_array($player['teams'] ?? null) ? $player['teams'] : [];
+
+        foreach ($teams as $team) {
+            if (! is_array($team)) {
+                continue;
+            }
+
+            $type = strtoupper((string) ($team['type'] ?? ''));
+            if (! str_contains($type, 'HIGHLANDER') || str_contains($type, 'NATIONAL')) {
+                continue;
+            }
+
+            $name = $this->sanitizeName($team['name'] ?? null);
+            if ($name !== null) {
+                return $name;
+            }
+        }
+
+        return null;
     }
 
     /**

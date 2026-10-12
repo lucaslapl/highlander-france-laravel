@@ -20,7 +20,13 @@ namespace App\Services;
  *
  * Les pseudos ETF2L (Etf2lNameResolver) priment sur les noms en jeu des
  * logs — plus reconnaissables pour les spectateurs — avec repli sur le
- * nom du log pour les joueurs sans compte ETF2L.
+ * nom du log pour les joueurs sans compte ETF2L. Les noms d'équipes sont
+ * eux aussi résolus automatiquement (vote de couverture des joueurs sur
+ * les équipes ETF2L), avec repli RED / BLU : les couleurs rouge/bleu
+ * d'un log logs.tf sont arbitraires, mais suivies telles quelles.
+ *
+ * mergePayload() recharge un payload dans un overlay existant sans en
+ * changer le token (URL OBS stable), en conservant les personnalisations.
  */
 final class OverlayStatsService
 {
@@ -100,6 +106,11 @@ final class OverlayStatsService
 
         $info = is_array($details['info'] ?? null) ? $details['info'] : [];
 
+        // Noms d'équipes ETF2L automatiques (vote de couverture des
+        // joueurs du log), avec repli RED / BLU si aucun nom ne se
+        // dégage.
+        $teamNames = $this->etf2lTeamNames($players);
+
         return [
             'log_id' => $logId,
             'title' => (string) ($info['title'] ?? ''),
@@ -108,11 +119,11 @@ final class OverlayStatsService
             'length' => $length,
             'teams' => [
                 'red' => [
-                    'name' => 'RED',
+                    'name' => $teamNames['red'] ?? 'RED',
                     'score' => (int) ($teamsRaw['Red']['score'] ?? 0),
                 ],
                 'blue' => [
-                    'name' => 'BLU',
+                    'name' => $teamNames['blue'] ?? 'BLU',
                     'score' => (int) ($teamsRaw['Blue']['score'] ?? $teamsRaw['BLU']['score'] ?? 0),
                 ],
             ],
@@ -143,96 +154,106 @@ final class OverlayStatsService
     }
 
     /**
-     * Aligne les côtés du payload sur deux rosters de référence
-     * (SteamID64 des joueurs de chaque équipe). logs.tf classe les deux
-     * équipes en rouge/bleu arbitrairement : si les couleurs du log sont
-     * inversées par rapport aux rosters (l'équipe A a joué BLU), les
-     * côtés du payload sont intervertis pour que chaque clé red/blue
-     * porte bien les stats de l'équipe attendue — les noms et avatars
-     * personnalisés sont appliqués par clé ensuite et restent donc juste.
+     * Fusionne un payload fraîchement construit dans un overlay existant
+     * (chargement d'un nouveau log ou relecture du log courant) : le
+     * token, la date de création et les avatars personnalisés traversent
+     * la mise à jour — tout le reste (équipes, scores, joueurs, medics,
+     * titre, map) vient du payload. Utilisé par l'outil « Overlay Logs »
+     * pour recharger un log dans un overlay sans changer son URL OBS.
      *
-     * Chaque roster doit être identifiable sans ambiguïté : au moins un
-     * de ses joueurs dans le log, couleur majoritaire stricte, et deux
-     * couleurs distinctes entre les rosters (même logique que le
-     * réconciliateur des séries, à tolérance mercs près). En cas
-     * d'ambiguïté ou de roster vide, le payload est retourné inchangé :
-     * l'admin garde la main via le bouton d'interversion.
-     *
+     * @param  array<string, mixed>  $overlay
      * @param  array<string, mixed>  $payload
-     * @param  array<int, string>  $redRosterSteamid64  Roster de l'équipe A (côté red du payload)
-     * @param  array<int, string>  $blueRosterSteamid64  Roster de l'équipe B (côté blue du payload)
-     * @return array{payload: array<string, mixed>, swapped: bool, ambiguous: bool}
+     * @return array<string, mixed>
      */
-    public static function alignTeamsByRosters(array $payload, array $redRosterSteamid64, array $blueRosterSteamid64): array
+    public static function mergePayload(array $overlay, array $payload): array
     {
-        if ($redRosterSteamid64 === [] || $blueRosterSteamid64 === []) {
-            return ['payload' => $payload, 'swapped' => false, 'ambiguous' => true];
+        $teams = $payload['teams'];
+
+        foreach (['red', 'blue'] as $team) {
+            $teams[$team]['avatar_url'] = $overlay['teams'][$team]['avatar_url'] ?? null;
         }
 
-        $rosters = [
-            'red' => self::steamid3Set($redRosterSteamid64),
-            'blue' => self::steamid3Set($blueRosterSteamid64),
-        ];
-
-        // Couverture de chaque roster par couleur du log : la couleur
-        // majoritaire stricte identifie l'équipe, sinon c'est ambigu.
-        $colors = [];
-        foreach (['red', 'blue'] as $teamKey) {
-            $coverage = ['red' => 0, 'blue' => 0];
-            foreach (['red', 'blue'] as $color) {
-                foreach (is_array($payload['players'][$color] ?? null) ? $payload['players'][$color] : [] as $player) {
-                    if (isset($rosters[$teamKey][(string) ($player['steamid3'] ?? '')])) {
-                        $coverage[$color]++;
-                    }
-                }
-            }
-
-            if ($coverage['red'] === 0 && $coverage['blue'] === 0) {
-                return ['payload' => $payload, 'swapped' => false, 'ambiguous' => true];
-            }
-
-            if ($coverage['red'] > $coverage['blue']) {
-                $colors[$teamKey] = 'red';
-            } elseif ($coverage['blue'] > $coverage['red']) {
-                $colors[$teamKey] = 'blue';
-            } else {
-                return ['payload' => $payload, 'swapped' => false, 'ambiguous' => true];
-            }
-        }
-
-        if ($colors['red'] === $colors['blue']) {
-            return ['payload' => $payload, 'swapped' => false, 'ambiguous' => true];
-        }
-
-        // L'équipe A (roster red) doit être portée par la clé red : si
-        // elle a joué l'autre couleur, les côtés s'échangent.
-        $swapped = $colors['red'] === 'blue';
-
-        return [
-            'payload' => $swapped ? self::swapTeams($payload) : $payload,
-            'swapped' => $swapped,
-            'ambiguous' => false,
-        ];
+        return array_merge($payload, [
+            'token' => (string) ($overlay['token'] ?? ''),
+            'created_at' => (int) ($overlay['created_at'] ?? time()),
+            'teams' => $teams,
+        ]);
     }
 
     /**
-     * Set de SteamID3 (clés des joueurs dans les réponses logs.tf)
-     * depuis une liste de SteamID64.
+     * Noms d'équipes ETF2L de chaque côté d'un log, ou null si aucun nom
+     * ne se dégage (repli RED / BLU de l'appelant) : chaque joueur vote
+     * pour les équipes ETF2L auxquelles il appartient (rosters
+     * synchronisés + payloads API en cache — voir
+     * Etf2lNameResolver::teamCandidatesBySteamId3), le nom le plus voté
+     * l'emporte s'il se détache nettement. Un nom identique des deux
+     * côtés (mixes d'un même club, artefact de synchro) invalide les
+     * deux côtés.
      *
-     * @param  array<int, string>  $steamids64
-     * @return array<string, true>
+     * @param  array<string, array<int, array<string, mixed>>>  $players
+     * @return array{red: string|null, blue: string|null}
      */
-    private static function steamid3Set(array $steamids64): array
+    private function etf2lTeamNames(array $players): array
     {
-        $set = [];
-        foreach ($steamids64 as $steamid64) {
-            $steamid64 = trim((string) $steamid64);
-            if (preg_match('/^\d{17}$/', $steamid64) === 1) {
-                $set[SteamId::toSteamId3($steamid64)] = true;
+        $steamids3 = [];
+
+        foreach ($players as $teamPlayers) {
+            foreach ($teamPlayers as $player) {
+                $steamids3[] = (string) $player['steamid3'];
             }
         }
 
-        return $set;
+        $candidates = $this->names->teamCandidatesBySteamId3($steamids3);
+
+        $names = [];
+        foreach (['red', 'blue'] as $team) {
+            $votes = [];
+
+            foreach ($players[$team] as $player) {
+                foreach ($candidates[(string) $player['steamid3']] ?? [] as $teamName) {
+                    $votes[$teamName] = ($votes[$teamName] ?? 0) + 1;
+                }
+            }
+
+            $names[$team] = $this->electedTeamName($votes, count($players[$team]));
+        }
+
+        if ($names['red'] !== null && $names['blue'] !== null && strcasecmp($names['red'], $names['blue']) === 0) {
+            $names = ['red' => null, 'blue' => null];
+        }
+
+        return $names;
+    }
+
+    /**
+     * Nom élu d'un vote de couverture (null si aucun nom ne se détache) :
+     * le plus voté doit strictement devancer le suivant et atteindre un
+     * plancher — au moins 2 voix et un tiers des joueurs du côté. Un
+     * couplon de mercs d'une même équipe ne nomme donc pas à lui seul un
+     * côté de 9 joueurs.
+     *
+     * @param  array<string, int>  $votes
+     */
+    private function electedTeamName(array $votes, int $sideSize): ?string
+    {
+        if ($votes === [] || $sideSize === 0) {
+            return null;
+        }
+
+        arsort($votes);
+        $elected = array_key_first($votes);
+        $top = (int) $votes[$elected];
+
+        if ($top < 2 || $top * 3 < $sideSize) {
+            return null;
+        }
+
+        unset($votes[$elected]);
+        if ($votes !== [] && (int) reset($votes) === $top) {
+            return null;
+        }
+
+        return (string) $elected;
     }
 
     /**

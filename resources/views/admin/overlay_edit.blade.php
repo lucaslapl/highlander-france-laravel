@@ -12,19 +12,22 @@
 </div>
 
 <div style="border:2px solid #9b6dff; border-radius:10px; padding:16px; margin-bottom:24px; background:rgba(155,109,255,0.08);">
-    <h4 style="margin:0 0 8px;"><i class="fa-solid fa-right-left"></i> Les équipes sont-elles du bon côté ?</h4>
+    <h4 style="margin:0 0 8px;"><i class="fa-solid fa-file-import"></i> Charger un nouveau log</h4>
     <p style="margin:0 0 12px; font-size:14px; line-height:1.5;">
-        logs.tf classe les deux équipes en « rouge » et « bleu » de façon arbitraire : quand les équipes sont liées à
-        ETF2L (remplissage assisté), leurs rosters alignent automatiquement l'équipe A sur le côté A, y compris à
-        chaque rafraîchissement du log. Sans liaison ETF2L, ce bouton échange <strong>tout un côté</strong> — noms,
-        avatars, score, stats des joueurs et des medics — pour que chaque équipe rejoigne l'autre côté de l'écran ;
-        le prochain rafraîchissement conserve ce nouvel ordre.
+        L'URL OBS de cet overlay ne change jamais : chargez ici le log de chaque map ou match, et le visuel sous OBS se
+        met à jour tout seul (les équipes suivent les couleurs rouge / bleu du log). Les noms d'équipes ETF2L sont
+        identifiés automatiquement à partir des joueurs du log ; sans équipe identifiable, RED / BLU s'affichent.
     </p>
-    <form method="POST" action="/admin/overlay/{{ $overlay['token'] }}/swap"
-          onsubmit="return confirm('Intervertir les équipes A et B (chacune rejoint l\'autre côté de l\'overlay) ?');">
+    <form method="POST" action="/admin/overlay/{{ $overlay['token'] }}/load" class="admin-form-row"
+          style="display:flex; gap:10px; align-items:flex-end; flex-wrap:wrap;">
         @csrf
+        <div style="flex:1; min-width:320px;">
+            <label class="admin-form-label" for="overlay-load-log-input">Lien ou ID du log logs.tf</label>
+            <input type="text" id="overlay-load-log-input" name="log" class="form-control"
+                   placeholder="Ex : https://logs.tf/4059225 ou 4059225" required>
+        </div>
         <button type="submit" class="admin-btn admin-btn--primary">
-            <i class="fa-solid fa-right-left"></i> Intervertir les équipes A / B
+            <i class="fa-solid fa-bolt"></i> Charger le log
         </button>
     </form>
 </div>
@@ -32,24 +35,18 @@
 <h3 class="admin-section-title"><i class="fa-solid fa-pen-to-square"></i> Personnalisation</h3>
 <form method="POST" action="/admin/overlay/{{ $overlay['token'] }}/update" class="admin-form-stack admin-form-stack--wide">
     @csrf
-    @include('admin.partials.etf2l_teams', ['competitions' => $competitions, 'prefix' => 'overlay'])
-    <p style="color:#777; font-size:13px; margin:0 0 10px;">
-        Choisissez une équipe ETF2L dans le menu de chaque bloc : l'overlay est lié à son roster et les couleurs des
-        prochains logs se réalignent toutes seules sur les côtés A / B (roster conservé en cache côté serveur).
-    </p>
     <div class="admin-form-row" style="display:flex; gap:24px; flex-wrap:wrap;">
         @foreach (['red' => 'A', 'blue' => 'B'] as $team => $label)
-            <div class="js-etf2l-team" style="flex:1; min-width:300px; border:1px solid #333; border-radius:8px; padding:14px;">
-                <h4 style="margin:0 0 10px; color:#bbb;">Équipe {{ $label }} — {{ (int) $overlay['teams'][$team]['score'] }} pts</h4>
-                <input type="hidden" name="{{ $team }}_etf2l_id" class="js-team-field-etf2l-id"
-                       value="{{ (int) ($overlay['teams'][$team]['etf2l_id'] ?? 0) ?: '' }}">
-                <label class="admin-form-label">Nom affiché</label>
-                <input type="text" name="{{ $team }}_name" class="form-control js-team-field-name"
-                       value="{{ e($overlay['teams'][$team]['name']) }}" maxlength="64" required>
-                <label class="admin-form-label" style="margin-top:10px;">Avatar par URL externe (optionnel)</label>
-                <input type="url" name="{{ $team }}_avatar_url" class="form-control js-team-field-avatar"
+            <div style="flex:1; min-width:300px; border:1px solid #333; border-radius:8px; padding:14px;">
+                <h4 style="margin:0 0 10px; color:#bbb;">Équipe {{ $label }} — {{ e($overlay['teams'][$team]['name']) }} · {{ (int) $overlay['teams'][$team]['score'] }} pts</h4>
+                <label class="admin-form-label" for="overlay-{{ $team }}-avatar">Avatar par URL externe (optionnel)</label>
+                <input type="url" id="overlay-{{ $team }}-avatar" name="{{ $team }}_avatar_url" class="form-control"
                        value="{{ e($overlay['teams'][$team]['avatar_url'] ?? '') }}"
                        placeholder="https://…/logo.png">
+                <p style="color:#777; font-size:12px; margin:6px 0 0;">
+                    Le nom affiché ({{ e($overlay['teams'][$team]['name']) }}) vient du log : identifié sur ETF2L ou
+                    repli {{ $team === 'red' ? 'RED' : 'BLU' }}. L'avatar, lui, traverse les chargements de logs.
+                </p>
             </div>
         @endforeach
     </div>
@@ -69,7 +66,9 @@
         <a href="{{ $overlay_url }}" target="_blank" rel="noopener" class="admin-btn">Ouvrir</a>
     </div>
     <p style="color:#777; font-size:13px; margin:6px 0 0;">
-        Dans OBS : Sources → + → Navigateur web → collez l'URL, largeur 1920, hauteur 1080. Cochez bien « Rafraîchir le navigateur lorsque la scène devient active » si vous le souhaitez ; l'overlay se met à jour tout seul dès que vous modifiez les stats ici.
+        Dans OBS : Sources → + → Navigateur web → collez l'URL, largeur 1920, hauteur 1080. À ne faire qu'une seule fois :
+        l'overlay se met à jour tout seul dès qu'un log est chargé ou que vous modifiez les stats ici, jamais besoin de
+        toucher à OBS en cours de stream.
     </p>
 </div>
 
@@ -78,7 +77,7 @@
     <form method="POST" action="/admin/overlay/{{ $overlay['token'] }}/refresh">
         @csrf
         <button type="submit" class="admin-btn">
-            <i class="fa-solid fa-arrows-rotate"></i> Relire le log logs.tf (stats à jour)
+            <i class="fa-solid fa-arrows-rotate"></i> Relire le log logs.tf courant (stats à jour)
         </button>
     </form>
     <a href="/admin/overlay" class="admin-btn"><i class="fa-solid fa-arrow-left"></i> Retour à la liste</a>
@@ -91,9 +90,5 @@
 
 @push('styles')
 <link rel="stylesheet" href="{{ hlfr_asset('/_css/admin_overlay.css') }}">
-@endpush
-
-@push('scripts')
-<script src="{{ hlfr_asset('/_js/admin_etf2l_teams.js') }}" defer></script>
 @endpush
 @endsection

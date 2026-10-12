@@ -6,14 +6,14 @@ namespace Tests\Feature;
 
 use App\Models\OverlayRepository;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Support\Facades\DB;
 use Tests\TestCase;
 
 /**
  * Outil « Overlay Logs » : accès réservé aux admins côté panel, vue overlay
- * publique par token (OBS), mise à jour des équipes (liaison ETF2L et
- * rosters pour l'alignement automatique des couleurs de log), interversion
- * complète des côtés A / B et suppression.
+ * publique par token (OBS), chargement de logs dans un overlay existant
+ * (URL OBS stable), avatars personnalisés persistants et suppression. Les
+ * noms d'équipes ne sont plus saisis : résolution ETF2L automatique au
+ * chargement des logs (voir OverlayStatsServiceTest), repli RED / BLU.
  */
 class OverlayTest extends TestCase
 {
@@ -31,10 +31,6 @@ class OverlayTest extends TestCase
         // storage/app/hlfr et tout est nettoyé en tearDown.
         $this->dataDir = storage_path('app/hlfr_overlays_test');
         config(['hlfr.data_dir' => $this->dataDir]);
-
-        // Le remplissage assisté ETF2L des pages admin est servi depuis le
-        // cache : amorce vide pour rester sans appel HTTP réel.
-        $this->seedEtf2lCompetitionsCache();
     }
 
     protected function tearDown(): void
@@ -92,32 +88,6 @@ class OverlayTest extends TestCase
     }
 
     /**
-     * Amorce le cache ETF2L du roster d'une équipe (endpoint /team/{id},
-     * lu par la liaison ETF2L de la mise à jour) : le service n'a alors
-     * aucun appel HTTP à faire.
-     *
-     * @param  array<int, string>  $steamids64
-     */
-    private function seedEtf2lTeamRosterCache(int $teamId, array $steamids64): void
-    {
-        DB::table('etf2l_api_cache')->insert([
-            'url' => 'https://api-v2.etf2l.org/team/'.$teamId,
-            'payload' => json_encode([
-                'status' => ['code' => 200],
-                'team' => [
-                    'id' => $teamId,
-                    'name' => 'The Piece of Pie',
-                    'players' => array_map(
-                        static fn (string $id64): array => ['name' => 'joueur', 'steam' => ['id64' => $id64]],
-                        $steamids64
-                    ),
-                ],
-            ], JSON_THROW_ON_ERROR),
-            'fetched_at' => time(),
-        ]);
-    }
-
-    /**
      * @return array<string, mixed>
      */
     private function adminSession(): array
@@ -132,6 +102,7 @@ class OverlayTest extends TestCase
         $this->get('/admin/overlay')->assertForbidden();
         $this->post('/admin/overlay/generate', ['log' => '4059225'])->assertForbidden();
         $this->get('/admin/overlay/'.self::TOKEN)->assertForbidden();
+        $this->post('/admin/overlay/'.self::TOKEN.'/load', ['log' => '4059225'])->assertForbidden();
         $this->post('/admin/overlay/'.self::TOKEN.'/delete')->assertForbidden();
     }
 
@@ -144,17 +115,15 @@ class OverlayTest extends TestCase
             ->assertOk()
             ->assertSee('4059225')
             ->assertSee(url('/overlay/'.self::TOKEN))
-            // Le formulaire de génération permet de préparer noms et avatars,
-            // avec les équipes présentées comme A / B (côtés arbitraires).
-            ->assertSee('red_name')
-            ->assertSee('blue_name')
-            ->assertSee('red_avatar_url')
-            ->assertSee('blue_avatar_url')
-            ->assertSee('Équipe A')
-            ->assertSee('Équipe B')
-            // Plus de bouton d'interversion côté page de génération :
-            // il vit désormais sur la page d'édition de l'overlay.
-            ->assertDontSee('js-overlay-swap');
+            // La création est minimale (juste le log) : les noms d'équipes
+            // sont identifiés automatiquement sur ETF2L à chaque chargement.
+            ->assertDontSee('red_name')
+            ->assertDontSee('blue_name')
+            ->assertDontSee('Remplissage assisté')
+            ->assertDontSee('js-etf2l-fill')
+            // L'URL OBS d'un overlay est stable : la page liste ne propose
+            // plus d'interversion, tout se joue au chargement des logs.
+            ->assertDontSee('Intervertir');
     }
 
     public function test_la_generation_rejette_une_saisie_invalide(): void
@@ -171,6 +140,17 @@ class OverlayTest extends TestCase
         $this->get('/overlay/'.self::TOKEN)->assertNotFound();
         $this->get('/overlay/'.self::TOKEN.'/version')->assertNotFound();
         $this->get('/overlay/'.self::TOKEN.'/avatar/red')->assertNotFound();
+    }
+
+    public function test_la_route_d_interversion_a_disparu(): void
+    {
+        $this->seedOverlay();
+
+        // Les couleurs du log sont suivies telles quelles : plus de bouton
+        // d'interversion, la route n'existe plus.
+        $this->withSession($this->adminSession())
+            ->post('/admin/overlay/'.self::TOKEN.'/swap')
+            ->assertNotFound();
     }
 
     // ─── Vue overlay publique ──────────────────────────────────────────────
@@ -223,7 +203,47 @@ class OverlayTest extends TestCase
 
     // ─── Édition ──────────────────────────────────────────────────────────
 
-    public function test_l_admin_modifie_noms_et_avatars_et_la_version_bump(): void
+    public function test_la_page_d_edition_permet_de_charger_un_log_sans_intervention_manuelle(): void
+    {
+        $this->seedOverlay();
+
+        $this->withSession($this->adminSession())
+            ->get('/admin/overlay/'.self::TOKEN)
+            ->assertOk()
+            // Le chargement d'un log remplace le contenu de l'overlay, l'URL
+            // OBS (token) ne change jamais.
+            ->assertSee('Charger un nouveau log')
+            ->assertSee('action="/admin/overlay/'.self::TOKEN.'/load"', false)
+            ->assertSee('L\'URL OBS de cet overlay ne change jamais', false)
+            // Ni remplissage assisté, ni interversion : les couleurs du log
+            // sont suivies telles quelles, les noms ETF2L sont automatiques.
+            ->assertDontSee('Remplissage assisté')
+            ->assertDontSee('js-etf2l-fill')
+            ->assertDontSee('Intervertir')
+            // Seule personnalisation : les avatars par URL.
+            ->assertSee('red_avatar_url')
+            ->assertSee('blue_avatar_url')
+            ->assertDontSee('red_name');
+    }
+
+    public function test_le_chargement_de_log_rejette_une_saisie_invalide(): void
+    {
+        $this->seedOverlay();
+
+        $before = (new OverlayRepository)->find(self::TOKEN);
+
+        $this->withSession($this->adminSession())
+            ->post('/admin/overlay/'.self::TOKEN.'/load', ['log' => 'n-importe-quoi'])
+            ->assertRedirect()
+            ->assertSessionHas('error');
+
+        $after = (new OverlayRepository)->find(self::TOKEN);
+        // L'overlay est intact : même log, même version.
+        $this->assertSame($before['log_id'], $after['log_id']);
+        $this->assertSame((int) $before['version'], (int) $after['version']);
+    }
+
+    public function test_l_admin_modifie_les_avatars_et_la_version_bump(): void
     {
         $this->seedOverlay();
 
@@ -235,75 +255,25 @@ class OverlayTest extends TestCase
 
         $this->withSession($this->adminSession())
             ->post('/admin/overlay/'.self::TOKEN.'/update', [
-                'red_name' => 'Les Étoiles',
-                'blue_name' => 'Baguettes',
                 'red_avatar_url' => 'https://example.com/logo.png',
                 'blue_avatar_url' => '',
             ])
             ->assertRedirect();
 
         $after = $repo->find(self::TOKEN);
-        $this->assertSame('Les Étoiles', $after['teams']['red']['name']);
-        $this->assertSame('Baguettes', $after['teams']['blue']['name']);
         $this->assertSame('https://example.com/logo.png', $after['teams']['red']['avatar_url']);
         $this->assertNull($after['teams']['blue']['avatar_url']);
         $this->assertGreaterThan((int) $before['version'], (int) $after['version']);
 
-        // L'overlay reflète le nouveau nom (polling OBS → reload).
-        $this->get('/overlay/'.self::TOKEN)->assertOk()->assertSee('Les Étoiles');
-    }
+        // Les noms d'équipes ne sont pas saisissables : ils viennent du log
+        // (résolution ETF2L automatique, ici RED / BLU du fixture).
+        $this->assertSame('RED', $after['teams']['red']['name']);
+        $this->assertSame('BLU', $after['teams']['blue']['name']);
 
-    public function test_le_remplissage_assiste_etf2l_est_propose_sur_la_generation_et_l_edition(): void
-    {
-        // Le remplissage assisté des équipes est le même que pour les
-        // autres outils overlay (Bracket, Pick/Ban) : compétition ETF2L →
-        // équipes chargées via /admin/overlay/etf2l/teams. La mémoire des
-        // « équipes déjà castées » a disparu au profit de ce mécanisme.
-        // Les compétitions Highlander et 6v6 sont proposées côte à côte,
-        // les 6v6 portant leur marqueur pour se distinguer dans le menu.
-        $this->seedEtf2lCompetitionsCache([
-            ['id' => 42, 'type' => 'Highlander', 'name' => 'HLFR Test Cup', 'archived' => false],
-            ['id' => 43, 'type' => '6v6', 'name' => 'HLFR Test Cup 6v6', 'archived' => false],
-        ]);
-
-        $session = $this->adminSession();
-        $this->withSession($session)
-            ->get('/admin/overlay')
+        // L'overlay reflète le nouvel avatar (polling OBS → reload).
+        $this->get('/overlay/'.self::TOKEN)
             ->assertOk()
-            ->assertSee('Remplissage assisté')
-            ->assertSee('HLFR Test Cup')
-            ->assertSee('HLFR Test Cup 6v6 (6v6)')
-            ->assertSee('overlay-load-teams')
-            ->assertDontSee('Équipes déjà castées');
-
-        $this->seedOverlay();
-        $this->withSession($session)
-            ->get('/admin/overlay/'.self::TOKEN)
-            ->assertOk()
-            ->assertSee('Remplissage assisté')
-            ->assertSee('HLFR Test Cup')
-            ->assertSee('overlay-load-teams')
-            ->assertDontSee('Équipes déjà castées');
-    }
-
-    public function test_l_api_indisponible_masque_le_remplissage_assiste(): void
-    {
-        // Cache amorce vide (setUp) : la boîte affiche le message de repli
-        // sans bloquer la saisie manuelle des équipes.
-        $this->seedOverlay();
-
-        $session = $this->adminSession();
-        $this->withSession($session)
-            ->get('/admin/overlay')
-            ->assertOk()
-            ->assertSee('indisponible pour le moment')
-            ->assertDontSee('overlay-load-teams');
-
-        $this->withSession($session)
-            ->get('/admin/overlay/'.self::TOKEN)
-            ->assertOk()
-            ->assertSee('indisponible pour le moment')
-            ->assertDontSee('overlay-load-teams');
+            ->assertSee('https://example.com/logo.png');
     }
 
     public function test_l_upload_d_avatar_n_est_plus_propose(): void
@@ -324,124 +294,7 @@ class OverlayTest extends TestCase
         $this->withSession($session)
             ->get('/admin/overlay/'.self::TOKEN)
             ->assertOk()
-            ->assertDontSee('type="file"', false)
-            // Le bouton d'interversion A / B est mis en avant et expliqué.
-            ->assertSee('Intervertir les équipes A / B');
-    }
-
-    public function test_l_interversion_echange_tout_un_cote_de_l_overlay(): void
-    {
-        $this->seedOverlay();
-
-        $repo = new OverlayRepository;
-        $overlay = $repo->find(self::TOKEN);
-        $overlay['teams']['red'] = ['name' => 'Rouges', 'score' => 3, 'avatar_url' => 'https://example.com/rouge.png', 'etf2l_id' => 111, 'roster' => ['76561198000000001']];
-        $overlay['teams']['blue'] = ['name' => 'Bleus', 'score' => 2, 'avatar_url' => null, 'etf2l_id' => 222, 'roster' => ['76561198000000011']];
-        $repo->save($overlay);
-
-        // Faux avatars uploadés pour vérifier l'échange des fichiers.
-        $avatarDir = storage_path('app/public/overlay-avatars/'.self::TOKEN);
-        if (! is_dir($avatarDir)) {
-            @mkdir($avatarDir, 0755, true);
-        }
-        file_put_contents($avatarDir.'/red.png', 'avatar-rouge');
-        file_put_contents($avatarDir.'/blue.webp', 'avatar-bleu');
-
-        try {
-            $this->withSession($this->adminSession())
-                ->post('/admin/overlay/'.self::TOKEN.'/swap')
-                ->assertRedirect();
-
-            $after = $repo->find(self::TOKEN);
-            // Chaque équipe rejoint l'autre côté de l'écran : nom, avatar,
-            // score, stats joueurs/medics et liaison ETF2L voyagent ensemble.
-            $this->assertSame('Bleus', $after['teams']['red']['name']);
-            $this->assertSame('Rouges', $after['teams']['blue']['name']);
-            $this->assertSame('https://example.com/rouge.png', $after['teams']['blue']['avatar_url']);
-            $this->assertNull($after['teams']['red']['avatar_url']);
-            $this->assertSame(2, $after['teams']['red']['score']);
-            $this->assertSame(3, $after['teams']['blue']['score']);
-            $this->assertSame(111, $after['teams']['blue']['etf2l_id']);
-            $this->assertSame(['76561198000000001'], $after['teams']['blue']['roster']);
-            $this->assertSame(222, $after['teams']['red']['etf2l_id']);
-            $this->assertSame(['76561198000000011'], $after['teams']['red']['roster']);
-            $this->assertSame('ScoutEN', $after['players']['red'][0]['name']);
-            $this->assertSame('ScoutFR', $after['players']['blue'][0]['name']);
-            $this->assertSame(20000, $after['medics']['red']['heal']);
-            $this->assertSame(35000, $after['medics']['blue']['heal']);
-
-            // Les fichiers uploadés sont échangés, même avec des extensions différentes.
-            $this->assertSame('avatar-bleu', (string) file_get_contents($avatarDir.'/red.webp'));
-            $this->assertSame('avatar-rouge', (string) file_get_contents($avatarDir.'/blue.png'));
-
-            // L'overlay répercute l'interversion (polling OBS → reload).
-            $this->get('/overlay/'.self::TOKEN)->assertOk()->assertSee('Bleus');
-        } finally {
-            foreach (glob($avatarDir.'/*') ?: [] as $file) {
-                @unlink($file);
-            }
-            @rmdir($avatarDir);
-        }
-    }
-
-    public function test_la_liaison_etf2l_stoque_le_roster_pour_l_alignement(): void
-    {
-        // Le menu du remplissage assisté pousse l'identifiant ETF2L en
-        // champ caché : le serveur récupère le roster (cache amorce ici)
-        // et le stocke dans l'overlay pour aligner les couleurs des
-        // prochains logs sur les côtés A / B.
-        $this->seedOverlay();
-        $this->seedEtf2lTeamRosterCache(21747, ['76561198000552896', '76561198052898676']);
-
-        $this->withSession($this->adminSession())
-            ->post('/admin/overlay/'.self::TOKEN.'/update', [
-                'red_name' => 'POP',
-                'blue_name' => 'BLU',
-                'red_etf2l_id' => '21747',
-            ])
-            ->assertRedirect();
-
-        $overlay = (new OverlayRepository)->find(self::TOKEN);
-        $this->assertSame('POP', $overlay['teams']['red']['name']);
-        $this->assertSame(21747, $overlay['teams']['red']['etf2l_id']);
-        $this->assertSame(['76561198000552896', '76561198052898676'], $overlay['teams']['red']['roster']);
-        // Équipe non liée : pas de roster stocké, l'alignement restera
-        // ambigu pour elle (repli manuel via le bouton d'interversion).
-        $this->assertArrayNotHasKey('etf2l_id', $overlay['teams']['blue']);
-        $this->assertArrayNotHasKey('roster', $overlay['teams']['blue']);
-    }
-
-    public function test_une_liaison_etf2l_introuvable_previent_sans_vider_le_roster(): void
-    {
-        $this->seedOverlay();
-
-        $repo = new OverlayRepository;
-        $overlay = $repo->find(self::TOKEN);
-        $overlay['teams']['red']['etf2l_id'] = 21747;
-        $overlay['teams']['red']['roster'] = ['76561198000552896'];
-        $repo->save($overlay);
-
-        // Cache négatif amorcé pour l'équipe : aucun appel HTTP réel.
-        DB::table('etf2l_api_cache')->insert([
-            'url' => 'https://api-v2.etf2l.org/team/21747',
-            'payload' => json_encode(['error' => 'hlfr_etf2l_indisponible'], JSON_THROW_ON_ERROR),
-            'fetched_at' => time(),
-        ]);
-
-        $this->withSession($this->adminSession())
-            ->post('/admin/overlay/'.self::TOKEN.'/update', [
-                'red_name' => 'POP',
-                'blue_name' => 'BLU',
-                'red_etf2l_id' => '21747',
-            ])
-            ->assertRedirect()
-            ->assertSessionHas('error');
-
-        // Le roster déjà stocké survit à l'échec : l'alignement continue
-        // de fonctionner avec la dernière référence connue.
-        $overlay = $repo->find(self::TOKEN);
-        $this->assertSame(['76561198000552896'], $overlay['teams']['red']['roster']);
-        $this->assertSame('POP', $overlay['teams']['red']['name']);
+            ->assertDontSee('type="file"', false);
     }
 
     public function test_la_suppression_efface_l_overlay_et_sa_vue(): void

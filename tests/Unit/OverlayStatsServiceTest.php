@@ -302,119 +302,149 @@ class OverlayStatsServiceTest extends TestCase
         ];
     }
 
-    // ─── Alignement des couleurs du log sur les rosters ───────────────────
+    // ─── Noms d'équipes ETF2L automatiques ────────────────────────────────
 
     /**
-     * Payload minimal façon buildPayload : l'alignement ne regarde que
-     * les steamid3 des joueurs, les scores voyagent avec les équipes.
-     *
-     * @return array<string, mixed>
-     */
-    private function alignmentPayload(): array
-    {
-        return [
-            'teams' => [
-                'red' => ['name' => 'RED', 'score' => 1],
-                'blue' => ['name' => 'BLU', 'score' => 4],
-            ],
-            'players' => [
-                'red' => [
-                    ['steamid3' => '[U:1:101]', 'name' => 'R1'],
-                    ['steamid3' => '[U:1:102]', 'name' => 'R2'],
-                ],
-                'blue' => [
-                    ['steamid3' => '[U:1:201]', 'name' => 'B1'],
-                    ['steamid3' => '[U:1:202]', 'name' => 'B2'],
-                ],
-            ],
-            'medics' => [
-                'red' => ['heal' => 100, 'count' => 1],
-                'blue' => ['heal' => 200, 'count' => 1],
-            ],
-        ];
-    }
-
-    /**
-     * SteamID64 équivalents des steamid3 du payload ([U:1:N] ↔ 76561197960265728+N).
+     * Amorce le roster synchronisé d'une équipe : ses joueurs votent pour
+     * son nom (jointure etf2l_players / etf2l_teams).
      *
      * @param  array<int, string>  $steamids3
-     * @return array<int, string>
      */
-    private function rosterOf(array $steamids3): array
+    private function seedTeamRoster(int $teamId, string $name, string $country, array $steamids3): void
     {
-        return array_map(static fn (string $id3): string => SteamId::toSteamId64($id3), $steamids3);
+        DB::table('etf2l_teams')->insert([
+            'team_id' => $teamId,
+            'name' => $name,
+            'country' => $country,
+            'tag' => null,
+        ]);
+
+        foreach ($steamids3 as $steamid3) {
+            DB::table('etf2l_players')->insert([
+                'team_id' => $teamId,
+                'player_id' => random_int(1000, 999999),
+                'name' => 'joueur',
+                'steamid64' => SteamId::toSteamId64($steamid3),
+            ]);
+        }
     }
 
-    public function test_les_rosters_confirment_les_couleurs_du_log(): void
+    public function test_nomme_les_equipes_via_le_vote_de_couverture_etf2l(): void
     {
-        $payload = $this->alignmentPayload();
-        $redRoster = $this->rosterOf(['[U:1:101]', '[U:1:102]']);
-        $blueRoster = $this->rosterOf(['[U:1:201]', '[U:1:202]']);
+        // Chaque équipe couvre tous les joueurs de son côté du log : son
+        // nom remplace RED / BLU (plancher de 2 voix respecté).
+        $this->seedTeamRoster(900, 'Les Baguettes', 'France', ['[U:1:111]', '[U:1:222]', '[U:1:333]']);
+        $this->seedTeamRoster(901, 'The Piece of Pie', 'United Kingdom', ['[U:1:444]', '[U:1:555]']);
 
-        $alignment = OverlayStatsService::alignTeamsByRosters($payload, $redRoster, $blueRoster);
+        $fixture = $this->serviceWithFixture($this->logResponse());
+        $payload = $fixture['service']->buildPayload(1, $fixture['fetcher']);
 
-        $this->assertFalse($alignment['swapped']);
-        $this->assertFalse($alignment['ambiguous']);
-        $this->assertSame($payload, $alignment['payload']);
+        $this->assertSame('Les Baguettes', $payload['teams']['red']['name']);
+        $this->assertSame('The Piece of Pie', $payload['teams']['blue']['name']);
     }
 
-    public function test_les_rosters_inversent_les_couleurs_du_log(): void
+    public function test_exclut_les_equipes_nationales_du_vote(): void
     {
-        $payload = $this->alignmentPayload();
+        // Sans l'exclusion, « France » (roster national) l'emporterait avec
+        // 2 voix et nommerait à tort le côté rouge d'un match de club.
+        $this->seedTeamRoster(900, "\n France", ' France ', ['[U:1:111]', '[U:1:222]']);
+        $this->seedTeamRoster(901, 'Les Baguettes', 'France', ['[U:1:111]']);
 
-        // L'équipe A (roster rouge) a joué BLU sur ce log : les côtés
-        // s'échangent pour que la clé red porte toujours l'équipe A.
-        $redRoster = $this->rosterOf(['[U:1:201]', '[U:1:202]']);
-        $blueRoster = $this->rosterOf(['[U:1:101]', '[U:1:102]']);
+        $fixture = $this->serviceWithFixture($this->logResponse());
+        $payload = $fixture['service']->buildPayload(1, $fixture['fetcher']);
 
-        $alignment = OverlayStatsService::alignTeamsByRosters($payload, $redRoster, $blueRoster);
-
-        $this->assertTrue($alignment['swapped']);
-        $this->assertFalse($alignment['ambiguous']);
-        $this->assertSame('[U:1:201]', $alignment['payload']['players']['red'][0]['steamid3']);
-        $this->assertSame(4, $alignment['payload']['teams']['red']['score']);
-        $this->assertSame(1, $alignment['payload']['teams']['blue']['score']);
-        $this->assertSame(200, $alignment['payload']['medics']['red']['heal']);
+        // Seul candidat restant : 1 voix, sous le plancher → repli RED.
+        $this->assertSame('RED', $payload['teams']['red']['name']);
     }
 
-    public function test_un_roster_absent_du_log_rend_l_alignement_ambigu(): void
+    public function test_une_voix_isolee_ne_nomme_pas_le_cote(): void
     {
-        $payload = $this->alignmentPayload();
-        $redRoster = $this->rosterOf(['[U:1:901]', '[U:1:902]']);
-        $blueRoster = $this->rosterOf(['[U:1:201]', '[U:1:202]']);
+        // Un seul joueur du côté rouge appartient à une équipe : deux voix
+        // minimum sont requises, le repli RED s'applique.
+        $this->seedTeamRoster(900, 'Les Baguettes', 'France', ['[U:1:111]']);
 
-        $alignment = OverlayStatsService::alignTeamsByRosters($payload, $redRoster, $blueRoster);
+        $fixture = $this->serviceWithFixture($this->logResponse());
+        $payload = $fixture['service']->buildPayload(1, $fixture['fetcher']);
 
-        $this->assertFalse($alignment['swapped']);
-        $this->assertTrue($alignment['ambiguous']);
-        $this->assertSame($payload, $alignment['payload']);
+        $this->assertSame('RED', $payload['teams']['red']['name']);
+        $this->assertSame('BLU', $payload['teams']['blue']['name']);
     }
 
-    public function test_une_couverture_a_egalite_rend_l_alignement_ambigu(): void
+    public function test_une_egalite_de_voix_garde_le_repli_red_blu(): void
     {
-        $payload = $this->alignmentPayload();
+        // Deux équipes à égalité parfaite (2 voix chacune) : aucune ne se
+        // dégage, RED / BLU restent affichés.
+        $this->seedTeamRoster(900, 'Les Baguettes', 'France', ['[U:1:111]', '[U:1:222]']);
+        $this->seedTeamRoster(901, 'Les Étoiles', 'France', ['[U:1:333]', '[U:1:444]', '[U:1:555]']);
 
-        // Un joueur du roster rouge de chaque côté du log : impossible
-        // de trancher, le payload reste tel quel (repli manuel).
-        $redRoster = $this->rosterOf(['[U:1:101]', '[U:1:201]']);
-        $blueRoster = $this->rosterOf(['[U:1:102]', '[U:1:202]']);
+        // [U:1:444] rejoint le côté rouge : 2 voix de chaque côté du
+        // côté rouge (Baguettes vs Étoiles), égalité parfaite.
+        $response = $this->logResponse();
+        $response['players']['[U:1:444]']['team'] = 'Red';
 
-        $alignment = OverlayStatsService::alignTeamsByRosters($payload, $redRoster, $blueRoster);
+        $fixture = $this->serviceWithFixture($response);
+        $payload = $fixture['service']->buildPayload(1, $fixture['fetcher']);
 
-        $this->assertFalse($alignment['swapped']);
-        $this->assertTrue($alignment['ambiguous']);
-        $this->assertSame($payload, $alignment['payload']);
+        $this->assertSame('RED', $payload['teams']['red']['name']);
+        $this->assertSame('BLU', $payload['teams']['blue']['name']);
     }
 
-    public function test_sans_roster_complet_l_alignement_est_ambigu(): void
+    public function test_un_nom_identique_des_deux_cotes_invalide_les_deux(): void
     {
-        $payload = $this->alignmentPayload();
+        // Les deux côtés votent pour la même équipe (mixes d'un même
+        // club) : le nom ne distingue rien, repli RED / BLU des deux côtés.
+        $this->seedTeamRoster(900, 'Le Mix du Dimanche', 'France', ['[U:1:111]', '[U:1:222]', '[U:1:333]', '[U:1:444]', '[U:1:555]']);
 
-        // Un seul roster : pas de référence, aucun échange hasardeux.
-        $alignment = OverlayStatsService::alignTeamsByRosters($payload, $this->rosterOf(['[U:1:101]']), []);
+        $fixture = $this->serviceWithFixture($this->logResponse());
+        $payload = $fixture['service']->buildPayload(1, $fixture['fetcher']);
 
-        $this->assertFalse($alignment['swapped']);
-        $this->assertTrue($alignment['ambiguous']);
-        $this->assertSame($payload, $alignment['payload']);
+        $this->assertSame('RED', $payload['teams']['red']['name']);
+        $this->assertSame('BLU', $payload['teams']['blue']['name']);
+    }
+
+    // ─── Rechargement d'un overlay (mergePayload) ──────────────────────────
+
+    public function test_merge_payload_conserve_token_creation_et_avatars(): void
+    {
+        $fixture = $this->serviceWithFixture($this->logResponse());
+        $overlay = $this->overlayLikeFixture($fixture);
+
+        $payload = $fixture['service']->buildPayload(1, $fixture['fetcher']);
+        $payload['log_id'] = 987654321;
+
+        $merged = OverlayStatsService::mergePayload($overlay, $payload);
+
+        // Le token (URL OBS) et la date de création traversent le
+        // chargement, ainsi que les avatars personnalisés.
+        $this->assertSame('cccccccccccccccc', $merged['token']);
+        $this->assertSame(1700000000, $merged['created_at']);
+        $this->assertSame('https://example.com/rouge.png', $merged['teams']['red']['avatar_url']);
+        // Tout le reste vient du nouveau log : identifiant, scores, stats.
+        $this->assertSame(987654321, $merged['log_id']);
+        $this->assertSame(3, $merged['teams']['red']['score']);
+        $this->assertNull($merged['teams']['blue']['avatar_url']);
+    }
+
+    /**
+     * Overlay persisté façon AdminOverlayController / OverlayRepository,
+     * construit depuis le même fixture que le payload frais du test (un
+     * seul amorçage de cache par test : la clé etf2l_api_cache.url est
+     * unique).
+     *
+     * @param  array{service: OverlayStatsService, fetches: array<int, int>, fetcher: callable}  $fixture
+     * @return array<string, mixed>
+     */
+    private function overlayLikeFixture(array $fixture): array
+    {
+        $overlay = $fixture['service']->buildPayload(1, $fixture['fetcher']);
+
+        return array_merge($overlay, [
+            'token' => 'cccccccccccccccc',
+            'created_at' => 1700000000,
+            'teams' => [
+                'red' => ['name' => 'RED', 'score' => 0, 'avatar_url' => 'https://example.com/rouge.png'],
+                'blue' => ['name' => 'BLU', 'score' => 0, 'avatar_url' => null],
+            ],
+        ]);
     }
 }

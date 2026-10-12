@@ -118,7 +118,7 @@ Route::middleware('overlay-tools')->prefix('admin')->group(function (): void {
     Route::get('/overlay/{token}', [AdminOverlayController::class, 'edit'])->where('token', '[a-z0-9]{16}');
     Route::post('/overlay/{token}/update', [AdminOverlayController::class, 'update'])->where('token', '[a-z0-9]{16}');
     Route::post('/overlay/{token}/refresh', [AdminOverlayController::class, 'refresh'])->where('token', '[a-z0-9]{16}');
-    Route::post('/overlay/{token}/swap', [AdminOverlayController::class, 'swap'])->where('token', '[a-z0-9]{16}');
+    Route::post('/overlay/{token}/load', [AdminOverlayController::class, 'load'])->where('token', '[a-z0-9]{16}');
     Route::post('/overlay/{token}/delete', [AdminOverlayController::class, 'delete'])->where('token', '[a-z0-9]{16}');
     Route::get('/overlay/etf2l/teams', [AdminEtf2lTeamsController::class, 'teams']);
     Route::get('/overlay/etf2l/roster', [AdminEtf2lTeamsController::class, 'roster']);
