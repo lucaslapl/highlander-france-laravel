@@ -38,6 +38,7 @@
         gfW: 260,
         gfH: 200,
         gfSmallH: 100,
+        gfSmallGap: 50,
         gapX: 70,
         gapY: 26,
         laneGap: 60,
@@ -186,12 +187,15 @@
             var el = document.createElement('div');
             el.className = 'bkv-label'
                 + (label.lane === 'lower' ? ' bkv-label--lower' : '')
+                + (label.empty ? ' bkv-label--empty' : '')
                 + (selected && selected.type === 'column' && String(selected.columnId) === String(label.columnId)
                     ? ' bkv-label--selected'
                     : '');
             el.style.left = label.x + 'px';
             el.style.top = label.y + 'px';
-            el.textContent = label.text || '(round)';
+            el.textContent = label.text
+                || (label.empty ? (label.lane === 'final' ? '(grande finale vide)' : '(colonne vide)') : '(round)');
+            el.title = 'Cliquer pour éditer la colonne';
             el.addEventListener('click', function () {
                 selectColumn(label.columnId);
             });
@@ -222,6 +226,15 @@
             head.className = 'bkv-head' + (card.small ? ' bkv-head--small' : '');
             head.textContent = (card.match.label || '')
                 || (card.gf ? (card.column.label || 'Grand Final') : 'Match de 3è place');
+            /* Le titre d'une carte finale ouvre l'édition de la colonne
+               (renommage, match de 3è place…) : les voies finales n'ont
+               pas d'étiquette de round cliquable. */
+            head.title = 'Cliquer ici pour éditer la colonne';
+            head.style.cursor = 'pointer';
+            head.addEventListener('click', function (event) {
+                event.stopPropagation();
+                selectColumn(card.columnId);
+            });
             el.appendChild(head);
         }
 
@@ -305,20 +318,20 @@
             return;
         }
 
+        /* La colonne ciblée est celle de la sélection (colonne ou case) :
+           on peut toujours y ajouter une case, et la finale peut recevoir
+           un match de 3è place — aucune impasse après une suppression. */
+        addMatchBtn.disabled = false;
+        if ((column.lane || 'upper') === 'final') {
+            document.getElementById('bkv-add-third').hidden = false;
+        }
+
         if (selected.type === 'column') {
             columnSection.hidden = false;
             document.getElementById('bkv-column-title').textContent
                 = 'Colonne — ' + (column.label !== '' ? column.label : '(sans label)');
             document.getElementById('bkv-column-label').value = column.label || '';
             document.getElementById('bkv-column-lane').value = column.lane || 'upper';
-            addMatchBtn.disabled = false;
-
-            /* Le bouton « match de 3è place » n'existe que sur les colonnes
-               de la voie finale (grande carte) : il ajoute une case compacte
-               empilée dessous. */
-            if ((column.lane || 'upper') === 'final') {
-                document.getElementById('bkv-add-third').hidden = false;
-            }
             return;
         }
 
@@ -490,10 +503,23 @@
             return;
         }
         var column = findColumn(selected.columnId);
-        if (column) {
-            column.lane = this.value;
-            render();
+        if (!column || (column.lane || 'upper') === this.value) {
+            return;
         }
+
+        /* La colonne part en bout de sa nouvelle voie : elle y prend la
+           profondeur suivante sans déplacer aucune autre colonne (sinon
+           les colonnes existantes de la voie glissent en cascade). */
+        column.lane = this.value;
+        state.columns.splice(state.columns.indexOf(column), 1);
+        var insertAt = 0;
+        state.columns.forEach(function (existing, i) {
+            if ((existing.lane || 'upper') === column.lane) {
+                insertAt = i + 1;
+            }
+        });
+        state.columns.splice(insertAt, 0, column);
+        render();
     });
 
     /* Déplacement gauche / droite : la colonne est permutée avec sa plus
@@ -546,11 +572,14 @@
         selectColumn(column.id);
     });
 
+    /* Colonne ciblée par la sélection, qu'il s'agisse d'une colonne ou
+       d'une de ses cases. */
+    function selectedColumn() {
+        return selected === null ? null : findColumn(selected.columnId);
+    }
+
     addMatchBtn.addEventListener('click', function () {
-        if (selected === null || selected.type !== 'column') {
-            return;
-        }
-        var column = findColumn(selected.columnId);
+        var column = selectedColumn();
         if (!column) {
             return;
         }
@@ -560,14 +589,12 @@
         selectMatch(column.id, match.id);
     });
 
-    /* « Ajouter un match de 3è place » (colonnes de la voie finale) :
-       une case compacte empilée sous la grande finale, titre modifiable —
-       le match reste éditable comme n'importe quelle case. */
+    /* « Ajouter un match de 3è place » (voie finale) : une case compacte
+       empilée sous la grande finale, titre modifiable — le match reste
+       éditable comme n'importe quelle case. Accessible depuis la colonne
+       finale ou depuis n'importe laquelle de ses cases. */
     document.getElementById('bkv-add-third').addEventListener('click', function () {
-        if (selected === null || selected.type !== 'column') {
-            return;
-        }
-        var column = findColumn(selected.columnId);
+        var column = selectedColumn();
         if (!column || (column.lane || 'upper') !== 'final') {
             return;
         }
@@ -617,9 +644,11 @@
             state.live = null;
         }
         (column.matches || []).splice((column.matches || []).indexOf(match), 1);
-        selected = null;
-        syncPanel();
-        render();
+
+        /* La colonne reste sélectionnée après la suppression : on peut
+           recréer une case immédiatement (bouton « Ajouter une case »),
+           même si c'était la dernière. */
+        selectColumn(column.id);
     });
 
     /* ── Générateur de squelette ────────────────────────────────────────── */

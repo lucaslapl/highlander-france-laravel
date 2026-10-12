@@ -145,6 +145,16 @@
     outline: 1px solid #9b6dff;
 }
 
+/* Colonne sans aucune case : l'étiquette reste posée pour rester
+   sélectionnable (recréer la grande finale ou une case). */
+.bkv-label.bkv-label--empty {
+    border: 1px dashed #555;
+    color: #777;
+    font-weight: 600;
+    text-transform: none;
+    letter-spacing: 0.02em;
+}
+
 .bkv-card {
     position: absolute;
     display: flex;

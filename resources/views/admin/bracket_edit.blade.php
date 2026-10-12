@@ -77,9 +77,11 @@
 
         <h3 class="admin-section-title"><i class="fa-solid fa-sitemap"></i> Bracket</h3>
         <p style="color:#777; font-size:13px; margin:0 0 12px;">
-            Générez d'abord un squelette (colonnes des voies haute / basse et grande finale, câblage automatique des
-            connecteurs), puis complétez case par case : chaque clic sur une case ouvre son édition à droite. Les
-            étiquettes de round se cliquent pour déplacer, renommer ou supprimer une colonne.
+            Générez d'abord un squelette, puis complétez case par case : chaque clic sur une case ouvre son édition à
+            droite, chaque clic sur une étiquette de round ouvre l'édition de la colonne. Voies : « Haute » et « Basse »
+            sont les voies gagnante / perdante d'une <strong>double élimination</strong> (WB / LB) ; pour une élimination
+            <strong>simple</strong>, laissez toutes les colonnes en voie « Haute » — les connecteurs suivront tout seuls.
+            « Finale » place la grande carte à droite, alimentée automatiquement.
         </p>
         <noscript>
             <p style="color:#ff8080;">L'éditeur visuel nécessite JavaScript : sans lui, les cases du bracket ne seraient pas enregistrées.</p>
@@ -135,9 +137,6 @@
                             <i class="fa-solid fa-trash"></i> Supprimer
                         </button>
                     </div>
-                    <button type="button" class="admin-btn" id="bkv-add-third" hidden style="margin-top:10px;">
-                        <i class="fa-solid fa-plus"></i> Ajouter un match de 3è place
-                    </button>
                 </div>
 
                 <div id="bkv-match-section" hidden>
@@ -196,13 +195,19 @@
                         </button>
                     </div>
                 </div>
+
+                {{-- Visible dès qu'une finale est sélectionnée (colonne ou case) :
+                     ajoute une carte compacte sous la grande finale. --}}
+                <button type="button" class="admin-btn" id="bkv-add-third" hidden style="margin-top:12px;">
+                    <i class="fa-solid fa-plus"></i> Ajouter un match de 3è place
+                </button>
             </aside>
         </div>
 
         <div class="bkv-toolbar">
             <button type="button" class="admin-btn" id="bkv-add-column"><i class="fa-solid fa-plus"></i> Ajouter une colonne</button>
             <button type="button" class="admin-btn" id="bkv-add-match" disabled>
-                <i class="fa-solid fa-plus"></i> Ajouter une case à la colonne sélectionnée
+                <i class="fa-solid fa-plus"></i> Ajouter une case à cette colonne
             </button>
         </div>
 

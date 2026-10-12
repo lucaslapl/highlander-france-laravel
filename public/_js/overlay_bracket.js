@@ -104,6 +104,9 @@
         wrap.appendChild(svg);
 
         result.labels.forEach(function (label) {
+            if (label.empty) {
+                return; /* Colonnes vides : pas d'étiquette orpheline sur l'overlay. */
+            }
             var el = document.createElement('div');
             el.className = 'label anim' + (label.lane === 'lower' ? ' lower' : '');
             el.style.left = label.x + 'px';

@@ -28,6 +28,7 @@
         gfSmallH: 160,
         gapX: 130,
         gapY: 40,
+        gfSmallGap: 110,
         laneGap: 90,
         labelH: 38
     };
@@ -128,12 +129,13 @@
 
         /* La voie « final » : la première case est la grande finale, les
            suivantes (ex : match de 3è place) sont des cartes compactes
-           empilées dessous, même largeur. L'étiquette est rendue dans la
+           empilées dessous, même largeur, nettement détachées de la
+           grande finale (gfSmallGap). L'étiquette est rendue dans la
            carte (gf-head côté overlay) ; le bloc entier (grande finale +
            cartes compactes) est centré sur l'empilement des voies. */
         var finalOffset = Math.max(lanes.upper.length, lanes.lower.length, 0) * strideX;
         var finalCount = lanes.final.length > 0 ? (lanes.final[0].matches || []).length : 0;
-        var finalBlockH = opts.gfH + Math.max(0, finalCount - 1) * (opts.gfSmallH + opts.gapY);
+        var finalBlockH = opts.gfH + Math.max(0, finalCount - 1) * (opts.gfSmallH + opts.gfSmallGap);
         var gfTop = (stackH - finalBlockH) / 2;
 
         var cards = [];
@@ -143,7 +145,22 @@
         function placeLane(lane, top) {
             lanes[lane].forEach(function (column, depth) {
                 var n = (column.matches || []).length;
+
+                /* Colonne vide : aucune case, mais l'étiquette reste posée
+                   en tête de voie — l'éditeur admin peut ainsi la
+                   sélectionner et y recréer des cases ; l'overlay
+                   l'ignore (label.empty). */
                 if (n === 0) {
+                    labels.push({
+                        column: column,
+                        columnId: String(column.id || ''),
+                        lane: lane,
+                        depth: depth,
+                        text: String(column.label || ''),
+                        empty: true,
+                        x: depth * strideX,
+                        y: top - opts.labelH
+                    });
                     return;
                 }
 
@@ -176,6 +193,7 @@
                     lane: lane,
                     depth: depth,
                     text: String(column.label || ''),
+                    empty: false,
                     x: depth * strideX,
                     y: columnTop - opts.labelH
                 });
@@ -188,6 +206,26 @@
         /* Voie « final » : grandes cartes, étiquette rendue dans la carte
            (gf-head côté overlay), pas d'étiquette posée au-dessus. */
         lanes.final.forEach(function (column, depth) {
+            var x = finalOffset + depth * (opts.gfW + opts.gapX);
+
+            /* Colonne finale vide : aucune case, mais l'étiquette reste
+               posée au-dessus de son emplacement — l'éditeur admin en a
+               besoin pour sélectionner la colonne et y recréer la grande
+               finale ; l'overlay l'ignore (label.empty). */
+            if ((column.matches || []).length === 0) {
+                labels.push({
+                    column: column,
+                    columnId: String(column.id || ''),
+                    lane: 'final',
+                    depth: depth,
+                    text: String(column.label || ''),
+                    empty: true,
+                    x: x,
+                    y: gfTop - opts.labelH
+                });
+                return;
+            }
+
             (column.matches || []).forEach(function (match, index) {
                 var big = index === 0;
                 var card = {
@@ -200,10 +238,10 @@
                     index: index,
                     gf: big,
                     small: !big,
-                    x: finalOffset + depth * (opts.gfW + opts.gapX),
+                    x: x,
                     y: big
                         ? gfTop
-                        : gfTop + opts.gfH + opts.gapY + (index - 1) * (opts.gfSmallH + opts.gapY),
+                        : gfTop + opts.gfH + opts.gfSmallGap + (index - 1) * (opts.gfSmallH + opts.gfSmallGap),
                     w: opts.gfW,
                     h: big ? opts.gfH : opts.gfSmallH
                 };
@@ -288,8 +326,15 @@
             maxX = Math.max(maxX, card.x + card.w);
             maxY = Math.max(maxY, card.y + card.h);
         });
+
+        /* Les étiquettes comptent dans les bornes : celles des colonnes
+           vides (sans carte) réserveraient sinon l'emplacement de leur
+           colonne et déborderaient du conteneur mis à l'échelle. Largeur
+           nominale = la carte qui s'y posera. */
         labels.forEach(function (label) {
+            minX = Math.min(minX, label.x);
             minY = Math.min(minY, label.y);
+            maxX = Math.max(maxX, label.x + (label.lane === 'final' ? opts.gfW : opts.cardW));
         });
 
         if (cards.length > 0) {
