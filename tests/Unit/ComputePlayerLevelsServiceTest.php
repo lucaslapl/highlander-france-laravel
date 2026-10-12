@@ -17,225 +17,353 @@ final class ComputePlayerLevelsServiceTest extends TestCase
         $this->service = new ComputePlayerLevelsService;
     }
 
-    public function test_exclut_forfaits_divisions_non_normalisables_et_coupes(): void
+    public function test_exclut_forfaits_coupes_qualifications_et_divisions_inconnues(): void
     {
+        $now = time();
         $results = [
             // Forfait : exclu.
-            $this->apiResult('Highlander', 1, 'Premiership', team: 10, defaultwin: true),
+            $this->apiResult('Highlander', 1, 'Premiership', team: 10, time: $now - 900, defaultwin: true),
             // Coupe (catégorie non officielle) : exclue même avec division connue.
-            $this->apiResult('Highlander', 2, 'Premiership', team: 10, category: 'Highlander Cup'),
-            // Division de coupe non normalisable : exclu.
-            $this->apiResult('6v6', 3, 'Megalodon', team: 10),
-            // Match valide.
-            $this->apiResult('Highlander', 4, 'Division 1', team: 10),
+            $this->apiResult('Highlander', 2, 'Premiership', team: 10, time: $now - 890, category: 'Highlander Cup'),
+            // Qualifications (pre-season) : compétition exclue par la règle 2.7.
+            $this->apiResult('Highlander', 3, 'Premiership', team: 10, time: $now - 880,
+                competitionName: 'Highlander Season 36: Premiership Qualifiers'),
+            // Division inconnue sans tier API : exclue.
+            $this->apiResult('Highlander', 4, 'Megalodon', team: 10, time: $now - 870),
+            // Saison valide : Division 1 HL => High.
+            $this->apiResult('Highlander', 5, 'Division 1', team: 10, time: $now - 120),
+            $this->apiResult('Highlander', 5, 'Division 1', team: 10, time: $now - 110),
+            $this->apiResult('Highlander', 5, 'Division 1', team: 10, time: $now - 100),
         ];
 
         $levels = $this->service->levelsFromResults($results);
 
-        $this->assertCount(1, $levels);
-        $this->assertSame('9v9', $levels[0]['game_mode']);
-        // "Division 1" (vieille époque HL) => High via le rang 1.
-        $this->assertSame('High', $levels[0]['division_label']);
-        $this->assertSame(1.0, $levels[0]['tier_moyen']);
-        $this->assertSame(1, $levels[0]['nb_matchs_comptes']);
+        // Une ligne propre au 9v9 + une ligne convertie en 6s (High -> D4).
+        $this->assertCount(2, $levels);
+
+        $sixes = $this->levelOf($levels, '6s');
+        $this->assertSame('Division 4', $sixes['division_label']);
+        $this->assertSame(0, $sixes['nb_matchs_comptes']);
+        $this->assertSame(0, $sixes['nb_competitions']);
+        $this->assertSame(0, $sixes['last_match_time']);
+
+        $hl = $this->levelOf($levels, '9v9');
+        $this->assertSame('High', $hl['division_label']);
+        $this->assertSame(3, $hl['nb_matchs_comptes']);
+        $this->assertSame(1, $hl['nb_competitions']);
+    }
+
+    public function test_une_saison_n_est_active_qu_a_partir_de_trois_matchs(): void
+    {
+        $now = time();
+        $results = [
+            // Deux matchs seulement : saison non active, aucun niveau.
+            $this->apiResult('Highlander', 100, 'Mid', team: 10, time: $now - 100),
+            $this->apiResult('Highlander', 100, 'Mid', team: 10, time: $now - 90),
+        ];
+
+        $this->assertSame([], $this->service->levelsFromResults($results));
     }
 
     public function test_les_mercs_dans_une_autre_equipe_sont_exclus(): void
     {
-        $results = [
-            // Compétition principale : 4 matchs avec l'équipe 10.
-            $this->apiResult('6v6', 100, 'Division 2', team: 10, time: 1000),
-            $this->apiResult('6v6', 100, 'Division 2', team: 10, time: 1100),
-            $this->apiResult('6v6', 100, 'Division 2', team: 10, time: 1200),
-            $this->apiResult('6v6', 100, 'Division 2', team: 10, time: 1300),
-            // Remplacement dans l'équipe 99 (minoritaire) : ignoré.
-            $this->apiResult('6v6', 100, 'Division 2', team: 99, time: 1400),
-        ];
+        $now = time();
+        $results = [];
+        for ($i = 0; $i < 3; $i++) {
+            $results[] = $this->apiResult('6v6', 100, 'Division 2', team: 10, time: $now - 100 + $i);
+        }
+        // Remplacement dans l'équipe 99 (minoritaire) : ignoré.
+        $results[] = $this->apiResult('6v6', 100, 'Division 2', team: 99, time: $now - 50);
 
         $levels = $this->service->levelsFromResults($results);
 
-        $this->assertCount(1, $levels);
-        $this->assertSame(4, $levels[0]['nb_matchs_comptes']);
-        $this->assertSame(1, $levels[0]['nb_competitions']);
+        $sixes = $this->levelOf($levels, '6s');
+        $this->assertSame('Division 2', $sixes['division_label']);
+        $this->assertSame(3, $sixes['nb_matchs_comptes']);
     }
 
-    public function test_separe_9v9_et_6v6_et_garde_les_quatre_dernieres_saisons(): void
+    public function test_l_experience_est_la_division_la_plus_haute_pas_une_moyenne(): void
     {
+        $now = time();
         $results = [];
-
-        // 5 saisons Highlander (seules les 4 plus récentes comptent).
-        foreach ([100 => 100, 101 => 200, 102 => 300, 103 => 400, 105 => 500] as $compId => $time) {
-            for ($i = 0; $i < 2; $i++) {
-                $results[] = $this->apiResult('Highlander', $compId, 'Mid', team: 10, time: $time);
+        // Une saison Premiership puis deux saisons Mid : l'expérience est
+        // Premiership (règle 2.7 : division la plus haute), pas une moyenne.
+        foreach ([100 => 'Premiership', 101 => 'Mid', 102 => 'Mid'] as $compId => $division) {
+            for ($i = 0; $i < 3; $i++) {
+                $results[] = $this->apiResult('Highlander', $compId, $division, team: 10, time: $now - 1000 + $compId * 10 + $i);
             }
         }
-        // Une vieille saison Highlander (écartée).
-        for ($i = 0; $i < 5; $i++) {
-            $results[] = $this->apiResult('Highlander', 104, 'Open', team: 10, time: 50);
+
+        $levels = $this->service->levelsFromResults($results);
+
+        $this->assertSame('Premiership', $this->levelOf($levels, '9v9')['division_label']);
+        // Conversion officielle : 9v9 Premiership -> 6v6 Division 2.
+        $this->assertSame('Division 2', $this->levelOf($levels, '6s')['division_label']);
+    }
+
+    public function test_la_fenetre_couvre_les_trois_dernieres_saisons_tous_modes_confondus(): void
+    {
+        $now = time();
+        $results = [];
+        // 4 saisons actives : la plus ancienne (Premiership) sort de la
+        // fenêtre des 3 dernières (tous modes confondus, règle 2.7) et ne
+        // compte donc pas.
+        foreach ([
+            100 => ['Highlander', 'Premiership', 400],
+            101 => ['Highlander', 'Mid', 300],
+            102 => ['6v6', 'Division 3', 200],
+            103 => ['Highlander', 'Mid', 100],
+        ] as $compId => [$type, $division, $age]) {
+            for ($i = 0; $i < 3; $i++) {
+                $results[] = $this->apiResult($type, $compId, $division, team: 10, time: $now - $age + $i);
+            }
         }
-        // Une saison 6v6 indépendante.
-        $results[] = $this->apiResult('6v6', 200, 'Top Division', team: 20);
 
         $levels = $this->service->levelsFromResults($results);
 
-        $this->assertCount(2, $levels);
-
-        // Trié par nom de mode : '6s' avant '9v9'.
-        $sixes = $levels[0];
-        $this->assertSame('6s', $sixes['game_mode']);
-        $this->assertSame('Top Division', $sixes['division_label']);
-
-        $hl = $levels[1];
-        $this->assertSame('9v9', $hl['game_mode']);
-        $this->assertSame(8, $hl['nb_matchs_comptes']);
-        $this->assertSame(4, $hl['nb_competitions']);
-        $this->assertSame(2.0, $hl['tier_moyen']);
+        // Fenêtre : les 3 saisons les plus récentes (Mid, D3, Mid) ;
+        // la vieille Premiership est hors fenêtre.
+        $hl = $this->levelOf($levels, '9v9');
         $this->assertSame('Mid', $hl['division_label']);
+        $this->assertSame(2, $hl['nb_competitions']);
+        $this->assertSame(6, $hl['nb_matchs_comptes']);
+
+        // 6s : le Division 3 propre domine la conversion de Mid (=> Open).
+        $this->assertSame('Division 3', $this->levelOf($levels, '6s')['division_label']);
     }
 
-    public function test_le_libelle_correspond_au_rang_moyen_arrondi(): void
+    public function test_les_playoffs_comptent_pour_le_tier_superieur(): void
     {
-        $results = [
-            $this->apiResult('Highlander', 100, 'Premiership', team: 10, time: 300),
-            $this->apiResult('Highlander', 100, 'High', team: 10, time: 310),
-            $this->apiResult('Highlander', 100, 'High', team: 10, time: 320),
-        ];
+        $now = time();
+        $results = [];
+        // Saison régulière en Mid (3 matchs) puis phase finale "Mid Playoffs"
+        // (compétition séparée, division absente, division lue dans le nom).
+        for ($i = 0; $i < 3; $i++) {
+            $results[] = $this->apiResult('Highlander', 100, 'Mid', team: 10, time: $now - 200 + $i,
+                competitionName: 'Highlander Season 36 (Autumn 2026)');
+        }
+        $results[] = $this->apiResult('Highlander', 101, null, team: 10, time: $now - 100,
+            competitionName: 'Highlander Season 36 (Autumn 2026): Mid Playoffs', round: 'Semi-Finals');
 
         $levels = $this->service->levelsFromResults($results);
 
-        // Moyenne 2/3 sur les rangs : arrondie au rang 1 => High.
-        $this->assertEqualsWithDelta(2 / 3, $levels[0]['tier_moyen'], 0.01);
-        $this->assertSame('High', $levels[0]['division_label']);
+        // Match de phase finale en Mid => expérience du tier au-dessus : High.
+        $hl = $this->levelOf($levels, '9v9');
+        $this->assertSame('High', $hl['division_label']);
+        $this->assertSame(4, $hl['nb_matchs_comptes']);
     }
 
-    public function test_les_vieilles_divisions_6v6_sont_normalisees_vers_low(): void
+    public function test_les_rounds_de_playoffs_des_vieilles_saisons_comptent_aussi(): void
     {
-        $results = [
-            // Open et Division 5/6 d'époque => Low aujourd'hui.
-            $this->apiResult('6v6', 100, 'Open', team: 10, time: 300),
-            $this->apiResult('6v6', 101, 'Division 5D', team: 10, time: 200),
-            $this->apiResult('6v6', 102, 'Division 6B', team: 10, time: 100),
-        ];
+        $now = time();
+        $results = [];
+        // Ancienne époque : playoffs dans la même compétition, round explicite.
+        for ($i = 0; $i < 3; $i++) {
+            $results[] = $this->apiResult('6v6', 100, 'Division 4', team: 10, time: $now - 200 + $i);
+        }
+        $results[] = $this->apiResult('6v6', 100, 'Division 4', team: 10, time: $now - 100, round: 'Playoffs: Round 1');
 
         $levels = $this->service->levelsFromResults($results);
 
-        $this->assertCount(1, $levels);
-        $this->assertSame('Low', $levels[0]['division_label']);
-        $this->assertSame(3, $levels[0]['nb_matchs_comptes']);
+        // D4 en phase finale => expérience Division 3.
+        $this->assertSame('Division 3', $this->levelOf($levels, '6s')['division_label']);
     }
 
-    public function test_la_vieille_division_mid_6v6_correspond_a_division_3(): void
+    public function test_decay_d_une_division_par_deux_annees_pleines(): void
     {
-        $results = [
-            $this->apiResult('6v6', 100, 'Mid', team: 10),
-        ];
+        $now = time();
+        $results = [];
+        // Saison Mid terminée il y a 5 ans : deux pas de decay => Low
+        // (progression High -> Mid -> Low de la règle 2.7).
+        for ($i = 0; $i < 3; $i++) {
+            $results[] = $this->apiResult('Highlander', 100, 'Mid', team: 10, time: $now - 5 * 365 * 86400 + $i);
+        }
+        // Saison Open récente : ne décroît pas (tier le plus bas).
+        for ($i = 0; $i < 3; $i++) {
+            $results[] = $this->apiResult('Highlander', 101, 'Open', team: 10, time: $now - 100 + $i);
+        }
 
         $levels = $this->service->levelsFromResults($results);
 
-        $this->assertCount(1, $levels);
-        $this->assertSame(3.0, $levels[0]['tier_moyen']);
-        $this->assertSame('Division 3', $levels[0]['division_label']);
+        $hl = $this->levelOf($levels, '9v9');
+        // Mid il y a 5 ans décroît en Low ; Open reste Open : le meilleur des
+        // deux est Low.
+        $this->assertSame('Low', $hl['division_label']);
+        // Conversion officielle : 9v9 Division 5 -> 6v6 Division 6 (Open).
+        $this->assertSame('Open', $this->levelOf($levels, '6s')['division_label']);
     }
 
-    public function test_les_vieilles_divisions_hl_sont_normalisees_selon_lechelle_legacy(): void
+    public function test_le_decay_est_plancher_a_low_division_5(): void
     {
-        $results = [
-            $this->apiResult('Highlander', 100, 'Division 1', team: 10, time: 500),
-            $this->apiResult('Highlander', 101, 'Division 2A', team: 10, time: 400),
-            $this->apiResult('Highlander', 102, 'Division 3', team: 10, time: 300),
-            $this->apiResult('Highlander', 103, 'Division 4B', team: 10, time: 200),
-            $this->apiResult('Highlander', 104, 'Division 5D', team: 10, time: 100),
-            $this->apiResult('Highlander', 105, 'Division 6M', team: 10),
-        ];
+        $now = time();
+        $results = [];
+        // Premiership il y a 20 ans : 10 pas de decay, plafonné à D5 => Low.
+        for ($i = 0; $i < 3; $i++) {
+            $results[] = $this->apiResult('Highlander', 100, 'Premiership', team: 10, time: $now - 20 * 365 * 86400 + $i);
+        }
 
         $levels = $this->service->levelsFromResults($results);
 
-        // Seules les 4 saisons les plus récentes comptent (Div1, Div2A, Div3,
-        // Div4B) => rangs 1 + 1 + 2 + 2, moyenne 1.5 arrondie au rang 1 => High.
-        $this->assertEqualsWithDelta(1.5, $levels[0]['tier_moyen'], 0.01);
-        $this->assertSame('High', $levels[0]['division_label']);
-        $this->assertSame(4, $levels[0]['nb_matchs_comptes']);
+        $this->assertSame('Low', $this->levelOf($levels, '9v9')['division_label']);
     }
 
-    public function test_division_1_et_high_sont_reconnues_en_6s(): void
+    public function test_conversion_croisiee_exemple_officiel_1(): void
     {
-        $results = [
-            // Saisons récentes nommées selon l'échelle ETF2L actuelle.
-            $this->apiResult('6v6', 100, 'Division 1', team: 10, time: 200),
-            $this->apiResult('6v6', 101, 'High', team: 10, time: 100),
-        ];
+        $now = time();
+        $results = [];
+        // Exemple règle 2.7 : "HL Mid, 6s Low, HL Mid" => HL Mid et 6s Low.
+        foreach ([
+            100 => ['Highlander', 'Mid', 300],
+            101 => ['6v6', 'Low', 200],
+            102 => ['Highlander', 'Mid', 100],
+        ] as $compId => [$type, $division, $age]) {
+            for ($i = 0; $i < 3; $i++) {
+                $results[] = $this->apiResult($type, $compId, $division, team: 10, time: $now - $age + $i);
+            }
+        }
 
         $levels = $this->service->levelsFromResults($results);
 
-        $this->assertCount(1, $levels);
-        $this->assertSame('6s', $levels[0]['game_mode']);
-        $this->assertSame(1.0, $levels[0]['tier_moyen']);
-        $this->assertSame('Division 1', $levels[0]['division_label']);
+        $this->assertSame('Mid', $this->levelOf($levels, '9v9')['division_label']);
+        // 6s : le Low propre bat la conversion de Mid (=> Open).
+        $this->assertSame('Low', $this->levelOf($levels, '6s')['division_label']);
     }
 
-    public function test_le_tier_api_est_prioritaire_sur_le_nom_de_division(): void
+    public function test_conversion_croisiee_exemple_officiel_2(): void
     {
-        $results = [
-            // Nom non normalisable mais tier valide : compté via le tier.
-            $this->apiResult('6v6', 100, 'Megalodon', team: 10, time: 300, tier: 0),
-            // Tier hors échelle : repli sur la normalisation du nom.
-            $this->apiResult('6v6', 101, 'Division 2', team: 10, time: 200, tier: 99),
-        ];
+        $now = time();
+        $results = [];
+        // Exemple règle 2.7 : "HL D2, 6s Low, HL Mid" => HL D2 (affiché High :
+        // D1/D2 => High chez nous) et 6s D4.
+        foreach ([
+            100 => ['Highlander', 'Division 2', 300],
+            101 => ['6v6', 'Low', 200],
+            102 => ['Highlander', 'Mid', 100],
+        ] as $compId => [$type, $division, $age]) {
+            for ($i = 0; $i < 3; $i++) {
+                $results[] = $this->apiResult($type, $compId, $division, team: 10, time: $now - $age + $i);
+            }
+        }
 
         $levels = $this->service->levelsFromResults($results);
 
-        $this->assertCount(1, $levels);
-        // Rangs 0 (tier API) + 2 (regex) => moyenne 1.0 => Division 1.
-        $this->assertSame(1.0, $levels[0]['tier_moyen']);
-        $this->assertSame('Division 1', $levels[0]['division_label']);
+        $this->assertSame('High', $this->levelOf($levels, '9v9')['division_label']);
+        // 6s D4 : la conversion de HL D2 (=> D4) bat le Low propre (D5).
+        $this->assertSame('Division 4', $this->levelOf($levels, '6s')['division_label']);
     }
 
-    public function test_une_egalite_exacte_avantage_le_joueur(): void
+    public function test_conversion_croisiee_exemple_officiel_3(): void
     {
-        $results = [
-            $this->apiResult('6v6', 100, 'Top Division', team: 10, time: 200),
-            $this->apiResult('6v6', 101, 'Division 1', team: 10, time: 100),
-        ];
+        $now = time();
+        $results = [];
+        // Exemple règle 2.7 : "HL Open, 6s Mid, 6s Mid" => HL Low et 6s Mid
+        // (6s Mid lu comme Division 4, borne conservatrice D3/D4).
+        foreach ([
+            100 => ['Highlander', 'Open', 300],
+            101 => ['6v6', 'Mid', 200],
+            102 => ['6v6', 'Mid', 100],
+        ] as $compId => [$type, $division, $age]) {
+            for ($i = 0; $i < 3; $i++) {
+                $results[] = $this->apiResult($type, $compId, $division, team: 10, time: $now - $age + $i);
+            }
+        }
 
         $levels = $this->service->levelsFromResults($results);
 
-        // Moyenne 0.5 exactement : arrondi demi-inférieur => rang 0.
-        $this->assertSame(0.5, $levels[0]['tier_moyen']);
-        $this->assertSame('Top Division', $levels[0]['division_label']);
+        // HL : la conversion de 6s Mid (D4 => D5/Low) bat le Open propre.
+        $this->assertSame('Low', $this->levelOf($levels, '9v9')['division_label']);
+        // 6s : Mid (D4) bat la conversion de HL Open (=> Open).
+        $this->assertSame('Division 4', $this->levelOf($levels, '6s')['division_label']);
     }
 
-    public function test_la_moyenne_est_ponderee_par_le_nombre_de_matchs(): void
+    public function test_les_tiers_les_plus_bas_comptent_toutes_saisons(): void
     {
-        $results = [
-            // Une seule match en Top Division...
-            $this->apiResult('6v6', 100, 'Top Division', team: 10, time: 200),
-            // ...contre quatre en Division 1.
-            $this->apiResult('6v6', 101, 'Division 1', team: 10, time: 100),
-            $this->apiResult('6v6', 101, 'Division 1', team: 10, time: 110),
-            $this->apiResult('6v6', 101, 'Division 1', team: 10, time: 120),
-            $this->apiResult('6v6', 101, 'Division 1', team: 10, time: 130),
-        ];
+        $now = time();
+        $results = [];
+        // Fenêtre remplie par 3 saisons 6v6 récentes...
+        foreach ([100, 101, 102] as $compId) {
+            for ($i = 0; $i < 3; $i++) {
+                $results[] = $this->apiResult('6v6', $compId, 'Low', team: 10, time: $now - 100 + $i);
+            }
+        }
+        // ...et une vieille saison HL Open (hors fenêtre, 10 ans) : tier le
+        // plus bas, les saisons de toute l'histoire comptent (règle 2.7).
+        for ($i = 0; $i < 3; $i++) {
+            $results[] = $this->apiResult('Highlander', 200, 'Open', team: 10, time: $now - 10 * 365 * 86400 + $i);
+        }
 
         $levels = $this->service->levelsFromResults($results);
 
-        // Moyenne pondérée (0 + 4×1) / 5 = 0.8 => rang 1 ; une moyenne
-        // par compétition (0.5, avantage au joueur) aurait donné le rang 0.
-        $this->assertEqualsWithDelta(0.8, $levels[0]['tier_moyen'], 0.01);
-        $this->assertSame('Division 1', $levels[0]['division_label']);
-        $this->assertSame(5, $levels[0]['nb_matchs_comptes']);
+        $hl = $this->levelOf($levels, '9v9');
+        // La conversion du 6s Low (=> Low) domine le Open historique.
+        $this->assertSame('Low', $hl['division_label']);
+        // Mais la vieille saison Open a bien contribué (compteurs non nuls).
+        $this->assertSame(3, $hl['nb_matchs_comptes']);
+        $this->assertSame(1, $hl['nb_competitions']);
     }
 
-    public function test_l_annee_du_dernier_match_pris_en_compte_est_stockee(): void
+    public function test_le_tier_api_est_un_repli_le_nom_gagne(): void
     {
-        $results = [
-            $this->apiResult('Highlander', 100, 'Open A', team: 10, time: strtotime('2017-03-15')),
-            $this->apiResult('Highlander', 101, 'Mid', team: 10, time: strtotime('2016-02-10')),
-        ];
+        $now = time();
+        $results = [];
+        // Nom inconnu mais tier valide (ex. "Round Robin Group E") : compté
+        // via le tier API.
+        for ($i = 0; $i < 3; $i++) {
+            $results[] = $this->apiResult('Highlander', 100, 'Round Robin Group E', team: 10, time: $now - 100 + $i, tier: 0);
+        }
+
+        $levels = $this->service->levelsFromResults($results);
+        $this->assertSame('Premiership', $this->levelOf($levels, '9v9')['division_label']);
+
+        // Cas réel API : "Fresh" avec tier 5 : le nom prime sur le tier
+        // (sinon Fresh serait compté Low).
+        $results = [];
+        for ($i = 0; $i < 3; $i++) {
+            $results[] = $this->apiResult('6v6', 101, 'Fresh', team: 10, time: $now - 100 + $i, tier: 5);
+        }
+
+        $levels = $this->service->levelsFromResults($results);
+        $this->assertSame('Fresh', $this->levelOf($levels, '6s')['division_label']);
+    }
+
+    public function test_les_vieilles_divisions_sont_normalisees(): void
+    {
+        $now = time();
+        $results = [];
+        // Vieille échelle HL : Division 5 => Low.
+        for ($i = 0; $i < 3; $i++) {
+            $results[] = $this->apiResult('Highlander', 100, 'Division 5D', team: 10, time: $now - 100 + $i);
+        }
+
+        $this->assertSame('Low', $this->levelOf($this->service->levelsFromResults($results), '9v9')['division_label']);
+
+        $results = [];
+        // Vieille échelle HL : Division 6 => Open ; et 6v6 : Division 6 => Open.
+        for ($i = 0; $i < 3; $i++) {
+            $results[] = $this->apiResult('Highlander', 101, 'Division 6M', team: 10, time: $now - 100 + $i);
+        }
+
+        $this->assertSame('Open', $this->levelOf($this->service->levelsFromResults($results), '9v9')['division_label']);
+
+        $results = [];
+        for ($i = 0; $i < 3; $i++) {
+            $results[] = $this->apiResult('6v6', 102, 'Division 6J', team: 10, time: $now - 100 + $i);
+        }
+
+        $this->assertSame('Open', $this->levelOf($this->service->levelsFromResults($results), '6s')['division_label']);
+    }
+
+    public function test_le_dernier_match_pris_en_compte_est_stocke(): void
+    {
+        $now = time();
+        $results = [];
+        for ($i = 0; $i < 3; $i++) {
+            $results[] = $this->apiResult('Highlander', 100, 'Open A', team: 10, time: $now - 100 + $i);
+        }
 
         $levels = $this->service->levelsFromResults($results);
 
-        $this->assertCount(1, $levels);
-        $this->assertSame(strtotime('2017-03-15'), $levels[0]['last_match_time']);
+        $this->assertSame($now - 98, $this->levelOf($levels, '9v9')['last_match_time']);
     }
 
     /**
@@ -250,25 +378,42 @@ final class ComputePlayerLevelsServiceTest extends TestCase
         bool $defaultwin = false,
         string $category = 'Highlander Season',
         ?int $tier = null,
+        ?string $competitionName = null,
+        string $round = 'Week 1',
     ): array {
         return [
             'clan1' => ['id' => $team, 'was_in_team' => true],
             'clan2' => ['id' => $team + 1000, 'was_in_team' => false],
             'competition' => [
                 'id' => $competitionId,
-                'name' => 'Comp '.$competitionId,
+                'name' => $competitionName ?? 'Comp '.$competitionId,
                 'type' => $type,
                 'category' => $category,
             ],
             'defaultwin' => $defaultwin,
-            // Tier absent par défaut : force le passage par la normalisation
-            // regex du nom (comme sur les vieilles entrées de l'API).
+            // Tier absent par défaut : force la normalisation du nom.
             'division' => $division === null ? null : ['id' => 1, 'name' => $division, 'tier' => $tier],
             'r1' => 6,
             'r2' => 0,
-            'round' => 'Week 1',
+            'round' => $round,
             'time' => $time,
             'week' => 1,
         ];
+    }
+
+    /**
+     * Ligne de niveau d'un mode donné.
+     *
+     * @param  array<int, array<string, mixed>>  $levels
+     */
+    private function levelOf(array $levels, string $gameMode): array
+    {
+        foreach ($levels as $level) {
+            if ($level['game_mode'] === $gameMode) {
+                return $level;
+            }
+        }
+
+        $this->fail("Aucun niveau calculé pour le mode {$gameMode}.");
     }
 }

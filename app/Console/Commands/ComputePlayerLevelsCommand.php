@@ -11,7 +11,7 @@ final class ComputePlayerLevelsCommand extends Command
 {
     protected $signature = 'app:compute-player-levels';
 
-    protected $description = 'Calcule le niveau réel des joueurs inscrits depuis leurs résultats ETF2L (3 dernières saisons par mode, matchs de remplacement exclus)';
+    protected $description = 'Calcule l\'expérience ETF2L des joueurs inscrits selon la règle 2.7 (3 dernières saisons actives, decay et conversion croisée 9v9/6v6 incluses)';
 
     public function handle(): int
     {

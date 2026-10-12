@@ -700,6 +700,24 @@ body #main #content .personnal-info .division-tier-5 .division-badge-mode {
 body #main #content .personnal-info .division-tier-5 .division-badge-division {
   color: var(--tier-5-light);
 }
+body #main #content .personnal-info .division-tier-6 {
+  border-left: 3px solid var(--tier-6);
+}
+body #main #content .personnal-info .division-tier-6 .division-badge-mode {
+  color: var(--tier-6);
+}
+body #main #content .personnal-info .division-tier-6 .division-badge-division {
+  color: var(--tier-6-light);
+}
+body #main #content .personnal-info .division-tier-7 {
+  border-left: 3px solid var(--tier-7);
+}
+body #main #content .personnal-info .division-tier-7 .division-badge-mode {
+  color: var(--tier-7);
+}
+body #main #content .personnal-info .division-tier-7 .division-badge-division {
+  color: var(--tier-7-light);
+}
 
 /* --- Liens externes sur les profils joueurs --- */
 body #main #content .personnal-info .profile-link-icon {

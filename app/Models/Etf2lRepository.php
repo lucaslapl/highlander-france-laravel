@@ -93,7 +93,7 @@ final class Etf2lRepository
     }
 
     /**
-     * Niveaux calculés d'un joueur (division moyenne par mode de jeu).
+     * Niveaux calculés d'un joueur (expérience ETF2L par mode de jeu, règle 2.7).
      *
      * @return array<int, array<string, mixed>>
      */
