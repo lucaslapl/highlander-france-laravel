@@ -353,7 +353,8 @@ class SeriesAdminTest extends TestCase
         $this->assertSame('decided', $state['maps'][0]['status']);
         $this->assertSame('red', $state['maps'][0]['winner']);
         $this->assertFalse($state['maps'][0]['golden_cap']);
-        $this->assertSame(1, $state['score']['red']);
+        // Victoire au timelimit : 3 points de ligue (barème ETF2L).
+        $this->assertSame(3, $state['score']['red']);
     }
 
     public function test_la_fin_de_map_a_egalite_declenche_une_golden_cap(): void
@@ -374,12 +375,15 @@ class SeriesAdminTest extends TestCase
         $this->assertSame('pending', $ongoing['maps'][0]['status']);
         $this->assertTrue($ongoing['maps'][0]['golden_cap']);
 
-        // Le point de golden cap décide la map.
+        // Le point de golden cap décide la map : 2 points au vainqueur,
+        // 1 au perdant (barème ETF2L).
         $this->point('cp_granary_pro_rc4', 'blue');
 
         $state = (new SeriesScoreService)->compute((new SeriesRepository)->find(self::TOKEN));
         $this->assertSame('decided', $state['maps'][0]['status']);
         $this->assertSame('blue', $state['maps'][0]['winner']);
+        $this->assertSame(2, $state['score']['blue']);
+        $this->assertSame(1, $state['score']['red']);
     }
 
     public function test_la_fin_de_map_est_refusee_sur_une_map_a_winlimit(): void

@@ -14,6 +14,12 @@ use Tests\TestCase;
  * en score live, golden cap sur égalité au timelimit), fin de map déclarée à
  * la main (« Match terminé », timelimit des 5cp), annulations et
  * achèvement de la série (BO3/BO5/maps fixes).
+ *
+ * Le score global de la série vaut les points de ligue ETF2L (règle « Tier
+ * System », identique 6v6 / 9v9) : 3 points par map gagnée, 2 pour une
+ * victoire en golden cap, 1 pour une défaite en golden cap. Les BO3/BO5 se
+ * terminent au nombre de maps gagnées ; les maps fixes (saison régulière)
+ * se départagent aux points (4-2 sur un 1-1 en maps).
  */
 class SeriesScoreServiceTest extends TestCase
 {
@@ -70,7 +76,9 @@ class SeriesScoreServiceTest extends TestCase
         $this->assertSame(2, $map['rounds']['red']);
         $this->assertSame(0, $map['rounds']['blue']);
         $this->assertFalse($map['golden_cap']);
-        $this->assertSame(1, $state['score']['red']);
+        // Victoire régulière : 3 points de ligue (barème ETF2L).
+        $this->assertSame(3, $state['score']['red']);
+        $this->assertSame(0, $state['score']['blue']);
         $this->assertFalse($state['finished']);
     }
 
@@ -90,7 +98,10 @@ class SeriesScoreServiceTest extends TestCase
         $decided = (new SeriesScoreService)->compute($series);
         $this->assertSame('decided', $decided['maps'][0]['status']);
         $this->assertSame('blue', $decided['maps'][0]['winner']);
-        $this->assertSame(1, $decided['score']['blue']);
+        $this->assertTrue($decided['maps'][0]['decided_by_gc']);
+        // Map tranchée en golden cap : 2 points au vainqueur, 1 au perdant.
+        $this->assertSame(2, $decided['score']['blue']);
+        $this->assertSame(1, $decided['score']['red']);
     }
 
     public function test_un_log_surnumeraire_apres_decision_est_ignore(): void
@@ -120,7 +131,8 @@ class SeriesScoreServiceTest extends TestCase
 
         $this->assertSame('decided', $state['maps'][0]['status']);
         $this->assertSame('blue', $state['maps'][0]['winner']);
-        $this->assertSame(1, $state['score']['blue']);
+        $this->assertSame(3, $state['score']['blue']);
+        $this->assertSame(0, $state['score']['red']);
     }
 
     public function test_map_unique_egalite_puis_departage(): void
@@ -142,6 +154,10 @@ class SeriesScoreServiceTest extends TestCase
         $this->assertSame('decided', $decided['maps'][0]['status']);
         $this->assertSame('red', $decided['maps'][0]['winner']);
         $this->assertFalse($decided['maps'][0]['golden_cap']);
+        $this->assertTrue($decided['maps'][0]['decided_by_gc']);
+        // Départage en golden cap : 2 points au vainqueur, 1 au perdant.
+        $this->assertSame(2, $decided['score']['red']);
+        $this->assertSame(1, $decided['score']['blue']);
         // Le golden cap se joue après rechargement de la map (config ETF2L
         // mp_winlimit 1) : son log ne porte que le point du départage, qui
         // s'ajoute à l'égalité du timelimit (4-4 + 1-0 → 5-4).
@@ -172,7 +188,8 @@ class SeriesScoreServiceTest extends TestCase
         $this->assertSame('decided', $decided['maps'][0]['status']);
         $this->assertSame('blue', $decided['maps'][0]['winner']);
         $this->assertSame(3, $decided['maps'][0]['scores']['blue']);
-        $this->assertSame(1, $decided['score']['blue']);
+        $this->assertSame(3, $decided['score']['blue']);
+        $this->assertSame(0, $decided['score']['red']);
     }
 
     public function test_des_points_manuels_decident_une_map_5cp_a_cinq_points(): void
@@ -257,7 +274,7 @@ class SeriesScoreServiceTest extends TestCase
         $state = (new SeriesScoreService)->compute($series);
 
         $this->assertSame('red', $state['maps'][0]['winner']);
-        $this->assertSame(1, $state['score']['red']);
+        $this->assertSame(3, $state['score']['red']);
     }
 
     // ─── Fin de map à timelimit (« Match terminé ») ────────────────────────
@@ -282,7 +299,8 @@ class SeriesScoreServiceTest extends TestCase
         $this->assertFalse($state['maps'][0]['golden_cap']);
         $this->assertSame(3, $state['maps'][0]['scores']['red']);
         $this->assertSame(2, $state['maps'][0]['scores']['blue']);
-        $this->assertSame(1, $state['score']['red']);
+        // Victoire au timelimit (meneur) : victoire régulière, 3 points.
+        $this->assertSame(3, $state['score']['red']);
     }
 
     public function test_la_fin_de_map_5cp_a_egalite_declenche_la_golden_cap(): void
@@ -305,6 +323,9 @@ class SeriesScoreServiceTest extends TestCase
         $decided = (new SeriesScoreService)->compute($series);
         $this->assertSame('decided', $decided['maps'][0]['status']);
         $this->assertSame('blue', $decided['maps'][0]['winner']);
+        $this->assertTrue($decided['maps'][0]['decided_by_gc']);
+        $this->assertSame(2, $decided['score']['blue']);
+        $this->assertSame(1, $decided['score']['red']);
         $this->assertSame(3, $decided['maps'][0]['scores']['blue']);
     }
 
@@ -348,13 +369,37 @@ class SeriesScoreServiceTest extends TestCase
 
         $state = (new SeriesScoreService)->compute($series);
 
-        $this->assertSame(2, $state['score']['red']);
+        $this->assertSame(6, $state['score']['red']);
         $this->assertSame(0, $state['score']['blue']);
+        $this->assertSame(2, $state['map_wins']['red']);
         $this->assertTrue($state['finished']);
         $this->assertSame('red', $state['winner']);
         // Le golden cap de la map 3 n'est pas joué : la série était déjà finie,
         // la map reste en attente mais ne bloque pas l'achèvement.
         $this->assertSame('pending', $state['maps'][2]['status']);
+    }
+
+    public function test_bo3_terminee_malgre_un_score_de_ligue_defavorable(): void
+    {
+        // Rouges gagnent les maps 1 et 3 en golden cap (2 pts + 1 pt adverse
+        // à chaque fois), Bleus gagnent la map 2 en direct (3 pts) : 4-5 en
+        // points de ligue mais 2-1 en maps — les playoffs se jouent en maps.
+        $series = $this->series(['cp_process_f7', 'koth_product_final', 'cp_gullywash_f7'], 'bo3', 2, [
+            $this->logEvent('e1', 'cp_process_f7', null, 2, 2),
+            $this->manualEvent('e2', 'cp_process_f7', 'red'),
+            $this->logEvent('e3', 'koth_product_final', 'blue', 1, 3),
+            $this->logEvent('e4', 'cp_gullywash_f7', null, 3, 3),
+            $this->manualEvent('e5', 'cp_gullywash_f7', 'red'),
+        ]);
+
+        $state = (new SeriesScoreService)->compute($series);
+
+        $this->assertSame(4, $state['score']['red']);
+        $this->assertSame(5, $state['score']['blue']);
+        $this->assertSame(2, $state['map_wins']['red']);
+        $this->assertSame(1, $state['map_wins']['blue']);
+        $this->assertTrue($state['finished']);
+        $this->assertSame('red', $state['winner']);
     }
 
     public function test_format_maps_fixes_termine_quand_toutes_sont_decidees(): void
@@ -368,18 +413,48 @@ class SeriesScoreServiceTest extends TestCase
         ]);
 
         // Le golden cap de la deuxième map n'est pas joué : pas encore finie.
+        // La première map (payload) est passée par golden cap : 2 points au
+        // vainqueur, 1 au perdant.
         $ongoing = (new SeriesScoreService)->compute($series);
         $this->assertFalse($ongoing['finished']);
-        $this->assertSame(1, $ongoing['score']['red']);
+        $this->assertSame(2, $ongoing['score']['red']);
+        $this->assertSame(1, $ongoing['score']['blue']);
 
         $series['journal'][] = $this->logEvent('e6', 'cp_steel_f12', 'blue', 0, 1);
         $draw = (new SeriesScoreService)->compute($series);
 
-        // Deux maps fixes à 1-1 : égalité possible, série finie sans vainqueur.
+        // Deux maps fixes à 1-1, 3-3 en points de ligue : égalité possible,
+        // série finie sans vainqueur.
         $this->assertTrue($draw['finished']);
         $this->assertNull($draw['winner']);
-        $this->assertSame(1, $draw['score']['red']);
-        $this->assertSame(1, $draw['score']['blue']);
+        $this->assertSame(3, $draw['score']['red']);
+        $this->assertSame(3, $draw['score']['blue']);
+    }
+
+    public function test_match_classique_4_2_les_points_departagent_les_maps(): void
+    {
+        // Saison régulière (2 maps fixes) : Rouges gagnent la map 1 en direct
+        // (3 pts), la map 2 se termine à égalité puis Bleus l'emportent en
+        // golden cap (2 pts, 1 pt pour Rouges) — 4-2 en points de ligue sur
+        // un 1-1 en maps : le vainqueur du match se lit aux points.
+        $series = $this->series(['cp_process_f7', 'cp_sunshine'], 'fixed', null, [
+            $this->manualEvent('e1', 'cp_process_f7', 'red'),
+            $this->manualEvent('e2', 'cp_process_f7', 'red'),
+            $this->manualEvent('e3', 'cp_process_f7', 'red'),
+            $this->manualEvent('e4', 'cp_process_f7', 'red'),
+            $this->manualEvent('e5', 'cp_process_f7', 'red'),
+            $this->logEvent('e6', 'cp_sunshine', null, 2, 2),
+            $this->manualEvent('e7', 'cp_sunshine', 'blue'),
+        ]);
+
+        $state = (new SeriesScoreService)->compute($series);
+
+        $this->assertSame(4, $state['score']['red']);
+        $this->assertSame(2, $state['score']['blue']);
+        $this->assertSame(1, $state['map_wins']['red']);
+        $this->assertSame(1, $state['map_wins']['blue']);
+        $this->assertTrue($state['finished']);
+        $this->assertSame('red', $state['winner']);
     }
 
     // ─── Fixtures ─────────────────────────────────────────────────────────

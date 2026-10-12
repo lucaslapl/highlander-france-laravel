@@ -15,8 +15,9 @@ use Tests\TestCase;
  * page pour se rafraîchir. Aucune donnée sensible : noms d'équipes et scores
  * de matchs publics. Les événements « log » ne sont plus produits depuis la
  * suppression de la récupération automatique, mais les journaux des séries
- * créées à cette époque doivent continuer d'afficher leur score tel qu'il
- * fut compté — d'où les fixtures « log » ci-dessous.
+ * créées à cette époque restent calculés par la logique courante — d'où les
+ * fixtures « log » ci-dessous (le journal n'est jamais réécrit, seule
+ * l'agrégation évolue : barème de points de ligue ETF2L).
  */
 class SeriesOverlayTest extends TestCase
 {
@@ -73,8 +74,8 @@ class SeriesOverlayTest extends TestCase
 
     public function test_l_overlay_affiche_equipes_score_et_maps(): void
     {
-        // Journal historique « log » : le score acquis avant la refonte
-        // doit continuer de s'afficher tel quel (aucune donnée réécrite).
+        // Journal historique « log » : le score dérivé suit le barème
+        // courant (points de ligue ETF2L), le journal n'est pas réécrit.
         $this->seedSeries([
             'e1' => ['map' => 'pl_upward_f10', 'winner' => 'red'],
             'e2' => ['map' => 'pl_upward_f10', 'winner' => 'red'],
@@ -88,8 +89,9 @@ class SeriesOverlayTest extends TestCase
         $this->assertStringContainsString('Les Baguettes', $html);
         $this->assertStringContainsString('Escouade 6', $html);
 
-        // Score de série 1-1 : payload 2-0 rouge, koth perdu.
-        $this->assertStringContainsString('series-scoreboard__score-value">1', $html);
+        // Score de série 3-3 en points de ligue (payload 2-0 rouge, koth
+        // perdu : une map gagnée vaut 3 points, barème ETF2L).
+        $this->assertStringContainsString('series-scoreboard__score-value">3', $html);
 
         // Maps décidées : aucune teinte d'équipe — le nom de l'équipe
         // vainqueure identifie la map remportée.

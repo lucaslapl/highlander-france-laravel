@@ -14,9 +14,9 @@ namespace App\Services;
  *  - « log »    : un log logs.tf rattaché à une map de la série — type
  *                 historique : plus aucun événement « log » n'est produit
  *                 depuis la suppression de la récupération automatique, mais
- *                 les séries créées à cette époque conservent leur journal et
- *                 doivent continuer d'afficher leur score tel qu'il fut
- *                 compté (aucune donnée n'est réécrite) ;
+ *                 les séries créées à cette époque conservent leur journal ;
+ *                 le score dérivé suit la logique courante (le journal n'est
+ *                 jamais réécrit, seule l'agrégation évolue) ;
  *  - « manual » : un point marqué saisi à la main par un admin (scoring live
  *                 d'une map à points, contestation, rattrapage) — la seule
  *                 source de points depuis la refonte ;
@@ -39,6 +39,16 @@ namespace App\Services;
  *    en KOTH et payload race (mp_winlimit 3, une égalité y est impossible),
  *    5 en 5cp (mp_winlimit 5, mp_timelimit 30 : une égalité au timelimit
  *    part en golden cap, le point suivant tranche).
+ *
+ * Barème du score global de la série (règle ETF2L « Tier System », identique
+ * en 6v6 et 9v9) : chaque map décidée rapporte des points de ligue —
+ * victoire régulière 3 points (défaite 0), victoire en golden cap 2 points
+ * (défaite 1). Un match classique de deux maps peut donc finir 6-0, 3-3,
+ * 5-1 ou 4-2. En BO3/BO5 (playoffs), la série se termine au nombre de maps
+ * gagnées — le gagnant de la golden cap gagne la map — le vainqueur est
+ * l'équipe qui atteint le nombre de maps requis ; en maps fixes (saison
+ * régulière), le vainqueur est départagé aux points de ligue (4-2 l'emporte
+ * sur un 1-1 en maps, 3-3 reste une égalité).
  */
 final class SeriesScoreService
 {
@@ -135,6 +145,7 @@ final class SeriesScoreService
                 'scores' => null,
                 'log_ids' => [],
                 'golden_cap' => false,
+                'decided_by_gc' => false,
             ];
         }
 
@@ -171,6 +182,9 @@ final class SeriesScoreService
                     if ($winner !== '' && $map['rounds'][$winner] >= 2) {
                         $map['status'] = 'decided';
                         $map['winner'] = $winner;
+                        // Un 3e round après un 1-1 est un golden cap : sa
+                        // victoire vaut 2 points de ligue (1 pour le perdant).
+                        $map['decided_by_gc'] = $map['golden_cap'];
                     } elseif ($map['rounds']['red'] === 1 && $map['rounds']['blue'] === 1) {
                         $map['golden_cap'] = true;
                     }
@@ -192,6 +206,10 @@ final class SeriesScoreService
                     if ($winner !== '') {
                         $map['status'] = 'decided';
                         $map['winner'] = $winner;
+                        // Le log qui tranche une égalité au timelimit est
+                        // celui du golden cap : victoire à 2 points, défaite
+                        // à 1 (sinon victoire régulière à 3 points).
+                        $map['decided_by_gc'] = $map['golden_cap'];
                         $map['golden_cap'] = false;
                     } elseif ($map['scores'] !== null && $map['scores']['red'] === $map['scores']['blue']) {
                         $map['golden_cap'] = true;
@@ -208,6 +226,9 @@ final class SeriesScoreService
                     if ($map['rounds'][$team] >= 2) {
                         $map['status'] = 'decided';
                         $map['winner'] = $team;
+                        // Un 3e round après un 1-1 est un golden cap : sa
+                        // victoire vaut 2 points de ligue (1 pour le perdant).
+                        $map['decided_by_gc'] = $map['golden_cap'];
                     } elseif ($map['rounds']['red'] === 1 && $map['rounds']['blue'] === 1) {
                         $map['golden_cap'] = true;
                     }
@@ -216,7 +237,8 @@ final class SeriesScoreService
                     // direct (le score du log ne remonte qu'à la fin de la
                     // map). Il s'accumule en score live et la map n'est
                     // décidée qu'au winlimit (KOTH : 3, 5cp : 5) — sauf golden
-                    // cap en attente, que le point tranche.
+                    // cap en attente, que le point tranche (victoire à 2
+                    // points de ligue, défaite à 1).
                     if ($map['scores'] === null) {
                         $map['scores'] = ['red' => 0, 'blue' => 0];
                     }
@@ -225,6 +247,7 @@ final class SeriesScoreService
                     if ($map['golden_cap'] || $map['scores'][$team] >= $map['winlimit']) {
                         $map['status'] = 'decided';
                         $map['winner'] = $team;
+                        $map['decided_by_gc'] = $map['golden_cap'];
                     }
                 }
             } elseif ($type === 'end') {
@@ -252,10 +275,21 @@ final class SeriesScoreService
 
         $maps = array_values($maps);
 
+        // Score global : points de ligue ETF2L (règle « Tier System »,
+        // identique 6v6 / 9v9) — victoire de map 3-0, victoire en golden cap
+        // 2-1. Les maps gagnées restent comptées à part : ce sont elles qui
+        // terminent un BO3/BO5 (le gagnant de la golden cap gagne la map),
+        // les points de ligue départagent quant à eux un match à maps fixes
+        // (saison régulière : 4-2 sur un 1-1 en maps).
         $score = ['red' => 0, 'blue' => 0];
+        $mapWins = ['red' => 0, 'blue' => 0];
         foreach ($maps as $map) {
             if ($map['status'] === 'decided' && $map['winner'] !== null) {
-                $score[(string) $map['winner']]++;
+                $winner = (string) $map['winner'];
+                $loser = $winner === 'red' ? 'blue' : 'red';
+                $mapWins[$winner]++;
+                $score[$winner] += $map['decided_by_gc'] ? 2 : 3;
+                $score[$loser] += $map['decided_by_gc'] ? 1 : 0;
             }
         }
 
@@ -266,17 +300,25 @@ final class SeriesScoreService
         // peuvent être moins nombreuses que le format — maps restantes
         // inconnues à la création). Maps fixes : fin quand toutes sont jouées.
         $finished = $winsNeeded !== null
-            ? max($score) >= (int) $winsNeeded
+            ? max($mapWins) >= (int) $winsNeeded
             : $allDecided;
 
+        // Vainqueur : maps gagnées en BO3/BO5 (deux victoires en golden cap
+        // rapportent moins de points que la combinaison 1 GC + 1 défaite
+        // régulière de l'adversaire, ex. 4-5 — les playoffs se jouent en
+        // maps), points de ligue en maps fixes (saison régulière).
         $winner = null;
-        if ($finished && $score['red'] !== $score['blue']) {
-            $winner = $score['red'] > $score['blue'] ? 'red' : 'blue';
+        if ($finished) {
+            $tiebreak = $winsNeeded !== null ? $mapWins : $score;
+            if ($tiebreak['red'] !== $tiebreak['blue']) {
+                $winner = $tiebreak['red'] > $tiebreak['blue'] ? 'red' : 'blue';
+            }
         }
 
         return [
             'maps' => $maps,
             'score' => $score,
+            'map_wins' => $mapWins,
             'finished' => $finished,
             'winner' => $winner,
         ];

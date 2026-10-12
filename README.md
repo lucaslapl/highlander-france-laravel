@@ -109,8 +109,12 @@ via `Etf2lMatchService` (`api-v2.etf2l.org/matches/{id}`, même cache) ; le
 format de la série (classique / BO3 / BO5) est détecté du nombre de maps du
 match, et une série existante peut être resynchronisée (équipes TBD devenues
 connues, maps du pick / ban, format détecté). Les points de maps restent
-manuels : un point par map gagnée depuis le détail de la série, chaque
-événement visible et annulable dans le journal. Sur une map 5cp (timelimit
+manuels : chaque point marqué se saisit depuis le détail de la série, chaque
+événement visible et annulable dans le journal. Le score global de l'overlay
+suit le barème de points de ligue ETF2L (« Tier System », identique 6v6 et
+9v9) : 3 points par map gagnée, 2 points pour une victoire en golden cap,
+1 point pour une défaite en golden cap — un match classique de deux maps
+peut ainsi finir 6-0, 3-3, 5-1 ou 4-2. Sur une map 5cp (timelimit
 30 min), le bouton « Match terminé » départage la map sans winlimit atteint :
 le meneur l'emporte, une égalité part en golden cap que le point suivant
 tranche.

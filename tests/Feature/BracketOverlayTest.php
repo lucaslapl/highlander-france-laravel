@@ -143,10 +143,11 @@ class BracketOverlayTest extends TestCase
         ]);
 
         // Score saisi dans la case (0-0) remplacé par le score live de la
-        // série (1-1 : upward remportée par deux logs rouges + koth bleu,
-        // cf. seedSeries — le score de série compte les maps gagnées).
+        // série (3-3 en points de ligue ETF2L : upward remportée par deux
+        // logs rouges + koth bleu, une map gagnée vaut 3 points, cf.
+        // seedSeries — le bracket affiche le score global de la série).
         $html = (string) $this->get('/bracket-overlay/'.self::TOKEN)->getContent();
-        $this->assertStringContainsString('"score":"1"', $html);
+        $this->assertStringContainsString('"score":"3"', $html);
         $this->assertStringNotContainsString('"score":"0"', $html);
     }
 

@@ -14,10 +14,11 @@
             <a href="https://etf2l.org/matches/{{ (int) $series['etf2l_match_id'] }}/" target="_blank" rel="noopener">Match ETF2L #{{ (int) $series['etf2l_match_id'] }}</a>
             ·
         @endif
-        score de série :
+        score de série (points ETF2L :
         <strong style="color:#e06c5a;">{{ e($series['teams']['red']['name']) }} {{ (int) $state['score']['red'] }}</strong>
         -
         <strong style="color:#5885a2;">{{ (int) $state['score']['blue'] }} {{ e($series['teams']['blue']['name']) }}</strong>
+        <span style="color:#777; font-size:12px;">3 pts par map gagnée, golden cap 2/1</span>)
         @if ($state['finished'])
             @if ($state['winner'] !== null)
                 — <strong>{{ e($series['teams'][$state['winner']]['name']) }} remporte la série</strong>
@@ -193,6 +194,9 @@
                     <td>
                         @if ($map['winner'] !== null)
                             <span style="color: {{ $map['winner'] === 'red' ? '#e06c5a' : '#5885a2' }};">{{ e($series['teams'][$map['winner']]['name']) }}</span>
+                            @if ($map['status'] === 'decided')
+                                <span style="color:#777; font-size:12px;">({{ $map['decided_by_gc'] ? 'golden cap : +2 / +1' : '+3' }})</span>
+                            @endif
                         @else
                             —
                         @endif

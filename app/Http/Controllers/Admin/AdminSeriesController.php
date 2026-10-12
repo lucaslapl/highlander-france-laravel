@@ -194,7 +194,7 @@ final class AdminSeriesController extends Controller
 
         AdminLogger::log('admin_series_create', null, 'SUCCESS (série '.$token.' : match ETF2L #'.$matchId.')');
 
-        return redirect('/admin/series/'.$token)->with('success', 'Série créée : les points de maps se saisissent dans le détail, un par map gagnée.');
+        return redirect('/admin/series/'.$token)->with('success', 'Série créée : le score se saisit map par map dans le détail — barème ETF2L, 3 points par map gagnée, 2/1 en golden cap.');
     }
 
     /**
