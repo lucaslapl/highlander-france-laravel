@@ -32,8 +32,6 @@
         <p id="series-match-title" style="margin:6px 0 0; font-size:13px; color:#bbb;"></p>
     </div>
 
-    @include('admin.partials.etf2l_teams', ['competitions' => $competitions, 'prefix' => 'series'])
-
     <div class="admin-form-row" style="display:flex; gap:24px; flex-wrap:wrap;">
         @foreach (['red' => 'A', 'blue' => 'B'] as $team => $label)
             <div class="js-etf2l-team js-etf2l-team--{{ $team }}" style="flex:1; min-width:300px; border:1px solid #333; border-radius:8px; padding:14px;">
@@ -42,13 +40,13 @@
                     La couleur n'a aucune importance sur le match : elle ne fait que fixer l'ordre d'affichage
                     {{ $team === 'red' ? 'à gauche' : 'à droite' }} sur l'overlay.
                 </p>
-                <label class="admin-form-label" for="series-{{ $team }}-name">Nom affiché (acronyme)</label>
+                <label class="admin-form-label" for="series-{{ $team }}-name">Nom affiché</label>
                 <input type="hidden" name="{{ $team }}_etf2l_id" class="js-team-field-etf2l-id" value="">
                 <input type="text" id="series-{{ $team }}-name" name="{{ $team }}_name" class="form-control js-team-field-name"
                        placeholder="Ex : IG" maxlength="64" required>
                 <p style="color:#777; font-size:12px; margin:6px 0 0;">
-                    Prérempli avec l'acronyme (tag) ETF2L de l'équipe, sinon son nom complet : l'espace disponible sur
-                    l'overlay est très réduit, l'acronyme reste modifiable à tout moment.
+                    Prérempli avec le nom complet ETF2L de l'équipe : raccourcissez-le (acronyme, ex : Inglorious
+                    Gamblers → IG), l'espace disponible sur l'overlay est très réduit — il reste modifiable à tout moment.
                 </p>
                 <label class="admin-form-label" style="margin-top:10px;" for="series-{{ $team }}-players">Roster (SteamIDs)</label>
                 <textarea id="series-{{ $team }}-players" name="{{ $team }}_players" class="form-control js-team-field-players" rows="3"
@@ -162,7 +160,6 @@
 @endpush
 
 @push('scripts')
-<script src="{{ hlfr_asset('/_js/admin_etf2l_teams.js') }}" defer></script>
 <script src="{{ hlfr_asset('/_js/admin_series_match.js') }}" defer></script>
 @endpush
 @endsection

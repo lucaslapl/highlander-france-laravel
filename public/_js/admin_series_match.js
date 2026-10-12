@@ -1,13 +1,14 @@
 /* Préremplissage « lien de match ETF2L » de l'outil Overlay Scores
    (formulaire de création /admin/series) : le bouton « Charger le
    match » interroge /admin/series/etf2l-match?match_url=… puis
-   remplit les blocs équipe (nom affiché = tag ETF2L, sinon nom
-   complet ; avatar ; roster SteamIDs) et la liste des maps connues
-   d'ETF2L. Le pool de maps (9v9 / 6v6) suit le format du match ; la
-   liste .js-series-map-list garde une rangée par map (champ
-   maps[] + bouton de retrait), alimentée aussi par le menu
-   .js-series-map-select. Tout reste corrigible à la main avant
-   l'envoi : équipes TBD, mercs, API indisponible. */
+   remplit les blocs équipe (nom complet ETF2L, à raccourcir à la
+   main — l'API ne remonte pas d'acronyme ; avatar ; roster
+   SteamIDs) et la liste des maps connues d'ETF2L. Le pool de maps
+   (9v9 / 6v6) suit le format du match ; la liste .js-series-map-list
+   garde une rangée par map (champ maps[] + bouton de retrait),
+   alimentée aussi par le menu .js-series-map-select. Tout reste
+   corrigible à la main avant l'envoi : équipes TBD, mercs, API
+   indisponible. */
 
 (function () {
     'use strict';
@@ -148,7 +149,7 @@
         }
 
         if (name) {
-            name.value = team.tag !== '' ? team.tag : team.name;
+            name.value = team.name;
         }
         if (players) {
             players.value = (team.players || []).join('\n');

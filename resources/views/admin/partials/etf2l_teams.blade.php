@@ -1,23 +1,22 @@
 {{-- Boîte « Remplissage assisté (équipes ETF2L) » partagée par les
-     outils overlay (Scores, Bracket, Pick/Ban) : choisir une
+     outils overlay (Bracket, Pick/Ban) : choisir une
      compétition puis charger ses équipes — un menu de sélection apparaît
      alors dans chaque bloc .js-etf2l-team du formulaire pour remplir nom,
      avatar (et pays le cas échéant) d'un clic (admin_etf2l_teams.js). Le
-     menu lie aussi le bloc à l'équipe ETF2L choisie : l'outil
-     Scores peut alors récupérer le roster de l'équipe (SteamIDs, en cache
-     côté serveur) et rafraîchir les rosters d'un clic entre deux saisons.
-     Pour l'outil Scores, c'est le repli manuel : le préremplissage
-     principal vient du lien de match ETF2L (admin_series_match.js).
-     L'outil Overlay Logs ne l'utilise pas : les noms d'équipes y sont
-     identifiés automatiquement depuis les joueurs du log. Les
-     contrôleurs passent la liste des compétitions depuis
+     menu lie aussi le bloc à l'équipe ETF2L choisie, pour rafraîchir les
+     rosters d'un clic entre deux saisons. L'outil Scores ne l'utilise
+     pas : ses équipes viennent du lien de match ETF2L
+     (admin_series_match.js), le remplissage assisté reste le repli des
+     autres outils. L'outil Overlay Logs ne l'utilise pas non plus : les
+     noms d'équipes y sont identifiés automatiquement depuis les joueurs
+     du log. Les contrôleurs passent la liste des compétitions depuis
      Etf2lTeamService::competitionsBothFormats() (Highlander puis 6v6,
      marquées « (6v6) » dans le menu) ou ::competitions() pour l'outil
      Overlay Rosters, dont le format est déjà fixé par l'overlay ; une
      API indisponible masque le chargement sans bloquer la saisie
      manuelle.
      Variables attendues : $competitions, $prefix (préfixe d'identifiants
-     unique par page : series, bracket, pickban). --}}
+     unique par page : bracket, pickban). --}}
 <h3 class="admin-section-title"><i class="fa-solid fa-user-group"></i> Remplissage assisté (équipes ETF2L)</h3>
 <div class="admin-form-row js-etf2l-fill" style="border:1px solid #9b6dff; border-radius:8px; padding:14px; background:rgba(155,109,255,0.08); margin-bottom:14px;">
     @if (count($competitions) > 0)

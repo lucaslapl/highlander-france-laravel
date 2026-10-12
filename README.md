@@ -97,18 +97,19 @@ réservé aux admins et aux rôles **caster / prod** (middleware `overlay-tools`
 génération et suppression des tokens, noms d'équipes (A / B côté admin, logs.tf
 les classe arbitrairement en rouge/bleu) avec bouton d'interversion, avatars
 d'équipes par URL externe, rafraîchissement. Le remplissage assisté des noms
-d'équipes est partagé par tous les outils overlay : compétition ETF2L → équipes
-chargées via l'endpoint `/admin/overlay/etf2l/teams` (cache `etf2l_api_cache`,
-rate-limit friendly), puis piochées dans chaque bloc équipe du formulaire.
-Les casters et la prod n'ont accès à rien d'autre du `/admin/*`.
+d'équipes est partagé par les autres outils overlay : compétition ETF2L →
+équipes chargées via l'endpoint `/admin/overlay/etf2l/teams` (cache
+`etf2l_api_cache`, rate-limit friendly), puis piochées dans chaque bloc équipe
+du formulaire. Les casters et la prod n'ont accès à rien d'autre du `/admin/*`.
 
 L'overlay de série (`/admin/series`, outil « Overlay Scores ») se remplit
-depuis un **lien de match ETF2L** : le titre, les équipes (acronymes, avatars,
-rosters) et les maps connues sont préremplis via `Etf2lMatchService`
-(`api-v2.etf2l.org/matches/{id}`, même cache), et une série existante peut être
-resynchronisée (équipes TBD devenues connues, rosters, maps du pick / ban).
-Les points de maps restent manuels : un point par map gagnée depuis le détail
-de la série, chaque événement visible et annulable dans le journal.
+depuis un **lien de match ETF2L** : le titre, les équipes (nom complet ETF2L,
+à raccourcir à la main, avatars, rosters) et les maps connues sont préremplis
+via `Etf2lMatchService` (`api-v2.etf2l.org/matches/{id}`, même cache), et une
+série existante peut être resynchronisée (équipes TBD devenues connues,
+rosters, maps du pick / ban). Les points de maps restent manuels : un point
+par map gagnée depuis le détail de la série, chaque événement visible et
+annulable dans le journal.
 
 ## Streams Twitch (badge « EN DIRECT »)
 

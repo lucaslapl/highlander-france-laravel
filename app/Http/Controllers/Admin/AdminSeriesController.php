@@ -26,15 +26,15 @@ use Illuminate\Support\Str;
  *
  * La série est remplie depuis un lien de match ETF2L
  * (https://etf2l.org/matches/{id}/) : il génère le titre (« Compétition —
- * A vs B »), les noms d'équipes (acronyme « tag » ETF2L le cas échéant,
- * modifiable), leurs avatars et leurs rosters, et les maps jouées si
- * ETF2L les connaît — sinon elles sont choisies dans le menu des maps du
- * site, filtré par le format du match (Highlander → 9v9, 6v6 → 6v6). Les
- * équipes encore inconnues (TBD en playoffs) ou une API indisponible
- * laissent la saisie manuelle prendre le relais, et une série existante
- * peut être resynchronisée depuis ETF2L à tout moment. Accessible aux
- * admins et aux rôles caster / prod (hub des overlays
- * /admin/overlays-stream).
+ * A vs B »), les noms d'équipes (nom complet ETF2L, à raccourcir à la
+ * main — l'espace sur l'overlay est très réduit), leurs avatars et leurs
+ * rosters, et les maps jouées si ETF2L les connaît — sinon elles sont
+ * choisies dans le menu des maps du site, filtré par le format du match
+ * (Highlander → 9v9, 6v6 → 6v6). Les équipes encore inconnues (TBD en
+ * playoffs) ou une API indisponible laissent la saisie manuelle prendre
+ * le relais, et une série existante peut être resynchronisée depuis
+ * ETF2L à tout moment. Accessible aux admins et aux rôles caster / prod
+ * (hub des overlays /admin/overlays-stream).
  */
 final class AdminSeriesController extends Controller
 {
@@ -51,22 +51,6 @@ final class AdminSeriesController extends Controller
         $this->series = new SeriesRepository;
         $this->etf2lMatches = new Etf2lMatchService;
         $this->etf2lTeams = new Etf2lTeamService;
-    }
-
-    /**
-     * Compétitions ETF2L (Highlander et 6v6) pour le remplissage assisté
-     * manuel (repli quand un match n'est pas exploitable : liste vide si
-     * l'API est indisponible, la boîte est masquée).
-     *
-     * @return array<int, array{id: int, name: string, archived: bool, type: string}>
-     */
-    private function competitions(): array
-    {
-        try {
-            return $this->etf2lTeams->competitionsBothFormats();
-        } catch (\Throwable) {
-            return [];
-        }
     }
 
     /**
@@ -95,7 +79,6 @@ final class AdminSeriesController extends Controller
             'title' => 'Admin - Overlay Scores',
             'description' => 'Overlay de score des séries de playoffs rempli depuis un match ETF2L, à points manuels.',
             'seriesList' => $this->series->all(),
-            'competitions' => $this->competitions(),
             'mapPools' => $this->mapPools(),
         ]);
     }
@@ -259,7 +242,6 @@ final class AdminSeriesController extends Controller
                 'red' => $this->series->hasAvatar($token, 'red'),
                 'blue' => $this->series->hasAvatar($token, 'blue'),
             ],
-            'competitions' => $this->competitions(),
             'mapPools' => $this->mapPools(),
         ]);
     }
@@ -426,11 +408,11 @@ final class AdminSeriesController extends Controller
     /**
      * POST /admin/series/{token}/resync — resynchronise la série depuis
      * son match ETF2L (équipes TBD devenues connues, rosters, maps
-     * révélées par le pick / ban, titre). Les noms affichés, avatars et
-     * rosters sont remplacés par les données ETF2L actuelles (les
-     * corrections manuelles d'acronyme sont à refaire après coup) ; les
-     * maps sont uniquement ajoutées, jamais retirées — le score acquis
-     * sur une map existante ne bouge pas.
+     * révélées par le pick / ban, titre). Les noms affichés (nom complet
+     * ETF2L, à raccourcir à la main si besoin), avatars et rosters sont
+     * remplacés par les données ETF2L actuelles ; les maps sont
+     * uniquement ajoutées, jamais retirées — le score acquis sur une map
+     * existante ne bouge pas.
      */
     public function resync(string $token): RedirectResponse
     {
@@ -464,7 +446,7 @@ final class AdminSeriesController extends Controller
 
             $series['teams'][$team]['etf2l_id'] = (int) $etf2lTeam['id'];
             $series['teams'][$team]['etf2l_name'] = (string) $etf2lTeam['name'];
-            $series['teams'][$team]['name'] = $etf2lTeam['tag'] !== '' ? $etf2lTeam['tag'] : (string) $etf2lTeam['name'];
+            $series['teams'][$team]['name'] = (string) $etf2lTeam['name'];
 
             if ((string) ($etf2lTeam['avatar'] ?? '') !== '') {
                 $series['teams'][$team]['avatar_url'] = (string) $etf2lTeam['avatar'];
@@ -497,38 +479,6 @@ final class AdminSeriesController extends Controller
         AdminLogger::log('admin_series_resync', null, 'SUCCESS (série '.$token.' : '.$summary.')');
 
         return back()->with('success', 'Série resynchronisée depuis ETF2L : '.$summary.'.');
-    }
-
-    /**
-     * POST /admin/series/{token}/swap — intervertit les équipes A et B côté
-     * personnalisation : noms, avatars par URL et avatars uploadés. Le
-     * score acquis et les rosters ne bougent pas : ce bouton corrige
-     * uniquement l'ordre d'affichage sur l'overlay si les côtés ont été
-     * mal choisis à la création — même logique que l'outil Overlay Logs.
-     */
-    public function swap(string $token): RedirectResponse
-    {
-        Auth::requireOverlayTools();
-
-        $series = $this->series->find($token);
-        if ($series === null) {
-            abort(404);
-        }
-
-        $redName = (string) $series['teams']['red']['name'];
-        $redAvatarUrl = $series['teams']['red']['avatar_url'] ?? null;
-
-        $series['teams']['red']['name'] = (string) $series['teams']['blue']['name'];
-        $series['teams']['red']['avatar_url'] = $series['teams']['blue']['avatar_url'] ?? null;
-        $series['teams']['blue']['name'] = $redName;
-        $series['teams']['blue']['avatar_url'] = $redAvatarUrl;
-
-        $this->series->save($series);
-        $this->series->swapAvatars($token);
-
-        AdminLogger::log('admin_series_swap', null, 'SUCCESS (série '.$token.' : équipes interverties)');
-
-        return back()->with('success', 'Équipes interverties : noms et avatars A / B échangés — l\'overlay se rafraîchit tout seul.');
     }
 
     /**

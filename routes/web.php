@@ -149,7 +149,6 @@ Route::middleware('overlay-tools')->prefix('admin')->group(function (): void {
     Route::post('/series/{token}/teams', [AdminSeriesController::class, 'teams'])->where('token', '[a-z0-9]{16}');
     Route::post('/series/{token}/rosters', [AdminSeriesController::class, 'rosters'])->where('token', '[a-z0-9]{16}');
     Route::post('/series/{token}/resync', [AdminSeriesController::class, 'resync'])->where('token', '[a-z0-9]{16}');
-    Route::post('/series/{token}/swap', [AdminSeriesController::class, 'swap'])->where('token', '[a-z0-9]{16}');
     Route::post('/series/{token}/point', [AdminSeriesController::class, 'point'])->where('token', '[a-z0-9]{16}');
     Route::post('/series/{token}/map', [AdminSeriesController::class, 'addMap'])->where('token', '[a-z0-9]{16}');
     Route::post('/series/{token}/map/delete', [AdminSeriesController::class, 'removeMap'])->where('token', '[a-z0-9]{16}');

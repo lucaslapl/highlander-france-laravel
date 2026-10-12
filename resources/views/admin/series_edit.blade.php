@@ -47,31 +47,16 @@
 </div>
 
 <h3 class="admin-section-title"><i class="fa-solid fa-trophy"></i> Équipes</h3>
-@include('admin.partials.etf2l_teams', ['competitions' => $competitions, 'prefix' => 'series'])
-<div style="border:2px solid #4cc46a; border-radius:10px; padding:16px; margin-bottom:16px; background:rgba(76,196,106,0.08);">
-    <h4 style="margin:0 0 8px;"><i class="fa-solid fa-right-left"></i> L'ordre d'affichage est inversé ?</h4>
-    <p style="margin:0 0 12px; font-size:14px; line-height:1.5;">
-        Si les équipes A et B sont du mauvais côté sur l'overlay, ce bouton échange
-        <strong>uniquement leurs noms et leurs avatars</strong> — le score acquis et les rosters ne bougent pas,
-        et l'overlay se rafraîchit immédiatement dans OBS.
-    </p>
-    <form method="POST" action="/admin/series/{{ $series['token'] }}/swap"
-          onsubmit="return confirm('Intervertir les équipes A et B (noms et avatars) ?');">
-        @csrf
-        <button type="submit" class="admin-btn admin-btn--primary">
-            <i class="fa-solid fa-right-left"></i> Intervertir les équipes A / B
-        </button>
-    </form>
-</div>
 <p style="color:#aaa; font-size:13px;">
     Les noms s'affichent tels quels sur l'overlay : utilisez l'acronyme de l'équipe (ex : Inglorious Gamblers → IG),
-    l'espace y est très réduit. Modifiables à tout moment, y compris après la création (erreur d'acronyme, alias).
+    l'espace y est très réduit. Le nom complet ETF2L (prérempli au chargement du match, remplacé par la
+    resynchronisation) reste en référence sous le champ. Modifiables à tout moment, y compris après la création.
     La couleur (A = côté gauche de l'overlay, B = côté droit) ne fixe que l'ordre d'affichage.
 </p>
 <p style="color:#aaa; font-size:13px;">
-    La liaison ETF2L (préremplissage depuis le match ou remplissage assisté ci-dessus) permet de rafraîchir les
-    rosters des deux équipes d'un clic — transferts entre saisons, joueur ajouté en cours de saison — sans ressaisir
-    les SteamIDs à la main. Sans liaison, les rosters saisis à la création restent valables tels quels.
+    La liaison ETF2L issue du lien de match permet de rafraîchir les rosters des deux équipes d'un clic —
+    transferts entre saisons, joueur ajouté en cours de saison — sans ressaisir les SteamIDs à la main.
+    Sans liaison, les rosters saisis à la création restent valables tels quels.
 </p>
 <form method="POST" action="/admin/series/{{ $series['token'] }}/rosters" style="margin:0 0 14px;"
       onsubmit="return confirm('Remplacer les rosters des deux équipes par leurs rosters ETF2L actuels ?');">
@@ -327,9 +312,5 @@
 
 @push('styles')
 <link rel="stylesheet" href="{{ hlfr_asset('/_css/admin_overlay.css') }}">
-@endpush
-
-@push('scripts')
-<script src="{{ hlfr_asset('/_js/admin_etf2l_teams.js') }}" defer></script>
 @endpush
 @endsection

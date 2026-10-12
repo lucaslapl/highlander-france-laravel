@@ -15,10 +15,9 @@ use Tests\TestCase;
  * création d'une série depuis un lien de match ETF2L (préremplissage des
  * équipes, avatars et rosters, titre généré, repli saisie manuelle),
  * point de map manuel, annulation d'un événement, gestion des maps
- * (ajout / retrait), renommage des équipes (nom + avatar par URL,
- * remplissage assisté ETF2L comme pour les autres outils overlay),
- * rafraîchissement des rosters, resynchronisation depuis le match ETF2L,
- * interversion des équipes A / B et suppression.
+ * (ajout / retrait), renommage des équipes (nom + avatar par URL),
+ * rafraîchissement des rosters, resynchronisation depuis le match ETF2L
+ * et suppression.
  */
 class SeriesAdminTest extends TestCase
 {
@@ -38,10 +37,6 @@ class SeriesAdminTest extends TestCase
         // storage/app/hlfr et tout est nettoyé en tearDown.
         $this->dataDir = storage_path('app/hlfr_series_test');
         config(['hlfr.data_dir' => $this->dataDir]);
-
-        // Le remplissage assisté ETF2L des pages admin est servi depuis le
-        // cache : amorce vide pour rester sans appel HTTP réel.
-        $this->seedEtf2lCompetitionsCache();
     }
 
     protected function tearDown(): void
@@ -97,7 +92,6 @@ class SeriesAdminTest extends TestCase
         $this->post('/admin/series/'.self::TOKEN.'/teams', ['red_name' => 'LB', 'blue_name' => 'E6'])->assertForbidden();
         $this->post('/admin/series/'.self::TOKEN.'/rosters')->assertForbidden();
         $this->post('/admin/series/'.self::TOKEN.'/resync')->assertForbidden();
-        $this->post('/admin/series/'.self::TOKEN.'/swap')->assertForbidden();
         $this->post('/admin/series/'.self::TOKEN.'/point', ['map' => 'pl_upward_f10', 'team' => 'red'])->assertForbidden();
         $this->post('/admin/series/'.self::TOKEN.'/map', ['map' => 'koth_product_final'])->assertForbidden();
         $this->post('/admin/series/'.self::TOKEN.'/map/delete', ['map' => 'pl_upward_f10'])->assertForbidden();
@@ -127,10 +121,10 @@ class SeriesAdminTest extends TestCase
         $this->assertNotNull($match);
         $this->assertSame(self::MATCH_ID, $match['id']);
         $this->assertSame('9v9', $match['category']);
-        $this->assertSame('LB', $match['teams'][0]['tag']);
+        $this->assertSame('Les Baguettes', $match['teams'][0]['name']);
         $this->assertSame(['76561198000000001', '76561198000000002'], $match['teams'][0]['players']);
         $this->assertSame(['76561198000000011'], $match['teams'][1]['players']);
-        $this->assertSame('Highlander Season 36: High Playoffs — LB vs E6', $match['title']);
+        $this->assertSame('Highlander Season 36: High Playoffs — Les Baguettes vs Escouade 6', $match['title']);
     }
 
     public function test_l_endpoint_etf2l_match_rejette_un_lien_invalide(): void
@@ -178,7 +172,7 @@ class SeriesAdminTest extends TestCase
 
         // Titre généré depuis le match, lien mémorisé pour la
         // resynchronisation, catégorie du match pour le menu des maps.
-        $this->assertSame('Highlander Season 36: High Playoffs — LB vs E6', $series['title']);
+        $this->assertSame('Highlander Season 36: High Playoffs — Les Baguettes vs Escouade 6', $series['title']);
         $this->assertSame(self::MATCH_ID, $series['etf2l_match_id']);
         $this->assertSame('9v9', $series['category']);
         $this->assertSame(2, $series['wins_needed']);
@@ -295,7 +289,10 @@ class SeriesAdminTest extends TestCase
             ->assertSee('Lien du match ETF2L')
             ->assertSee('series-load-match')
             ->assertSee('series-map-select')
-            ->assertSee('admin_series_match.js');
+            ->assertSee('admin_series_match.js')
+            // Plus de remplissage assisté sur cet outil : les équipes viennent
+            // du lien de match ETF2L.
+            ->assertDontSee('Remplissage assisté');
     }
 
     // ─── Équipes ──────────────────────────────────────────────────────────
@@ -352,56 +349,6 @@ class SeriesAdminTest extends TestCase
         $series = (new SeriesRepository)->find(self::TOKEN);
         $this->assertSame('Les Baguettes', $series['teams']['red']['name']);
         $this->assertSame('Escouade 6', $series['teams']['blue']['name']);
-    }
-
-    public function test_l_interversion_echange_noms_et_avatars_mais_pas_les_rosters(): void
-    {
-        $this->seedSeries();
-        $repository = new SeriesRepository;
-        $series = $repository->find(self::TOKEN);
-        $series['teams']['red']['avatar_url'] = 'https://example.com/lb.png';
-        $series['teams']['blue']['avatar_url'] = 'https://example.com/e6.png';
-        $repository->save($series);
-
-        $this->withSession($this->adminSession())
-            ->post('/admin/series/'.self::TOKEN.'/swap')
-            ->assertRedirect();
-
-        $series = (new SeriesRepository)->find(self::TOKEN);
-        // Noms et avatars échangés (affichage), rosters inchangés.
-        $this->assertSame('Escouade 6', $series['teams']['red']['name']);
-        $this->assertSame('https://example.com/e6.png', $series['teams']['red']['avatar_url']);
-        $this->assertSame(['76561198000000001', '76561198000000002'], $series['teams']['red']['players']);
-        $this->assertSame('Les Baguettes', $series['teams']['blue']['name']);
-        $this->assertSame('https://example.com/lb.png', $series['teams']['blue']['avatar_url']);
-        $this->assertSame(['76561198000000011', '76561198000000012'], $series['teams']['blue']['players']);
-    }
-
-    public function test_les_pages_serie_proposent_le_remplissage_assiste_etf2l(): void
-    {
-        // Même remplissage assisté que les autres outils overlay :
-        // compétition ETF2L → équipes chargées via /admin/overlay/etf2l/teams.
-        $this->seedEtf2lCompetitionsCache([
-            ['id' => 42, 'type' => 'Highlander', 'name' => 'HLFR Test Cup', 'archived' => false],
-        ]);
-
-        $session = $this->adminSession();
-        $this->withSession($session)
-            ->get('/admin/series')
-            ->assertOk()
-            ->assertSee('Remplissage assisté')
-            ->assertSee('HLFR Test Cup')
-            ->assertSee('series-load-teams')
-            ->assertDontSee('Équipes déjà castées');
-
-        $this->seedSeries();
-        $this->withSession($session)
-            ->get('/admin/series/'.self::TOKEN)
-            ->assertOk()
-            ->assertSee('Remplissage assisté')
-            ->assertSee('HLFR Test Cup')
-            ->assertSee('series-load-teams')
-            ->assertDontSee('Équipes déjà castées');
     }
 
     // ─── Liaison ETF2L et rafraîchissement des rosters ────────────────────
@@ -489,9 +436,10 @@ class SeriesAdminTest extends TestCase
 
         $series = (new SeriesRepository)->find(self::TOKEN);
 
-        // Titre régénéré, acronymes et liaisons ETF2L à jour.
-        $this->assertSame('Highlander Season 36: High Playoffs — LB vs E6', $series['title']);
-        $this->assertSame('LB', $series['teams']['red']['name']);
+        // Titre régénéré, noms complets ETF2L et liaisons à jour (le nom
+        // affiché est le nom complet : l'acronyme se règle à la main).
+        $this->assertSame('Highlander Season 36: High Playoffs — Les Baguettes vs Escouade 6', $series['title']);
+        $this->assertSame('Les Baguettes', $series['teams']['red']['name']);
         $this->assertSame('Les Baguettes', $series['teams']['red']['etf2l_name']);
         $this->assertSame(21747, $series['teams']['red']['etf2l_id']);
         $this->assertSame('https://example.com/lb.png', $series['teams']['red']['avatar_url']);
@@ -690,8 +638,9 @@ class SeriesAdminTest extends TestCase
             ->assertSee('Les Baguettes')
             ->assertSee('Escouade 6')
             ->assertSee('Point manuel')
-            ->assertSee('Intervertir les équipes A / B')
-            ->assertSee('Ajouter la map');
+            ->assertSee('Ajouter la map')
+            ->assertDontSee('Remplissage assisté')
+            ->assertDontSee('Intervertir les équipes');
     }
 
     public function test_la_vue_detail_propose_la_resynchronisation_avec_liaison(): void
@@ -773,14 +722,12 @@ class SeriesAdminTest extends TestCase
                     'clan1' => [
                         'id' => 21747,
                         'name' => 'Les Baguettes',
-                        'tag' => 'LB',
                         'country' => 'France',
                         'steam' => ['avatar' => 'https://example.com/lb.png'],
                     ],
                     'clan2' => [
                         'id' => 21748,
                         'name' => 'Escouade 6',
-                        'tag' => 'E6',
                         'country' => 'France',
                         'steam' => ['avatar' => 'https://example.com/e6.png'],
                     ],

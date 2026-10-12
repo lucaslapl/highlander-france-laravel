@@ -11,9 +11,9 @@ use Tests\TestCase;
 /**
  * Matchs ETF2L (API v2) pour l'outil « Overlay Scores » : extraction de
  * l'identifiant depuis un lien etf2l.org/matches/{id}, normalisation d'un
- * match (équipes avec tag/acronyme, compétition et format, maps), titre
- * généré (« Compétition — A vs B »), rosters des équipes connues, cache
- * par URL dans etf2l_api_cache et cache négatif sur indisponibilité.
+ * match (équipes, compétition et format, maps), titre généré
+ * (« Compétition — A vs B »), rosters des équipes connues, cache par URL
+ * dans etf2l_api_cache et cache négatif sur indisponibilité.
  * Fetcher HTTP injecté : aucun réseau réel, seulement la base de test.
  */
 class Etf2lMatchServiceTest extends TestCase
@@ -41,8 +41,8 @@ class Etf2lMatchServiceTest extends TestCase
     }
 
     /**
-     * Payload d'un match Highlander avec deux équipes connues, tags et
-     * maps (forme de l'endpoint /matches/{id}).
+     * Payload d'un match Highlander avec deux équipes connues et maps
+     * (forme de l'endpoint /matches/{id}).
      *
      * @return array<string, mixed>
      */
@@ -55,14 +55,12 @@ class Etf2lMatchServiceTest extends TestCase
                 'clan1' => [
                     'id' => 21747,
                     'name' => 'Les Baguettes',
-                    'tag' => 'LB',
                     'country' => 'France',
                     'steam' => ['avatar' => 'https://example.com/lb.png'],
                 ],
                 'clan2' => [
                     'id' => 21748,
                     'name' => 'Escouade 6',
-                    'tag' => 'E6',
                     'country' => 'France',
                     'steam' => ['avatar' => 'https://example.com/e6.png'],
                 ],
@@ -92,7 +90,7 @@ class Etf2lMatchServiceTest extends TestCase
 
     // ─── Normalisation ────────────────────────────────────────────────────
 
-    public function test_un_match_est_normalise_avec_equipes_tags_et_maps(): void
+    public function test_un_match_est_normalise_avec_equipes_et_maps(): void
     {
         $service = $this->service(['/matches/93233' => $this->matchPayload()]);
 
@@ -107,21 +105,20 @@ class Etf2lMatchServiceTest extends TestCase
 
         $this->assertSame(21747, $match['teams'][0]['id']);
         $this->assertSame('Les Baguettes', $match['teams'][0]['name']);
-        $this->assertSame('LB', $match['teams'][0]['tag']);
         $this->assertSame('https://example.com/lb.png', $match['teams'][0]['avatar']);
 
         $this->assertSame(21748, $match['teams'][1]['id']);
-        $this->assertSame('E6', $match['teams'][1]['tag']);
+        $this->assertSame('Escouade 6', $match['teams'][1]['name']);
     }
 
-    public function test_le_titre_genere_utilise_la_competition_et_les_acronymes(): void
+    public function test_le_titre_genere_utilise_la_competition_et_les_noms(): void
     {
         $service = $this->service(['/matches/93233' => $this->matchPayload()]);
 
         $match = $service->match(93233);
 
         $this->assertNotNull($match);
-        $this->assertSame('Highlander Season 36: High Playoffs — LB vs E6', $match['title']);
+        $this->assertSame('Highlander Season 36: High Playoffs — Les Baguettes vs Escouade 6', $match['title']);
     }
 
     public function test_une_equipe_tbd_restre_inconnue(): void
@@ -138,7 +135,7 @@ class Etf2lMatchServiceTest extends TestCase
         $this->assertNotNull($match['teams'][0]);
         $this->assertNull($match['teams'][1]);
         // Le titre garde un repère pour le côté encore inconnu.
-        $this->assertSame('Highlander Season 36: High Playoffs — LB vs TBD', $match['title']);
+        $this->assertSame('Highlander Season 36: High Playoffs — Les Baguettes vs TBD', $match['title']);
     }
 
     public function test_un_match_6v6_est_categorise_6v6(): void
@@ -166,22 +163,7 @@ class Etf2lMatchServiceTest extends TestCase
 
         $this->assertNotNull($match);
         $this->assertNull($match['category']);
-        // Sans tag connu, le titre replie sur le nom complet.
-        $this->assertSame('Highlander Season 36: High Playoffs — LB vs E6', $match['title']);
-    }
-
-    public function test_le_nom_complet_remplace_le_tag_absent(): void
-    {
-        $payload = $this->matchPayload();
-        $payload['match']['clan1']['tag'] = null;
-
-        $service = $this->service(['/matches/93233' => $payload]);
-
-        $match = $service->match(93233);
-
-        $this->assertNotNull($match);
-        $this->assertSame('', $match['teams'][0]['tag']);
-        $this->assertSame('Highlander Season 36: High Playoffs — Les Baguettes vs E6', $match['title']);
+        $this->assertSame('Highlander Season 36: High Playoffs — Les Baguettes vs Escouade 6', $match['title']);
     }
 
     // ─── Rosters ──────────────────────────────────────────────────────────

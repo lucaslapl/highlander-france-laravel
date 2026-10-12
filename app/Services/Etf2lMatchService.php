@@ -9,8 +9,8 @@ use Illuminate\Support\Facades\DB;
 /**
  * Matchs ETF2L (API v2, endpoint /matches/{id}) pour l'outil « Overlay
  * Scores » : un lien de match (https://etf2l.org/matches/{id}/) suffit à
- * remplir une série — titre, noms d'équipes (acronyme « tag » ETF2L le
- * cas échéant), avatars, rosters et maps jouées si ETF2L les connaît.
+ * remplir une série — titre, noms d'équipes, avatars, rosters et maps
+ * jouées si ETF2L les connaît.
  *
  * Conso modèle Etf2lTeamService : réponses mises en cache dans la table
  * etf2l_api_cache (clé = URL), appels HTTP espacés par le Etf2lRateLimiter
@@ -25,9 +25,11 @@ use Illuminate\Support\Facades\DB;
  * attendre une heure.
  *
  * Le payload d'un match est défensif par nature (l'API ne garantit pas la
- * présence du tag, du type de compétition ou des équipes) : chaque champ
- * manque à l'appel sans faire échouer les autres, la saisie manuelle de
- * l'outil reste le repli.
+ * présence du type de compétition ou des équipes) : chaque champ manque à
+ * l'appel sans faire échouer les autres, la saisie manuelle de l'outil
+ * reste le repli. L'API ne remonte pas d'acronyme d'équipe : le nom
+ * complet est prérempli, l'admin le raccourcit à la main (l'espace sur
+ * l'overlay est très réduit).
  */
 final class Etf2lMatchService
 {
@@ -45,7 +47,7 @@ final class Etf2lMatchService
     /** Timeout cURL par appel. */
     private const HTTP_TIMEOUT_S = 15;
 
-    /** Taille max d'un nom ou d'un tag (octets), comme Etf2lTeamService. */
+    /** Taille max d'un nom d'équipe (octets), comme Etf2lTeamService. */
     private const MAX_NAME_BYTES = 64;
 
     /**
@@ -107,8 +109,9 @@ final class Etf2lMatchService
      *                      format du match reste inconnu ;
      *  - teams           : deux entrées (clan1 puis clan2), null quand
      *                      l'équipe est encore inconnue (TBD en playoffs),
-     *                      sinon {id, name, tag, avatar} — le tag est
-     *                      l'acronyme affiché sur ETF2L, vide si absent ;
+     *                      sinon {id, name, avatar} — le nom est le nom
+     *                      complet ETF2L, l'outil laisse l'admin le
+     *                      raccourcir à la main ;
      *  - maps            : maps jouées si ETF2L les connaît (nom de map
      *                      complet, ex. « koth_product_final »), sinon [] ;
      *  - title           : titre de série généré (« Compétition — A vs B »).
@@ -199,9 +202,9 @@ final class Etf2lMatchService
 
     /**
      * Titre de série généré depuis un match normalisé : « Compétition —
-     * A vs B » avec l'acronyme (tag) de préférence au nom complet, repli
-     * « TBD » pour une équipe encore inconnue. Le titre ne s'affiche pas
-     * sur l'overlay : c'est un repère dans l'admin.
+     * A vs B » avec le nom complet des équipes, repli « TBD » pour une
+     * équipe encore inconnue. Le titre ne s'affiche pas sur l'overlay :
+     * c'est un repère dans l'admin.
      *
      * @param  array<string, mixed>  $match  Match normalisé (voir match())
      */
@@ -209,11 +212,7 @@ final class Etf2lMatchService
     {
         $names = [];
         foreach ($match['teams'] as $team) {
-            if (is_array($team)) {
-                $names[] = $team['tag'] !== '' ? $team['tag'] : $team['name'];
-            } else {
-                $names[] = 'TBD';
-            }
+            $names[] = is_array($team) ? (string) $team['name'] : 'TBD';
         }
 
         if ($names === []) {
@@ -226,8 +225,7 @@ final class Etf2lMatchService
     /**
      * Normalise une équipe du match (clan1 / clan2) : null si le bloc est
      * absent ou sans identifiant exploitable (TBD en playoffs), sinon
-     * identifiant, nom complet, tag (acronyme ETF2L, vide si absent) et
-     * avatar Steam de l'équipe.
+     * identifiant, nom complet et avatar Steam de l'équipe.
      *
      * @return array<string, mixed>|null
      */
@@ -248,7 +246,6 @@ final class Etf2lMatchService
         return [
             'id' => $id,
             'name' => $name,
-            'tag' => $this->sanitizeName($clan['tag'] ?? null) ?? '',
             'avatar' => $this->cleanUrl($steam['avatar'] ?? null),
         ];
     }
@@ -315,7 +312,7 @@ final class Etf2lMatchService
     }
 
     /**
-     * Assainit un nom ou un tag : caractères de contrôle supprimés,
+     * Assainit un nom d'équipe : caractères de contrôle supprimés,
      * espaces compressés, taille plafonnée sans couper un caractère UTF-8.
      */
     private function sanitizeName(mixed $name): ?string
