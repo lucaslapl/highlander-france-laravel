@@ -116,7 +116,6 @@ Route::middleware('overlay-tools')->prefix('admin')->group(function (): void {
     Route::get('/overlay', [AdminOverlayController::class, 'index'])->name('admin.overlay');
     Route::post('/overlay/generate', [AdminOverlayController::class, 'generate']);
     Route::get('/overlay/{token}', [AdminOverlayController::class, 'edit'])->where('token', '[a-z0-9]{16}');
-    Route::post('/overlay/{token}/update', [AdminOverlayController::class, 'update'])->where('token', '[a-z0-9]{16}');
     Route::post('/overlay/{token}/refresh', [AdminOverlayController::class, 'refresh'])->where('token', '[a-z0-9]{16}');
     Route::post('/overlay/{token}/load', [AdminOverlayController::class, 'load'])->where('token', '[a-z0-9]{16}');
     Route::post('/overlay/{token}/delete', [AdminOverlayController::class, 'delete'])->where('token', '[a-z0-9]{16}');

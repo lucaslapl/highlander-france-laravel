@@ -11,9 +11,9 @@ use Tests\TestCase;
 /**
  * Outil « Overlay Logs » : accès réservé aux admins côté panel, vue overlay
  * publique par token (OBS), chargement de logs dans un overlay existant
- * (URL OBS stable), avatars personnalisés persistants et suppression. Les
- * noms d'équipes ne sont plus saisis : résolution ETF2L automatique au
- * chargement des logs (voir OverlayStatsServiceTest), repli RED / BLU.
+ * (URL OBS stable) et suppression. Noms et avatars d'équipes ne sont plus
+ * saisis : résolution ETF2L automatique au chargement des logs (voir
+ * OverlayStatsServiceTest), repli RED / BLU.
  */
 class OverlayTest extends TestCase
 {
@@ -215,15 +215,31 @@ class OverlayTest extends TestCase
             ->assertSee('Charger un nouveau log')
             ->assertSee('action="/admin/overlay/'.self::TOKEN.'/load"', false)
             ->assertSee('L\'URL OBS de cet overlay ne change jamais', false)
-            // Ni remplissage assisté, ni interversion : les couleurs du log
-            // sont suivies telles quelles, les noms ETF2L sont automatiques.
+            // Ni remplissage assisté, ni interversion, ni personnalisation :
+            // la seule saisie est le lien du log, noms et avatars ETF2L
+            // sont résolus automatiquement.
             ->assertDontSee('Remplissage assisté')
             ->assertDontSee('js-etf2l-fill')
             ->assertDontSee('Intervertir')
-            // Seule personnalisation : les avatars par URL.
-            ->assertSee('red_avatar_url')
-            ->assertSee('blue_avatar_url')
-            ->assertDontSee('red_name');
+            ->assertDontSee('Personnalisation')
+            ->assertDontSee('red_avatar_url')
+            ->assertDontSee('blue_avatar_url');
+    }
+
+    public function test_la_route_de_personnalisation_des_avatars_a_disparu(): void
+    {
+        $this->seedOverlay();
+
+        // Les avatars suivent le vote ETF2L de chaque log : plus de
+        // formulaire de personnalisation, la route n'existe plus.
+        $this->withSession($this->adminSession())
+            ->post('/admin/overlay/'.self::TOKEN.'/update', [
+                'red_avatar_url' => 'https://example.com/logo.png',
+            ])
+            ->assertNotFound();
+
+        $after = (new OverlayRepository)->find(self::TOKEN);
+        $this->assertNull($after['teams']['red']['avatar_url'] ?? null);
     }
 
     public function test_le_chargement_de_log_rejette_une_saisie_invalide(): void
@@ -241,39 +257,6 @@ class OverlayTest extends TestCase
         // L'overlay est intact : même log, même version.
         $this->assertSame($before['log_id'], $after['log_id']);
         $this->assertSame((int) $before['version'], (int) $after['version']);
-    }
-
-    public function test_l_admin_modifie_les_avatars_et_la_version_bump(): void
-    {
-        $this->seedOverlay();
-
-        $repo = new OverlayRepository;
-        $before = $repo->find(self::TOKEN);
-
-        // Garantit un vrai bump de version (résolution à la seconde).
-        usleep(1100000);
-
-        $this->withSession($this->adminSession())
-            ->post('/admin/overlay/'.self::TOKEN.'/update', [
-                'red_avatar_url' => 'https://example.com/logo.png',
-                'blue_avatar_url' => '',
-            ])
-            ->assertRedirect();
-
-        $after = $repo->find(self::TOKEN);
-        $this->assertSame('https://example.com/logo.png', $after['teams']['red']['avatar_url']);
-        $this->assertNull($after['teams']['blue']['avatar_url']);
-        $this->assertGreaterThan((int) $before['version'], (int) $after['version']);
-
-        // Les noms d'équipes ne sont pas saisissables : ils viennent du log
-        // (résolution ETF2L automatique, ici RED / BLU du fixture).
-        $this->assertSame('RED', $after['teams']['red']['name']);
-        $this->assertSame('BLU', $after['teams']['blue']['name']);
-
-        // L'overlay reflète le nouvel avatar (polling OBS → reload).
-        $this->get('/overlay/'.self::TOKEN)
-            ->assertOk()
-            ->assertSee('https://example.com/logo.png');
     }
 
     public function test_l_upload_d_avatar_n_est_plus_propose(): void

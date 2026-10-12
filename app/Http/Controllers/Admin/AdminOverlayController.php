@@ -12,7 +12,6 @@ use App\Services\OverlayStatsService;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Str;
 
 /**
  * Outil « Overlay Logs » : overlays de stats pour OBS Studio alimentés
@@ -26,15 +25,17 @@ use Illuminate\Support\Str;
  * couleur pour couleur, le visuel suit le log — et la vue OBS se
  * rafraîchit toute seule (polling de version côté navigateur).
  *
- * Les noms d'équipes sont résolus automatiquement à chaque chargement de
- * log : les joueurs votent pour leurs équipes ETF2L (rosters synchronisés
- * + payloads API en cache, voir OverlayStatsService) et le nom le plus
- * voté de chaque côté s'affiche — sans aucun appel HTTP supplémentaire
- * par rapport à la résolution des pseudos. Sans nom identifiable, le
- * repli est RED / BLU : plus besoin de remplissage assisté ni de bouton
- * d'interversion, les couleurs du log sont suivies telles quelles.
- * Seuls les avatars par URL externe restent personnalisables (ils
- * traversent les chargements de logs).
+ * Les noms et avatars d'équipes sont résolus automatiquement à chaque
+ * chargement de log : les joueurs votent pour leurs équipes ETF2L
+ * (rosters synchronisés + payloads API en cache, voir
+ * OverlayStatsService) et le nom le plus voté de chaque côté s'affiche
+ * avec l'avatar de son club (payload joueur, sinon endpoint équipe mis
+ * en cache) — sans appel HTTP supplémentaire par rapport à la
+ * résolution des pseudos, hormis l'avatar au premier chargement du
+ * jour. Sans nom identifiable, le repli est RED / BLU : plus besoin de
+ * remplissage assisté ni de bouton d'interversion, les couleurs du log
+ * sont suivies telles quelles. La seule saisie de l'outil est le lien du
+ * log à charger.
  */
 final class AdminOverlayController extends Controller
 {
@@ -154,37 +155,10 @@ final class AdminOverlayController extends Controller
     }
 
     /**
-     * POST /admin/overlay/{token}/update — avatars par URL externe des
-     * deux équipes : les seules personnalisations persistantes de
-     * l'overlay, elles traversent les chargements de logs. Les noms
-     * d'équipes ne sont pas saisissables : ils sont résolus
-     * automatiquement depuis ETF2L (ou RED / BLU par repli).
-     */
-    public function update(Request $request, string $token): RedirectResponse
-    {
-        Auth::requireOverlayTools();
-
-        $overlay = $this->requireOverlay($token);
-
-        $data = $request->validate([
-            'red_avatar_url' => ['nullable', 'url:http,https', 'max:500'],
-            'blue_avatar_url' => ['nullable', 'url:http,https', 'max:500'],
-        ]);
-
-        $overlay['teams']['red']['avatar_url'] = $this->cleanUrl($data['red_avatar_url'] ?? null);
-        $overlay['teams']['blue']['avatar_url'] = $this->cleanUrl($data['blue_avatar_url'] ?? null);
-
-        $this->overlays->save($overlay);
-
-        return back()->with('success', 'Overlay mis à jour.');
-    }
-
-    /**
      * POST /admin/overlay/{token}/refresh — relit le log logs.tf courant
-     * (scores et stats à jour, ex. fin de map) en conservant le token,
-     * les avatars personnalisés… et les noms d'équipes résolus
-     * automatiquement : une résolution ETF2L indisponible au chargement
-     * du log est rattrapée ici dès que l'API répond à nouveau.
+     * (scores et stats à jour, ex. fin de map) en conservant le token :
+     * une résolution ETF2L (noms, avatars) indisponible au chargement du
+     * log est rattrapée ici dès que l'API répond à nouveau.
      */
     public function refresh(Request $request, string $token): RedirectResponse
     {
@@ -271,18 +245,5 @@ final class AdminOverlayController extends Controller
         }
 
         return ' Aucune équipe identifiée sur ETF2L : RED / BLU affichés.';
-    }
-
-    /**
-     * Normalise une URL d'avatar saisie (vide => null).
-     */
-    private function cleanUrl(mixed $value): ?string
-    {
-        $value = trim((string) ($value ?? ''));
-        if ($value === '' || ! Str::startsWith($value, ['http://', 'https://'])) {
-            return null;
-        }
-
-        return $value;
     }
 }

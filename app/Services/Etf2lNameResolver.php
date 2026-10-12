@@ -27,15 +27,19 @@ use Illuminate\Support\Facades\DB;
  * contrôle, taille plafonnée) : ils seront affichés en jeu comme noms de
  * joueurs. La récupération HTTP est injectable (closure) pour les tests.
  *
- * Le service expose aussi teamCandidatesBySteamId3() : les équipes ETF2L
+ * Le service expose aussi teamCandidatesBySteamId3() — les équipes ETF2L
  * auxquelles appartient chaque joueur d'un log (rosters synchronisés +
- * payloads API en cache), sans aucun appel HTTP — le vote de couverture
- * qui en déduit les noms d'équipes d'un overlay vit dans
- * OverlayStatsService.
+ * payloads API en cache, sans appel HTTP) — et teamAvatar() : le vote de
+ * couverture qui en déduit noms et avatars d'équipes d'un overlay vit
+ * dans OverlayStatsService. Les noms arrivent décodés de leurs entités
+ * HTML (l'API ETF2L renvoie « l&#039;équipe » pour « l'équipe »).
  */
 final class Etf2lNameResolver
 {
     private const API_URL = 'https://api-v2.etf2l.org/player/';
+
+    /** Endpoint équipe (avatar des clubs) — même clé de cache que Etf2lTeamService. */
+    private const TEAM_API_URL = 'https://api-v2.etf2l.org/team/';
 
     /** Durée de vie (s) d'une réponse API « joueur trouvé ». */
     private const CACHE_TTL_FOUND_S = 24 * 3600;
@@ -54,6 +58,9 @@ final class Etf2lNameResolver
 
     /** Taille max d'un pseudo renvoyé aux serveurs (MAX_NAME_LENGTH SourceMod - 1). */
     private const MAX_NAME_BYTES = 32;
+
+    /** Taille max d'un nom d'équipe (affichage overlay, comme l'ancienne saisie manuelle). */
+    private const MAX_TEAM_NAME_BYTES = 64;
 
     /**
      * Récupère une réponse API ETF2L décodée (null si indisponible).
@@ -132,7 +139,9 @@ final class Etf2lNameResolver
      * l'Overlay Logs) : équipes dont le roster synchronisé contient le
      * joueur (etf2l_players jointe à etf2l_teams pour le nom), plus son
      * équipe de club Highlander courante si son payload API est déjà en
-     * cache (fraîcheur 24 h).
+     * cache (fraîcheur 24 h). Chaque candidat porte l'avatar du club
+     * quand il est connu (payload API) et son identifiant ETF2L (pour
+     * récupérer l'avatar à défaut, voir teamAvatar()).
      *
      * Aucun appel HTTP : la résolution des pseudos qui précède
      * (resolveBySteamId3) met généralement les payloads en cache ; les
@@ -145,7 +154,7 @@ final class Etf2lNameResolver
      * le type de l'équipe porte la mention « National ».
      *
      * @param  array<int, string>  $steamids3  SteamID3 « [U:1:…] » (les entrées invalides sont ignorées)
-     * @return array<string, array<int, string>> noms d'équipes par SteamID3, sans doublon
+     * @return array<string, array<int, array{name: string, avatar: string|null, team_id: int|null}>> candidats par SteamID3, dédoublonnés par nom
      */
     public function teamCandidatesBySteamId3(array $steamids3): array
     {
@@ -175,22 +184,23 @@ final class Etf2lNameResolver
             ->join('etf2l_teams as t', 'p.team_id', '=', 't.team_id')
             ->whereIn('p.steamid64', array_keys($steamids64))
             ->whereNotNull('t.name')
-            ->get(['p.steamid64', 't.name', 't.country']);
+            ->get(['p.steamid64', 'p.team_id', 't.name', 't.country']);
 
         foreach ($rows as $row) {
             $steamid64 = (string) $row->steamid64;
 
-            $name = $this->sanitizeName($row->name);
+            $name = $this->sanitizeName($row->name, self::MAX_TEAM_NAME_BYTES);
             if ($name === null || strcasecmp($name, trim((string) ($row->country ?? ''))) === 0) {
                 continue;
             }
 
-            $candidates[$steamid64][$name] = true;
+            $this->mergeCandidate($candidates, $steamid64, $name, null, (int) $row->team_id);
         }
 
         // Payloads API en cache : l'équipe de club Highlander courante du
-        // joueur (aucun appel réseau, le cache d'indisponibilité et les
-        // réponses « introuvable » ne portent pas d'équipe).
+        // joueur et son avatar (aucun appel réseau, le cache
+        // d'indisponibilité et les réponses « introuvable » ne portent pas
+        // d'équipe).
         $urls = [];
         foreach (array_keys($steamids64) as $steamid64) {
             $urls[] = self::API_URL.$steamid64;
@@ -207,27 +217,70 @@ final class Etf2lNameResolver
                 continue;
             }
 
-            $team = $this->teamFromPayload($decoded);
-            if ($team !== null) {
-                // Le payload ne porte pas le SteamID : la seule équipe
-                // courante du joueur complète les rosters ci-dessus.
-                // La clé par URL étant unique, chaque ligne correspond à
-                // un joueur différent — indexation par URL.
-                $steamid64 = substr((string) $row->url, strlen(self::API_URL));
-                $candidates[$steamid64][$team] = true;
+            $entry = $this->teamEntryFromPayload($decoded);
+            if ($entry === null) {
+                continue;
             }
+
+            $steamid64 = substr((string) $row->url, strlen(self::API_URL));
+            $this->mergeCandidate($candidates, $steamid64, $entry['name'], $entry['avatar'], $entry['team_id']);
         }
 
-        // Retour au format SteamID3 (clés du payload logs.tf), doublons
-        // dédupliqués par nom.
+        // Retour au format SteamID3 (clés du payload logs.tf).
         $out = [];
-        foreach ($candidates as $steamid64 => $names) {
+        foreach ($candidates as $steamid64 => $byName) {
             foreach ($aliases[$steamid64] ?? [] as $steamid3) {
-                $out[$steamid3] = array_keys($names);
+                $out[$steamid3] = array_values($byName);
             }
         }
 
         return $out;
+    }
+
+    /**
+     * Avatar ETF2L d'une équipe (logo du club, servi par etf2l.org), ou
+     * null si indisponible. Lit le cache API persistant (endpoint
+     * /team/{id}, fraîcheur 24 h — le même cache que
+     * Etf2lTeamService::roster, lectures et écritures se partagent) et
+     * interroge l'API sinon : au plus un appel HTTP par équipe élue au
+     * premier chargement de log de la journée, plus rien ensuite.
+     */
+    public function teamAvatar(int $teamId): ?string
+    {
+        if ($teamId <= 0) {
+            return null;
+        }
+
+        $url = self::TEAM_API_URL.$teamId;
+
+        $row = DB::table('etf2l_api_cache')->where('url', $url)->first();
+        $payload = null;
+
+        if ($row !== null && (int) $row->fetched_at > time() - self::CACHE_TTL_FOUND_S) {
+            $decoded = json_decode((string) $row->payload, true);
+            $payload = is_array($decoded) ? $decoded : null;
+        }
+
+        if ($payload === null) {
+            // Payload équipe (ou 404 négatif) : cachable, contrairement
+            // aux payloads joueur du cachedFetch par défaut.
+            $payload = $this->cachedFetch(
+                $url,
+                static fn (array $p): bool => is_array($p['team'] ?? null)
+                    || (int) ($p['status']['code'] ?? 0) === 404,
+            );
+        }
+
+        if ($payload === null) {
+            return null;
+        }
+
+        $team = is_array($payload['team'] ?? null) ? $payload['team'] : null;
+        $avatar = is_array($team['steam'] ?? null) ? ($team['steam']['avatar'] ?? null) : null;
+
+        return is_string($avatar) && preg_match('~^https?://~i', $avatar) === 1
+            ? $avatar
+            : null;
     }
 
     /**
@@ -433,7 +486,16 @@ final class Etf2lNameResolver
      * chaque rechargement d'overlay pendant un cast re-questionnerait
      * l'API pour tous les joueurs, entretenant le throttle de l'IP.
      */
-    private function cachedFetch(string $url): ?array
+    /**
+     * Appel API réel (rate-limité) avec écriture immédiate dans le cache
+     * etf2l_api_cache (voir plus haut les durées de vie par nature de
+     * réponse). Le callable $isCacheable dit si un payload 200 est
+     * exploitable donc cachable — défaut : payload joueur trouvé ou 404 ;
+     * les payloads équipe de teamAvatar() passent leur propre règle.
+     *
+     * @param  callable(array<string, mixed>): bool|null  $isCacheable
+     */
+    private function cachedFetch(string $url, ?callable $isCacheable = null): ?array
     {
         $this->limiter->wait();
 
@@ -453,7 +515,10 @@ final class Etf2lNameResolver
         }
 
         // Cache négatif : l'API renvoie un corps JSON complet même en 404.
-        if (! $this->hitFromPayload($payload) && ! $this->isNotFoundPayload($payload)) {
+        $cacheable = $isCacheable
+            ?? fn (array $p): bool => $this->hitFromPayload($p) !== null || $this->isNotFoundPayload($p);
+
+        if (! $cacheable($payload)) {
             // Réponse 200 sans pseudo exploitable, ou code inattendu :
             // rien à mettre en cache (sujet à re-fetch).
             return $payload;
@@ -512,14 +577,15 @@ final class Etf2lNameResolver
 
     /**
      * Équipe de club Highlander courante d'un payload API player (première
-     * entrée « Highlander » non nationale de player.teams), ou null. Les
-     * équipes nationales (rosters par nation) et les formats 6v6 sont
-     * écartés : l'identité d'un joueur sur un log Highlander est son
-     * équipe de club Highlander.
+     * entrée « Highlander » non nationale de player.teams), ou null : nom,
+     * avatar du club et identifiant ETF2L. Les équipes nationales
+     * (rosters par nation) et les formats 6v6 sont écartées : l'identité
+     * d'un joueur sur un log Highlander est son équipe de club Highlander.
      *
      * @param  array<string, mixed>  $payload
+     * @return array{name: string, avatar: string|null, team_id: int|null}|null
      */
-    private function teamFromPayload(array $payload): ?string
+    private function teamEntryFromPayload(array $payload): ?array
     {
         $player = $payload['player'] ?? null;
         $teams = is_array($player['teams'] ?? null) ? $player['teams'] : [];
@@ -534,25 +600,81 @@ final class Etf2lNameResolver
                 continue;
             }
 
-            $name = $this->sanitizeName($team['name'] ?? null);
-            if ($name !== null) {
-                return $name;
+            $name = $this->sanitizeName($team['name'] ?? null, self::MAX_TEAM_NAME_BYTES);
+            if ($name === null) {
+                continue;
             }
+
+            $avatar = $team['steam']['avatar'] ?? null;
+            $teamId = $team['id'] ?? null;
+
+            return [
+                'name' => $name,
+                'avatar' => is_string($avatar) && preg_match('~^https?://~i', $avatar) === 1 ? $avatar : null,
+                'team_id' => is_numeric($teamId) ? (int) $teamId : null,
+            ];
         }
 
         return null;
     }
 
     /**
-     * Assainit un pseudo avant renvoi aux serveurs de jeu : suppression des
-     * caractères de contrôle, espaces compressés, taille plafonnée (sans
-     * couper un caractère UTF-8).
+     * Fusionne un candidat dans le vote d'un joueur : les candidats sont
+     * dédoublonnés par nom, le premier avatar et le premier identifiant
+     * ETF2L non vus l'emportent (rosters base et payload API d'une même
+     * équipe se complètent).
+     *
+     * @param  array<string, array<string, array{avatar: string|null, team_id: int|null}>>  $candidates  modifié en place
      */
-    private function sanitizeName(mixed $name): ?string
+    private function mergeCandidate(array &$candidates, string $steamid64, string $name, ?string $avatar, ?int $teamId): void
+    {
+        $candidate = $candidates[$steamid64][$name] ?? null;
+
+        if ($candidate === null) {
+            $candidates[$steamid64][$name] = ['name' => $name, 'avatar' => $avatar, 'team_id' => $teamId];
+
+            return;
+        }
+
+        if ($candidate['avatar'] === null && $avatar !== null) {
+            $candidate['avatar'] = $avatar;
+        }
+
+        if ($candidate['team_id'] === null && $teamId !== null) {
+            $candidate['team_id'] = $teamId;
+        }
+
+        $candidates[$steamid64][$name] = $candidate;
+    }
+
+    /**
+     * Assainit un pseudo avant renvoi aux serveurs de jeu : décodage des
+     * entités HTML (l'API ETF2L renvoie des noms échappés, « l&#039;… »
+     * sinon affichés tels quels dans le jeu et les overlays), suppression
+     * des caractères de contrôle, espaces compressés, taille plafonnée
+     * (sans couper un caractère UTF-8).
+     *
+     * @param  int  $maxBytes  Plafond en octets (32 pour les pseudos SourceMod,
+     *                         64 pour les noms d'équipes des overlays)
+     */
+    private function sanitizeName(mixed $name, int $maxBytes = self::MAX_NAME_BYTES): ?string
     {
         if (! is_string($name)) {
             return null;
         }
+
+        // Décodage itératif : l'API peut échapper plusieurs fois
+        // (« &amp;#039; »), on décode jusqu'à stabilisation (borné).
+        $decoded = $name;
+        for ($i = 0; $i < 3; $i++) {
+            $next = html_entity_decode($decoded, ENT_QUOTES | ENT_HTML5, 'UTF-8');
+            if ($next === $decoded) {
+                break;
+            }
+            $decoded = $next;
+        }
+
+        $name = $decoded;
 
         $name = preg_replace('/[\x{0000}-\x{001F}\x{007F}]/u', '', $name);
         if ($name === null) {
@@ -565,8 +687,8 @@ final class Etf2lNameResolver
             return null;
         }
 
-        if (strlen($name) > self::MAX_NAME_BYTES) {
-            $name = mb_strcut($name, 0, self::MAX_NAME_BYTES, 'UTF-8');
+        if (strlen($name) > $maxBytes) {
+            $name = mb_strcut($name, 0, $maxBytes, 'UTF-8');
         }
 
         return $name;

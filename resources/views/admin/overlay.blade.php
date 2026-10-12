@@ -25,9 +25,9 @@
         </button>
     </div>
     <p style="color:#777; font-size:13px; margin:6px 0 0;">
-        Les scores, joueurs, classes et stats medics sont récupérés depuis l'API logs.tf. Les noms d'équipes ETF2L sont
-        identifiés automatiquement à partir des joueurs du log ; sans équipe identifiable, RED / BLU s'affichent. Les
-        logs suivants se chargent ensuite depuis la page de l'overlay, sans toucher à OBS.
+        Les scores, joueurs, classes et stats medics sont récupérés depuis l'API logs.tf. Noms et avatars d'équipes
+        ETF2L sont identifiés automatiquement à partir des joueurs du log ; sans équipe identifiable, RED / BLU
+        s'affichent. Les logs suivants se chargent ensuite depuis la page de l'overlay, sans toucher à OBS.
     </p>
 </form>
 

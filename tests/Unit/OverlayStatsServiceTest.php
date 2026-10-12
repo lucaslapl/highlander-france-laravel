@@ -16,7 +16,8 @@ use Tests\TestCase;
  * Construction du payload d'overlay depuis une réponse de l'API logs.tf :
  * normalisation des équipes/joueurs, tri par classe, mise en avant des
  * meilleures stats et agrégats medics. Les pseudos ETF2L priment sur les
- * noms en jeu, avec repli sur le nom du log.
+ * noms en jeu, avec repli sur le nom du log ; les noms et avatars
+ * d'équipes sont élus par vote de couverture ETF2L, avec repli RED / BLU.
  */
 class OverlayStatsServiceTest extends TestCase
 {
@@ -343,6 +344,66 @@ class OverlayStatsServiceTest extends TestCase
         $this->assertSame('The Piece of Pie', $payload['teams']['blue']['name']);
     }
 
+    public function test_l_avatar_du_club_vient_du_payload_d_un_joueur(): void
+    {
+        // Le nom est élu via les rosters synchronisés (deux joueurs de
+        // « Les Baguettes »), l'avatar est porté par le payload API d'un
+        // des joueurs : aucun appel HTTP pour l'avatar.
+        $this->seedTeamRoster(900, 'Les Baguettes', 'France', ['[U:1:111]', '[U:1:222]']);
+
+        DB::table('etf2l_api_cache')->insert([
+            'url' => 'https://api-v2.etf2l.org/player/'.SteamId::toSteamId64('[U:1:111]'),
+            'payload' => json_encode([
+                'player' => [
+                    'id' => 112835, 'name' => 'ScoutFR',
+                    'teams' => [['name' => 'Les Baguettes', 'type' => 'Highlander Team', 'id' => 900, 'steam' => ['avatar' => 'https://etf2l.org/baguette.jpg']]],
+                ],
+                'status' => ['code' => 200, 'message' => 'OK'],
+            ], JSON_THROW_ON_ERROR),
+            'fetched_at' => time(),
+        ]);
+
+        // Résolveur sans réseau : le payload joueur déjà en cache suffit
+        // au vote (noms via les rosters, avatar via le payload).
+        $response = $this->logResponse();
+        $payload = (new OverlayStatsService(new Etf2lNameResolver(static fn (string $url): ?array => null)))
+            ->buildPayload(1, static fn (int $id): ?array => $response);
+
+        $this->assertSame('Les Baguettes', $payload['teams']['red']['name']);
+        $this->assertSame('https://etf2l.org/baguette.jpg', $payload['teams']['red']['avatar_url']);
+        // Côté bleu sans équipe identifiée : pas de nom, pas d'avatar.
+        $this->assertSame('BLU', $payload['teams']['blue']['name']);
+        $this->assertNull($payload['teams']['blue']['avatar_url']);
+    }
+
+    public function test_l_avatar_du_club_est_recupere_depuis_l_endpoint_equipe(): void
+    {
+        // Roster synchronisé sans avatar connu : l'identifiant ETF2L de
+        // l'équipe élue interroge l'endpoint /team/{id} (mis en cache),
+        // ici servi par le fetcher injecté du résolveur.
+        $this->seedTeamRoster(900, 'Les Baguettes', 'France', ['[U:1:111]', '[U:1:222]', '[U:1:333]']);
+
+        $resolver = new Etf2lNameResolver(static function (string $url): ?array {
+            if (str_contains($url, '/team/900')) {
+                return [
+                    'status' => ['code' => 200],
+                    'team' => ['id' => 900, 'name' => 'Les Baguettes', 'steam' => ['avatar' => 'https://etf2l.org/logo.jpg'], 'players' => []],
+                ];
+            }
+
+            return null;
+        });
+
+        $fixture = $this->logResponse();
+        $payload = (new OverlayStatsService($resolver))->buildPayload(
+            1,
+            static fn (int $id): ?array => $fixture,
+        );
+
+        $this->assertSame('Les Baguettes', $payload['teams']['red']['name']);
+        $this->assertSame('https://etf2l.org/logo.jpg', $payload['teams']['red']['avatar_url']);
+    }
+
     public function test_exclut_les_equipes_nationales_du_vote(): void
     {
         // Sans l'exclusion, « France » (roster national) l'emporterait avec
@@ -415,13 +476,15 @@ class OverlayStatsServiceTest extends TestCase
         $merged = OverlayStatsService::mergePayload($overlay, $payload);
 
         // Le token (URL OBS) et la date de création traversent le
-        // chargement, ainsi que les avatars personnalisés.
+        // chargement.
         $this->assertSame('cccccccccccccccc', $merged['token']);
         $this->assertSame(1700000000, $merged['created_at']);
-        $this->assertSame('https://example.com/rouge.png', $merged['teams']['red']['avatar_url']);
-        // Tout le reste vient du nouveau log : identifiant, scores, stats.
+        // Tout le reste vient du nouveau log : identifiant, scores, stats
+        // et avatars (plus de personnalisation manuelle, l'avatar suit le
+        // vote ETF2L du payload frais).
         $this->assertSame(987654321, $merged['log_id']);
         $this->assertSame(3, $merged['teams']['red']['score']);
+        $this->assertNull($merged['teams']['red']['avatar_url']);
         $this->assertNull($merged['teams']['blue']['avatar_url']);
     }
 

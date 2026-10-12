@@ -15,8 +15,8 @@
     <h4 style="margin:0 0 8px;"><i class="fa-solid fa-file-import"></i> Charger un nouveau log</h4>
     <p style="margin:0 0 12px; font-size:14px; line-height:1.5;">
         L'URL OBS de cet overlay ne change jamais : chargez ici le log de chaque map ou match, et le visuel sous OBS se
-        met à jour tout seul (les équipes suivent les couleurs rouge / bleu du log). Les noms d'équipes ETF2L sont
-        identifiés automatiquement à partir des joueurs du log ; sans équipe identifiable, RED / BLU s'affichent.
+        met à jour tout seul (les équipes suivent les couleurs rouge / bleu du log). Noms et avatars d'équipes ETF2L
+        sont identifiés automatiquement à partir des joueurs du log ; sans équipe identifiable, RED / BLU s'affichent.
     </p>
     <form method="POST" action="/admin/overlay/{{ $overlay['token'] }}/load" class="admin-form-row"
           style="display:flex; gap:10px; align-items:flex-end; flex-wrap:wrap;">
@@ -31,30 +31,6 @@
         </button>
     </form>
 </div>
-
-<h3 class="admin-section-title"><i class="fa-solid fa-pen-to-square"></i> Personnalisation</h3>
-<form method="POST" action="/admin/overlay/{{ $overlay['token'] }}/update" class="admin-form-stack admin-form-stack--wide">
-    @csrf
-    <div class="admin-form-row" style="display:flex; gap:24px; flex-wrap:wrap;">
-        @foreach (['red' => 'A', 'blue' => 'B'] as $team => $label)
-            <div style="flex:1; min-width:300px; border:1px solid #333; border-radius:8px; padding:14px;">
-                <h4 style="margin:0 0 10px; color:#bbb;">Équipe {{ $label }} — {{ e($overlay['teams'][$team]['name']) }} · {{ (int) $overlay['teams'][$team]['score'] }} pts</h4>
-                <label class="admin-form-label" for="overlay-{{ $team }}-avatar">Avatar par URL externe (optionnel)</label>
-                <input type="url" id="overlay-{{ $team }}-avatar" name="{{ $team }}_avatar_url" class="form-control"
-                       value="{{ e($overlay['teams'][$team]['avatar_url'] ?? '') }}"
-                       placeholder="https://…/logo.png">
-                <p style="color:#777; font-size:12px; margin:6px 0 0;">
-                    Le nom affiché ({{ e($overlay['teams'][$team]['name']) }}) vient du log : identifié sur ETF2L ou
-                    repli {{ $team === 'red' ? 'RED' : 'BLU' }}. L'avatar, lui, traverse les chargements de logs.
-                </p>
-            </div>
-        @endforeach
-    </div>
-
-    <div>
-        <button type="submit" class="admin-btn admin-btn--primary"><i class="fa-solid fa-floppy-disk"></i> Enregistrer</button>
-    </div>
-</form>
 
 <h3 class="admin-section-title"><i class="fa-solid fa-link"></i> URL de l'overlay (OBS)</h3>
 <div class="admin-form-stack admin-form-stack--wide">

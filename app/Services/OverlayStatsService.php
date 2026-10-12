@@ -20,13 +20,14 @@ namespace App\Services;
  *
  * Les pseudos ETF2L (Etf2lNameResolver) priment sur les noms en jeu des
  * logs — plus reconnaissables pour les spectateurs — avec repli sur le
- * nom du log pour les joueurs sans compte ETF2L. Les noms d'équipes sont
- * eux aussi résolus automatiquement (vote de couverture des joueurs sur
- * les équipes ETF2L), avec repli RED / BLU : les couleurs rouge/bleu
- * d'un log logs.tf sont arbitraires, mais suivies telles quelles.
+ * nom du log pour les joueurs sans compte ETF2L. Les noms et avatars
+ * d'équipes sont eux aussi résolus automatiquement (vote de couverture
+ * des joueurs sur les équipes ETF2L), avec repli RED / BLU sans avatar :
+ * les couleurs rouge/bleu d'un log logs.tf sont arbitraires, mais
+ * suivies telles quelles.
  *
  * mergePayload() recharge un payload dans un overlay existant sans en
- * changer le token (URL OBS stable), en conservant les personnalisations.
+ * changer le token (URL OBS stable).
  */
 final class OverlayStatsService
 {
@@ -106,9 +107,9 @@ final class OverlayStatsService
 
         $info = is_array($details['info'] ?? null) ? $details['info'] : [];
 
-        // Noms d'équipes ETF2L automatiques (vote de couverture des
-        // joueurs du log), avec repli RED / BLU si aucun nom ne se
-        // dégage.
+        // Noms et avatars d'équipes ETF2L automatiques (vote de couverture
+        // des joueurs du log), avec repli RED / BLU sans avatar si aucun
+        // nom ne se dégage.
         $teamNames = $this->etf2lTeamNames($players);
 
         return [
@@ -119,11 +120,13 @@ final class OverlayStatsService
             'length' => $length,
             'teams' => [
                 'red' => [
-                    'name' => $teamNames['red'] ?? 'RED',
+                    'name' => $teamNames['red']['name'] ?? 'RED',
+                    'avatar_url' => $teamNames['red']['avatar'],
                     'score' => (int) ($teamsRaw['Red']['score'] ?? 0),
                 ],
                 'blue' => [
-                    'name' => $teamNames['blue'] ?? 'BLU',
+                    'name' => $teamNames['blue']['name'] ?? 'BLU',
+                    'avatar_url' => $teamNames['blue']['avatar'],
                     'score' => (int) ($teamsRaw['Blue']['score'] ?? $teamsRaw['BLU']['score'] ?? 0),
                 ],
             ],
@@ -155,11 +158,11 @@ final class OverlayStatsService
 
     /**
      * Fusionne un payload fraîchement construit dans un overlay existant
-     * (chargement d'un nouveau log ou relecture du log courant) : le
-     * token, la date de création et les avatars personnalisés traversent
-     * la mise à jour — tout le reste (équipes, scores, joueurs, medics,
-     * titre, map) vient du payload. Utilisé par l'outil « Overlay Logs »
-     * pour recharger un log dans un overlay sans changer son URL OBS.
+     * (chargement d'un nouveau log ou relecture du log courant) : seuls le
+     * token et la date de création traversent la mise à jour — tout le
+     * reste (équipes, noms, avatars, scores, joueurs, medics, titre, map)
+     * vient du payload. Utilisé par l'outil « Overlay Logs » pour
+     * recharger un log dans un overlay sans changer son URL OBS.
      *
      * @param  array<string, mixed>  $overlay
      * @param  array<string, mixed>  $payload
@@ -167,31 +170,25 @@ final class OverlayStatsService
      */
     public static function mergePayload(array $overlay, array $payload): array
     {
-        $teams = $payload['teams'];
-
-        foreach (['red', 'blue'] as $team) {
-            $teams[$team]['avatar_url'] = $overlay['teams'][$team]['avatar_url'] ?? null;
-        }
-
         return array_merge($payload, [
             'token' => (string) ($overlay['token'] ?? ''),
             'created_at' => (int) ($overlay['created_at'] ?? time()),
-            'teams' => $teams,
         ]);
     }
 
     /**
-     * Noms d'équipes ETF2L de chaque côté d'un log, ou null si aucun nom
-     * ne se dégage (repli RED / BLU de l'appelant) : chaque joueur vote
-     * pour les équipes ETF2L auxquelles il appartient (rosters
-     * synchronisés + payloads API en cache — voir
+     * Identité ETF2L de chaque côté d'un log (nom élu par vote de
+     * couverture, ou null si aucun nom ne se dégage — repli RED / BLU de
+     * l'appelant — et avatar du club, ou null) : chaque joueur vote pour
+     * les équipes ETF2L auxquelles il appartient (rosters synchronisés +
+     * payloads API en cache — voir
      * Etf2lNameResolver::teamCandidatesBySteamId3), le nom le plus voté
      * l'emporte s'il se détache nettement. Un nom identique des deux
      * côtés (mixes d'un même club, artefact de synchro) invalide les
      * deux côtés.
      *
      * @param  array<string, array<int, array<string, mixed>>>  $players
-     * @return array{red: string|null, blue: string|null}
+     * @return array{red: array{name: string|null, avatar: string|null}, blue: array{name: string|null, avatar: string|null}}
      */
     private function etf2lTeamNames(array $players): array
     {
@@ -205,24 +202,65 @@ final class OverlayStatsService
 
         $candidates = $this->names->teamCandidatesBySteamId3($steamids3);
 
-        $names = [];
+        $identity = [];
         foreach (['red', 'blue'] as $team) {
             $votes = [];
+            $details = [];
 
             foreach ($players[$team] as $player) {
-                foreach ($candidates[(string) $player['steamid3']] ?? [] as $teamName) {
-                    $votes[$teamName] = ($votes[$teamName] ?? 0) + 1;
+                foreach ($candidates[(string) $player['steamid3']] ?? [] as $candidate) {
+                    $name = (string) $candidate['name'];
+
+                    $votes[$name] = ($votes[$name] ?? 0) + 1;
+
+                    // Premier avatar / identifiant connu pour ce nom : les
+                    // rosters base et les payloads API se complètent.
+                    $details[$name]['avatar'] ??= $candidate['avatar'] ?? null;
+                    $details[$name]['team_id'] ??= $candidate['team_id'] ?? null;
                 }
             }
 
-            $names[$team] = $this->electedTeamName($votes, count($players[$team]));
+            $elected = $this->electedTeamName($votes, count($players[$team]));
+
+            $identity[$team] = [
+                'name' => $elected,
+                'avatar' => $elected === null ? null : $this->teamAvatar($details[$elected]),
+            ];
         }
 
-        if ($names['red'] !== null && $names['blue'] !== null && strcasecmp($names['red'], $names['blue']) === 0) {
-            $names = ['red' => null, 'blue' => null];
+        if ($identity['red']['name'] !== null
+            && $identity['blue']['name'] !== null
+            && strcasecmp($identity['red']['name'], $identity['blue']['name']) === 0) {
+            $identity = [
+                'red' => ['name' => null, 'avatar' => null],
+                'blue' => ['name' => null, 'avatar' => null],
+            ];
         }
 
-        return $names;
+        return $identity;
+    }
+
+    /**
+     * Avatar de l'équipe élue d'un côté : URL portée par les candidats du
+     * vote (payload API d'un joueur) ou, à défaut, l'endpoint équipe
+     * (identifiant ETF2L du roster, mis en cache 24 h côté résolveur —
+     * un appel HTTP au plus par équipe au premier chargement du jour).
+     *
+     * @param  array{name?: string, avatar?: string|null, team_id?: int|null}  $details
+     */
+    private function teamAvatar(array $details): ?string
+    {
+        $avatar = $details['avatar'] ?? null;
+        if (is_string($avatar) && $avatar !== '') {
+            return $avatar;
+        }
+
+        $teamId = (int) ($details['team_id'] ?? 0);
+        if ($teamId > 0) {
+            return $this->names->teamAvatar($teamId);
+        }
+
+        return null;
     }
 
     /**

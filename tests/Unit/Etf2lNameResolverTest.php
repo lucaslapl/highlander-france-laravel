@@ -308,8 +308,9 @@ class Etf2lNameResolverTest extends TestCase
     // ─── Équipes candidates d'un log (vote Overlay Logs) ──────────────────
 
     /**
-     * Payload API player avec une équipe de club Highlander courante.
+     * Payload API player avec ses équipes.
      *
+     * @param  array<int, array<string, mixed>>  $teams
      * @return array<string, mixed>
      */
     private function playerPayloadWithTeam(string $name, int $id, array $teams): array
@@ -321,11 +322,14 @@ class Etf2lNameResolverTest extends TestCase
     }
 
     /**
+     * Entrée d'équipe d'un payload player (champs ajustables par test).
+     *
+     * @param  array<string, mixed>  $team
      * @return array<string, mixed>
      */
-    private function apiTeam(string $name, string $type): array
+    private function apiTeam(array $team): array
     {
-        return ['name' => $name, 'tag' => 'X', 'type' => $type];
+        return array_merge(['name' => 'Équipe', 'tag' => 'X', 'type' => 'Highlander Team'], $team);
     }
 
     /**
@@ -354,14 +358,15 @@ class Etf2lNameResolverTest extends TestCase
 
     public function test_team_candidates_combine_rosters_sync_et_payload_api(): void
     {
-        // Roster synchronisé : équipe de club (le nom diffère du pays).
+        // Roster synchronisé : équipe de club (le nom diffère du pays),
+        // sans avatar connu — l'identifiant permet de le récupérer.
         $this->seedSyncedRoster(900, 'Les Baguettes', 'France', [self::SID64_PSYCHO]);
 
-        // Payload API en cache : équipe de club Highlander courante,
-        // devant une équipe nationale ignorée.
+        // Payload API en cache : équipe de club Highlander courante (avec
+        // son avatar), devant une équipe nationale ignorée.
         $this->seedApiCache(self::SID64_AUTRE, $this->playerPayloadWithTeam('Autre', 42, [
-            $this->apiTeam("\n France", 'National Highlander Team'),
-            $this->apiTeam('The Piece of Pie', 'Highlander Team'),
+            $this->apiTeam(['name' => "\n France", 'type' => 'National Highlander Team']),
+            $this->apiTeam(['name' => 'The Piece of Pie', 'id' => 901, 'steam' => ['avatar' => 'https://etf2l.org/pie.jpg']]),
         ]));
 
         $resolved = (new Etf2lNameResolver)->teamCandidatesBySteamId3([
@@ -369,8 +374,14 @@ class Etf2lNameResolverTest extends TestCase
             SteamId::toSteamId3(self::SID64_AUTRE),
         ]);
 
-        $this->assertSame(['Les Baguettes'], $resolved[SteamId::toSteamId3(self::SID64_PSYCHO)]);
-        $this->assertSame(['The Piece of Pie'], $resolved[SteamId::toSteamId3(self::SID64_AUTRE)]);
+        $this->assertSame(
+            [['name' => 'Les Baguettes', 'avatar' => null, 'team_id' => 900]],
+            $resolved[SteamId::toSteamId3(self::SID64_PSYCHO)]
+        );
+        $this->assertSame(
+            [['name' => 'The Piece of Pie', 'avatar' => 'https://etf2l.org/pie.jpg', 'team_id' => 901]],
+            $resolved[SteamId::toSteamId3(self::SID64_AUTRE)]
+        );
     }
 
     public function test_team_candidates_exclut_les_equipes_nationales_des_rosters(): void
@@ -391,7 +402,7 @@ class Etf2lNameResolverTest extends TestCase
         // Payload trouvé mais périmé (au-delà des 24 h).
         $this->seedApiCache(
             self::SID64_PSYCHO,
-            $this->playerPayloadWithTeam('Psycho', 112835, [$this->apiTeam('Les Baguettes', 'Highlander Team')]),
+            $this->playerPayloadWithTeam('Psycho', 112835, [$this->apiTeam(['name' => 'Les Baguettes'])]),
             25 * 3600,
         );
 
@@ -409,7 +420,7 @@ class Etf2lNameResolverTest extends TestCase
     public function test_team_candidates_deduplique_les_noms_par_joueur(): void
     {
         // Deux équipes aux noms identiques (après assainissement) pour un
-        // même joueur : un seul vote pour ce nom.
+        // même joueur : un seul candidat, le premier identifiant l'emporte.
         $this->seedSyncedRoster(900, ' Les Baguettes ', 'France', [self::SID64_PSYCHO]);
         $this->seedSyncedRoster(901, 'Les Baguettes', 'France', [self::SID64_PSYCHO]);
 
@@ -417,6 +428,108 @@ class Etf2lNameResolverTest extends TestCase
             SteamId::toSteamId3(self::SID64_PSYCHO),
         ]);
 
-        $this->assertSame(['Les Baguettes'], $resolved[SteamId::toSteamId3(self::SID64_PSYCHO)]);
+        $this->assertSame(
+            [['name' => 'Les Baguettes', 'avatar' => null, 'team_id' => 900]],
+            $resolved[SteamId::toSteamId3(self::SID64_PSYCHO)]
+        );
+    }
+
+    public function test_les_pseudos_sont_dechappes_de_leurs_entites_html(): void
+    {
+        // L'API ETF2L renvoie des noms échappés pour le HTML : sans
+        // décodage, le jeu et les overlays afficheraient « &#039; » tel quel.
+        $resolved = $this->resolver([self::SID64_PSYCHO => $this->playerPayload('Psy&#039;cho &amp; Cie', 112835)])
+            ->resolve([self::SID2_PSYCHO]);
+
+        $this->assertSame("Psy'cho & Cie", $resolved[self::SID2_PSYCHO]['name']);
+    }
+
+    public function test_team_candidates_dechappe_les_noms_d_equipes(): void
+    {
+        $this->seedSyncedRoster(900, 'l&#039;équipe', 'France', [self::SID64_PSYCHO]);
+
+        $resolved = (new Etf2lNameResolver)->teamCandidatesBySteamId3([
+            SteamId::toSteamId3(self::SID64_PSYCHO),
+        ]);
+
+        $this->assertSame("l'équipe", $resolved[SteamId::toSteamId3(self::SID64_PSYCHO)][0]['name']);
+    }
+
+    // ─── Avatar d'une équipe (logo du club) ───────────────────────────────
+
+    /**
+     * Payload de l'endpoint équipe (/team/{id}), même cache que
+     * Etf2lTeamService::roster.
+     *
+     * @return array<string, mixed>
+     */
+    private function teamEndpointPayload(int $teamId, string $avatar): array
+    {
+        return [
+            'status' => ['code' => 200, 'message' => 'OK'],
+            'team' => [
+                'id' => $teamId,
+                'name' => 'Les Baguettes',
+                'steam' => ['avatar' => $avatar, 'steam_group' => null],
+                'players' => [],
+            ],
+        ];
+    }
+
+    public function test_team_avatar_lit_le_cache_de_l_endpoint_equipe(): void
+    {
+        // Cache amorcé par un roster assisté (Etf2lTeamService) : l'avatar
+        // se lit sans aucun appel HTTP.
+        DB::table('etf2l_api_cache')->insert([
+            'url' => 'https://api-v2.etf2l.org/team/900',
+            'payload' => json_encode($this->teamEndpointPayload(900, 'https://etf2l.org/logo.jpg'), JSON_THROW_ON_ERROR),
+            'fetched_at' => time(),
+        ]);
+
+        $calls = 0;
+        $resolver = new Etf2lNameResolver(static function (string $url) use (&$calls): ?array {
+            $calls++;
+
+            return null;
+        });
+
+        $this->assertSame('https://etf2l.org/logo.jpg', $resolver->teamAvatar(900));
+        $this->assertSame(0, $calls);
+    }
+
+    public function test_team_avatar_interroge_l_api_puis_met_en_cache(): void
+    {
+        $calls = 0;
+        $resolver = new Etf2lNameResolver(function (string $url) use (&$calls): ?array {
+            $calls++;
+
+            return str_contains($url, '/team/900')
+                ? $this->teamEndpointPayload(900, 'https://etf2l.org/logo.jpg')
+                : null;
+        });
+
+        $this->assertSame('https://etf2l.org/logo.jpg', $resolver->teamAvatar(900));
+        $this->assertSame(1, $calls);
+
+        // Second appel servi par le cache : plus de requête HTTP.
+        $this->assertSame('https://etf2l.org/logo.jpg', $resolver->teamAvatar(900));
+        $this->assertSame(1, $calls);
+    }
+
+    public function test_team_avatar_sans_avatar_renvoie_null(): void
+    {
+        $calls = 0;
+        $resolver = new Etf2lNameResolver(function (string $url) use (&$calls): ?array {
+            $calls++;
+
+            return $this->teamEndpointPayload(900, '');
+        });
+
+        $this->assertNull($resolver->teamAvatar(900));
+
+        // Une équipe sans avatar reste en cache : elle n'est pas
+        // re-questionnée à chaque chargement de log.
+        $this->assertNull($resolver->teamAvatar(900));
+        $this->assertSame(1, $calls);
     }
 }
