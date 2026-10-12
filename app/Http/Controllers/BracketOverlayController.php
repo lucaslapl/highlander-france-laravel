@@ -130,9 +130,11 @@ final class BracketOverlayController extends Controller
 
     /**
      * Prépare les données de rendu du bracket : colonnes en voie
-     * upper/lower/final, statuts win/lose/pending déduits des scores, et
-     * score du match live remplacé par celui de sa série attachée (sauf
-     * score manuel forcé, pour rattraper une erreur de saisie).
+     * upper/lower/final, label éventuel de chaque case (titre de carte
+     * dans la voie finale — grande finale, match de 3è place…), statuts
+     * win/lose/pending déduits des scores, et score du match live
+     * remplacé par celui de sa série attachée (sauf score manuel forcé,
+     * pour rattraper une erreur de saisie).
      *
      * @param  array<string, mixed>  $bracket
      * @return array<string, mixed>
@@ -176,6 +178,7 @@ final class BracketOverlayController extends Controller
 
                 $matches[] = [
                     'id' => (string) ($match['id'] ?? ''),
+                    'label' => (string) ($match['label'] ?? ''),
                     'live' => $isLive,
                     'teams' => [
                         $this->teamView($match['teams'][0] ?? [], $scores[0], $scores[1]),

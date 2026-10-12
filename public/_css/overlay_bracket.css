@@ -203,6 +203,40 @@ h1 em {
 
 .gf .team.pending .name { color: var(--mauve); font-style: italic; }
 
+/* ---------- Petite carte finale (match de 3è place) ---------- */
+
+/* Cases additionnelles de la voie finale, empilées sous la grande
+   finale : même largeur, hauteur compacte (gfSmallH côté moteur),
+   tête plus discrète et lignes d'équipes plus proches des cases
+   standard. */
+.card.gf-small {
+    border: 1px solid rgba(251, 183, 251, .4);
+    border-left: 4px solid var(--accent);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, .5), 0 0 24px rgba(135, 0, 227, .15);
+}
+
+.gf-small .gf-head {
+    padding: 10px 0 8px;
+    text-align: center;
+    font-size: 17px;
+    font-weight: 900;
+    letter-spacing: .22em;
+    text-transform: uppercase;
+    color: var(--accent-soft);
+    border-bottom: 1px solid var(--border-strong);
+}
+
+.gf-small .team {
+    justify-content: center;
+    font-size: 26px;
+    height: 56px;
+    gap: 14px;
+}
+
+.gf-small .team .score { font-size: 30px; }
+
+.gf-small .team.pending .name { color: var(--mauve); font-style: italic; }
+
 /* ---------- Badge « EN DIRECT ! » ---------- */
 
 .live {

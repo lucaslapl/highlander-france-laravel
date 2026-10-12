@@ -37,6 +37,7 @@
         cardH: 78,
         gfW: 260,
         gfH: 200,
+        gfSmallH: 100,
         gapX: 70,
         gapY: 26,
         laneGap: 60,
@@ -89,7 +90,7 @@
     }
 
     function newMatch() {
-        return { id: newId('m'), teams: [newTeam(), newTeam()], series_token: null, manual_scores: false };
+        return { id: newId('m'), label: '', teams: [newTeam(), newTeam()], series_token: null, manual_scores: false };
     }
 
     function newColumn(lane) {
@@ -216,10 +217,11 @@
         el.style.width = card.w + 'px';
         el.style.height = card.h + 'px';
 
-        if (card.gf) {
+        if (card.gf || card.small) {
             var head = document.createElement('div');
-            head.className = 'bkv-head';
-            head.textContent = card.column.label || 'Grand Final';
+            head.className = 'bkv-head' + (card.small ? ' bkv-head--small' : '');
+            head.textContent = (card.match.label || '')
+                || (card.gf ? (card.column.label || 'Grand Final') : 'Match de 3è place');
             el.appendChild(head);
         }
 
@@ -288,6 +290,8 @@
     function syncPanel() {
         hidePanelSections();
         addMatchBtn.disabled = true;
+        document.getElementById('bkv-add-third').hidden = true;
+        document.getElementById('bkv-match-label-row').hidden = true;
 
         if (selected === null) {
             panelHint.hidden = false;
@@ -308,6 +312,13 @@
             document.getElementById('bkv-column-label').value = column.label || '';
             document.getElementById('bkv-column-lane').value = column.lane || 'upper';
             addMatchBtn.disabled = false;
+
+            /* Le bouton « match de 3è place » n'existe que sur les colonnes
+               de la voie finale (grande carte) : il ajoute une case compacte
+               empilée dessous. */
+            if ((column.lane || 'upper') === 'final') {
+                document.getElementById('bkv-add-third').hidden = false;
+            }
             return;
         }
 
@@ -322,6 +333,13 @@
         var index = (column.matches || []).indexOf(match);
         document.getElementById('bkv-match-title').textContent
             = 'Case ' + (index + 1) + ' — ' + (column.label !== '' ? column.label : '(sans label)');
+
+        /* Titre de carte pour les cases de la voie finale (grande finale,
+           match de 3è place). */
+        if ((column.lane || 'upper') === 'final') {
+            document.getElementById('bkv-match-label-row').hidden = false;
+            document.getElementById('bkv-match-label').value = match.label || '';
+        }
 
         var teams = (match.teams || []).slice(0, 2);
         while (teams.length < 2) {
@@ -376,6 +394,18 @@
         bind('bkv-t' + side + '-avatar', function (match, input) { teamOf(match).avatar = input.value; });
         bind('bkv-t' + side + '-country', function (match, input) { teamOf(match).country = input.value; });
         bind('bkv-t' + side + '-score', function (match, input) { teamOf(match).score = input.value; });
+    });
+
+    /* Titre de carte d'une case de la voie finale (match de 3è place…). */
+    document.getElementById('bkv-match-label').addEventListener('input', function () {
+        if (selected === null || selected.type !== 'match') {
+            return;
+        }
+        var match = findMatch(selected.columnId, selected.matchId);
+        if (match) {
+            match.label = this.value;
+            render();
+        }
     });
 
     document.getElementById('bkv-match-series').addEventListener('change', function () {
@@ -530,6 +560,24 @@
         selectMatch(column.id, match.id);
     });
 
+    /* « Ajouter un match de 3è place » (colonnes de la voie finale) :
+       une case compacte empilée sous la grande finale, titre modifiable —
+       le match reste éditable comme n'importe quelle case. */
+    document.getElementById('bkv-add-third').addEventListener('click', function () {
+        if (selected === null || selected.type !== 'column') {
+            return;
+        }
+        var column = findColumn(selected.columnId);
+        if (!column || (column.lane || 'upper') !== 'final') {
+            return;
+        }
+        column.matches = column.matches || [];
+        var match = newMatch();
+        match.label = 'Match de 3è place';
+        column.matches.push(match);
+        selectMatch(column.id, match.id);
+    });
+
     /* ── Cases : déplacement et suppression ────────────────────────────── */
 
     function moveMatch(dir) {
@@ -647,6 +695,7 @@
             (column.matches || []).forEach(function (match, mi) {
                 var prefix = base + '[matches][' + mi + ']';
                 add(prefix + '[id]', match.id || '');
+                add(prefix + '[label]', match.label || '');
 
                 [1, 2].forEach(function (side) {
                     match.teams = (match.teams || []).slice(0, 2);

@@ -11,7 +11,8 @@
      case disponible si la colonne suivante en compte moins — pré-remplissage,
      BYE) ;
    - les voies haute et basse sont empilées, la grande finale se place à
-     droite des voies, centrée sur l'ensemble ;
+     droite des voies, centrée sur l'ensemble, avec ses cases compactes
+     additionnelles empilées dessous (ex : match de 3è place) ;
    - tout est normalisé en (0,0) puis mis à l'échelle par HlfrBracket.fit()
    (translate + scale du conteneur) : le même moteur rend n'importe quelle
    forme de bracket sans retouche. */
@@ -24,6 +25,7 @@
         cardH: 112,
         gfW: 400,
         gfH: 292,
+        gfSmallH: 160,
         gapX: 130,
         gapY: 40,
         laneGap: 90,
@@ -124,11 +126,15 @@
         var lowerTop = upperH > 0 ? upperH + opts.laneGap : 0;
         var stackH = upperH > 0 && lowerH > 0 ? lowerTop + lowerH : upperH + lowerH;
 
-        /* La grande finale : à droite de la voie la plus profonde, centrée
-           sur l'ensemble des voies (voie « final » seule : elle part de
-           la gauche). */
+        /* La voie « final » : la première case est la grande finale, les
+           suivantes (ex : match de 3è place) sont des cartes compactes
+           empilées dessous, même largeur. L'étiquette est rendue dans la
+           carte (gf-head côté overlay) ; le bloc entier (grande finale +
+           cartes compactes) est centré sur l'empilement des voies. */
         var finalOffset = Math.max(lanes.upper.length, lanes.lower.length, 0) * strideX;
-        var gfTop = (stackH - opts.gfH) / 2;
+        var finalCount = lanes.final.length > 0 ? (lanes.final[0].matches || []).length : 0;
+        var finalBlockH = opts.gfH + Math.max(0, finalCount - 1) * (opts.gfSmallH + opts.gapY);
+        var gfTop = (stackH - finalBlockH) / 2;
 
         var cards = [];
         var labels = [];
@@ -183,6 +189,7 @@
            (gf-head côté overlay), pas d'étiquette posée au-dessus. */
         lanes.final.forEach(function (column, depth) {
             (column.matches || []).forEach(function (match, index) {
+                var big = index === 0;
                 var card = {
                     column: column,
                     columnId: String(column.id || ''),
@@ -191,11 +198,14 @@
                     lane: 'final',
                     depth: depth,
                     index: index,
-                    gf: true,
+                    gf: big,
+                    small: !big,
                     x: finalOffset + depth * (opts.gfW + opts.gapX),
-                    y: gfTop + index * (opts.gfH + opts.gapY),
+                    y: big
+                        ? gfTop
+                        : gfTop + opts.gfH + opts.gapY + (index - 1) * (opts.gfSmallH + opts.gapY),
                     w: opts.gfW,
-                    h: opts.gfH
+                    h: big ? opts.gfH : opts.gfSmallH
                 };
                 cards.push(card);
                 placed.final.push(card);
@@ -204,8 +214,10 @@
 
         /* Connecteurs : au sein d'une voie, chaque case alimente la case
            floor(i/2) de la colonne suivante (rattrapée sur la dernière
-           disponible) ; les dernières cases des voies haute et basse
-           alimentent la première case de la grande finale. */
+           disponible) ; la grande finale reçoit la dernière case de
+           chaque voie peuplée en double élimination, ou toutes les cases
+           de la dernière colonne de la voie unique en simple
+           élimination. */
         var links = [];
 
         function connect(source, target) {
@@ -225,12 +237,39 @@
             }
         });
 
+        /* Alimentation de la grande finale (première case de la voie
+           « final ») :
+           - double élimination (voies haute et basse peuplées) : la
+             dernière case de la colonne la plus profonde de chaque voie
+             (WB Final et LB Final) ;
+           - simple élimination (une seule voie peuplée) : toutes les
+             cases de la dernière colonne de cette voie — les deux
+             demi-finales alimentent la finale, pas seulement la
+             dernière. La profondeur réelle des cases compte : une
+             colonne vide en bout de voie ne doit pas couper le lien. */
         if (placed.final.length > 0) {
+            var singleLane = placed.upper.length > 0
+                ? placed.lower.length === 0
+                : placed.lower.length > 0;
+
             ['upper', 'lower'].forEach(function (lane) {
-                var deepest = placed[lane].filter(function (card) {
-                    return card.depth === lanes[lane].length - 1;
+                if (placed[lane].length === 0) {
+                    return;
+                }
+
+                var maxDepth = -1;
+                placed[lane].forEach(function (card) {
+                    maxDepth = Math.max(maxDepth, card.depth);
                 });
-                if (deepest.length > 0) {
+                var deepest = placed[lane].filter(function (card) {
+                    return card.depth === maxDepth;
+                });
+
+                if (singleLane) {
+                    deepest.forEach(function (card) {
+                        connect(card, placed.final[0]);
+                    });
+                } else {
                     connect(deepest[deepest.length - 1], placed.final[0]);
                 }
             });

@@ -346,6 +346,8 @@ class BracketOverlayTest extends TestCase
 
         // Schéma sérialisé par l'éditeur visuel (admin_bracket_editor.js) :
         // identique au formulaire historique, le contrôleur n'a pas changé.
+        // La colonne finale porte la grande finale et une case « 3è place »
+        // avec son titre propre (label de case).
         $this->withSession(['steamid' => '76561198012345678', 'is_admin' => true])
             ->post('/admin/overlay/bracket/'.self::TOKEN.'/update', [
                 'eyebrow' => 'ETF2L Highlander Saison 36',
@@ -359,7 +361,24 @@ class BracketOverlayTest extends TestCase
                                 'id' => 'm1',
                                 'team1_name' => 'DD14', 'team1_avatar' => '', 'team1_country' => 'France', 'team1_score' => '6',
                                 'team2_name' => 'AKATSUKI', 'team2_avatar' => '', 'team2_country' => '', 'team2_score' => '0',
-                                'series_token' => '', 'manual_scores' => '0',
+                                'series_token' => '', 'manual_scores' => '0', 'label' => '',
+                            ],
+                        ],
+                    ],
+                    [
+                        'id' => 'c2', 'label' => 'Grand Final', 'lane' => 'final',
+                        'matches' => [
+                            [
+                                'id' => 'm2',
+                                'team1_name' => 'DD14', 'team1_avatar' => '', 'team1_country' => '', 'team1_score' => '',
+                                'team2_name' => 'AKATSUKI', 'team2_avatar' => '', 'team2_country' => '', 'team2_score' => '',
+                                'series_token' => '', 'manual_scores' => '0', 'label' => '',
+                            ],
+                            [
+                                'id' => 'm3',
+                                'team1_name' => 'TR9s', 'team1_avatar' => '', 'team1_country' => '', 'team1_score' => '',
+                                'team2_name' => 'RUINATION', 'team2_avatar' => '', 'team2_country' => '', 'team2_score' => '',
+                                'series_token' => '', 'manual_scores' => '0', 'label' => 'Match de 3è place',
                             ],
                         ],
                     ],
@@ -374,6 +393,72 @@ class BracketOverlayTest extends TestCase
         $this->assertSame('DD14', $bracket['columns'][0]['matches'][0]['teams'][0]['name']);
         $this->assertSame('6', $bracket['columns'][0]['matches'][0]['teams'][0]['score']);
         $this->assertSame(['column' => 'c1', 'match' => 'm1'], $bracket['live']);
+
+        // Titre de la grande finale : à défaut de label de case, le titre
+        // de la colonne ; la case « 3è place » garde son label propre.
+        $final = $bracket['columns'][1]['matches'];
+        $this->assertSame('', $final[0]['label']);
+        $this->assertSame('Match de 3è place', $final[1]['label']);
+        $this->assertSame('TR9s', $final[1]['teams'][0]['name']);
+    }
+
+    public function test_le_bracket_affiche_le_match_de_troisieme_place_sous_la_finale(): void
+    {
+        $this->seedBracket([
+            'columns' => [
+                [
+                    'id' => 'c1', 'label' => 'Demi-finales', 'lane' => 'upper',
+                    'matches' => [
+                        [
+                            'id' => 'm1',
+                            'teams' => [
+                                ['name' => 'Distemper', 'avatar' => '', 'country' => '', 'score' => '9'],
+                                ['name' => 'TR9s', 'avatar' => '', 'country' => '', 'score' => '0'],
+                            ],
+                            'label' => '', 'series_token' => null, 'manual_scores' => false,
+                        ],
+                        [
+                            'id' => 'm2',
+                            'teams' => [
+                                ['name' => 'ZeroKen', 'avatar' => '', 'country' => '', 'score' => '1'],
+                                ['name' => 'RUINATION', 'avatar' => '', 'country' => '', 'score' => '5'],
+                            ],
+                            'label' => '', 'series_token' => null, 'manual_scores' => false,
+                        ],
+                    ],
+                ],
+                [
+                    'id' => 'c2', 'label' => 'Final', 'lane' => 'final',
+                    'matches' => [
+                        [
+                            'id' => 'm3',
+                            'teams' => [
+                                ['name' => 'Distemper', 'avatar' => '', 'country' => '', 'score' => ''],
+                                ['name' => 'RUINATION', 'avatar' => '', 'country' => '', 'score' => ''],
+                            ],
+                            'label' => '', 'series_token' => null, 'manual_scores' => false,
+                        ],
+                        [
+                            'id' => 'm4',
+                            'teams' => [
+                                ['name' => 'TR9s', 'avatar' => '', 'country' => '', 'score' => ''],
+                                ['name' => 'ZeroKen', 'avatar' => '', 'country' => '', 'score' => ''],
+                            ],
+                            'label' => 'Match de 3è place', 'series_token' => null, 'manual_scores' => false,
+                        ],
+                    ],
+                ],
+            ],
+            'live' => null,
+        ]);
+
+        $html = (string) $this->get('/bracket-overlay/'.self::TOKEN)->getContent();
+
+        // Le payload porte le label de la case « 3è place » : la carte est
+        // posée sous la grande finale par overlay_bracket.js (moteur partagé).
+        $this->assertStringContainsString('"label":"Match de 3è place"', $html);
+        $this->assertStringContainsString('"label":""', $html);
+        $this->assertStringContainsString('ZeroKen', $html);
     }
 
     // ─── Amorçage ────────────────────────────────────────────────────────

@@ -135,10 +135,19 @@
                             <i class="fa-solid fa-trash"></i> Supprimer
                         </button>
                     </div>
+                    <button type="button" class="admin-btn" id="bkv-add-third" hidden style="margin-top:10px;">
+                        <i class="fa-solid fa-plus"></i> Ajouter un match de 3è place
+                    </button>
                 </div>
 
                 <div id="bkv-match-section" hidden>
                     <h4 id="bkv-match-title">Case</h4>
+
+                    <div id="bkv-match-label-row" hidden>
+                        <label class="admin-form-label">Titre de la carte</label>
+                        <input type="text" id="bkv-match-label" class="form-control" maxlength="48"
+                               placeholder="Ex : Match de 3è place — vide pour le titre de la colonne (grande finale)">
+                    </div>
 
                     @foreach ([1 => 'A', 2 => 'B'] as $side => $label)
                         <div class="js-etf2l-team" style="border:1px solid #333; border-radius:8px; padding:12px; margin-top:10px;">

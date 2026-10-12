@@ -250,6 +250,7 @@ final class AdminBracketController extends Controller
                 $seriesToken = (string) ($matchInput['series_token'] ?? '');
                 $matches[] = [
                     'id' => $this->clip((string) ($matchInput['id'] ?? ''), 16) ?: $this->newId('m'),
+                    'label' => $this->clip((string) ($matchInput['label'] ?? ''), self::MAX_LABEL_LEN),
                     'teams' => [
                         $this->teamFromInput($matchInput, 1),
                         $this->teamFromInput($matchInput, 2),

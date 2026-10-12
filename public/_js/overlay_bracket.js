@@ -139,6 +139,7 @@
         var el = document.createElement('div');
         el.className = 'card anim'
             + (card.gf ? ' gf' : '')
+            + (card.small ? ' gf-small' : '')
             + (card.lane === 'lower' ? ' lower' : '');
         el.style.left = card.x + 'px';
         el.style.top = card.y + 'px';
@@ -146,10 +147,14 @@
         el.style.height = card.h + 'px';
         el.style.setProperty('--d', delay() + 's');
 
-        if (card.gf) {
+        /* Titre de carte des cases finales : label propre à la case
+           (ex : « Match de 3è place »), à défaut le titre de la colonne
+           pour la grande finale, à défaut « Grand Final ». */
+        if (card.gf || card.small) {
             var head = document.createElement('div');
             head.className = 'gf-head';
-            head.textContent = column.label || 'Grand Final';
+            head.textContent = (match.label || '')
+                || (card.gf ? (column.label || 'Grand Final') : 'Match de 3è place');
             el.appendChild(head);
         }
 
