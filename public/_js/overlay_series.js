@@ -1,8 +1,8 @@
 /* Overlay série (/series-overlay/{token}) : auto-rafraîchissement.
    La page interroge /series-overlay/{token}/version toutes les 5 s ; chaque
-   écriture du journal de la série (log logs.tf rattaché par le cron, point
-   manuel ou annulation depuis l'admin) bump la version et la page se recharge
-   entièrement — OBS n'a jamais besoin d'être touché en direct. */
+   écriture de la série (point manuel ou annulation depuis l'admin, renommage
+   d'équipe) bump la version et la page se recharge entièrement — OBS n'a
+   jamais besoin d'être touché en direct. */
 (function () {
     'use strict';
 
@@ -14,10 +14,7 @@
     var token = script.dataset.token;
     var version = String(script.dataset.version);
 
-    /* Cast sur SourceTV retardée : la page est chargée avec ?delay=N (retard
-       STV en secondes) ; le polling de version doit interroger la même vue
-       retardée, on propage donc les paramètres d'URL tels quels. */
-    var versionUrl = '/series-overlay/' + token + '/version' + window.location.search;
+    var versionUrl = '/series-overlay/' + token + '/version';
 
     /* Animation d'entrée rejouée quand OBS rend la source visible/active. */
     var lastReplay = Date.now();

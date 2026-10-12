@@ -102,8 +102,13 @@ chargées via l'endpoint `/admin/overlay/etf2l/teams` (cache `etf2l_api_cache`,
 rate-limit friendly), puis piochées dans chaque bloc équipe du formulaire.
 Les casters et la prod n'ont accès à rien d'autre du `/admin/*`.
 
-Les scores de série sont rapprochés automatiquement des logs logs.tf
-(commande de réconciliation `app:series-reconcile` en filet de sécurité).
+L'overlay de série (`/admin/series`, outil « Overlay Scores ») se remplit
+depuis un **lien de match ETF2L** : le titre, les équipes (acronymes, avatars,
+rosters) et les maps connues sont préremplis via `Etf2lMatchService`
+(`api-v2.etf2l.org/matches/{id}`, même cache), et une série existante peut être
+resynchronisée (équipes TBD devenues connues, rosters, maps du pick / ban).
+Les points de maps restent manuels : un point par map gagnée depuis le détail
+de la série, chaque événement visible et annulable dans le journal.
 
 ## Streams Twitch (badge « EN DIRECT »)
 

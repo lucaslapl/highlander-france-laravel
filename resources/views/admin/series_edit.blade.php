@@ -10,14 +10,11 @@
     <h2><i class="fa-solid fa-trophy"></i> {{ e($series['title']) }}</h2>
     <p>
         {{ strtoupper($series['format']) }} ·
-        @if ($series['status'] === 'live')
-            <span style="color:#4cc46a; font-weight:600;">SUIVI ACTIF</span>
-        @elseif ($series['status'] === 'finished')
-            <span style="color:#888;">Terminée</span>
-        @else
-            <span style="color:#d9a544;">Suivi non lancé</span>
+        @if ((int) ($series['etf2l_match_id'] ?? 0) > 0)
+            <a href="https://etf2l.org/matches/{{ (int) $series['etf2l_match_id'] }}/" target="_blank" rel="noopener">Match ETF2L #{{ (int) $series['etf2l_match_id'] }}</a>
+            ·
         @endif
-        — score de série :
+        score de série :
         <strong style="color:#e06c5a;">{{ e($series['teams']['red']['name']) }} {{ (int) $state['score']['red'] }}</strong>
         -
         <strong style="color:#5885a2;">{{ (int) $state['score']['blue'] }} {{ e($series['teams']['blue']['name']) }}</strong>
@@ -32,22 +29,14 @@
 </div>
 
 <div style="display:flex; gap:10px; margin-bottom:24px; flex-wrap:wrap;">
-    @if ($series['status'] !== 'live')
-        <form method="POST" action="/admin/series/{{ $series['token'] }}/status">
+    @if ((int) ($series['etf2l_match_id'] ?? 0) > 0)
+        <form method="POST" action="/admin/series/{{ $series['token'] }}/resync"
+              onsubmit="return confirm('Resynchroniser depuis ETF2L ? Les noms affichés, avatars et rosters seront remplacés par les données ETF2L actuelles (les maps déjà connues ne sont jamais retirées).');">
             @csrf
-            <input type="hidden" name="status" value="live">
-            <button type="submit" class="admin-btn admin-btn--primary"><i class="fa-solid fa-play"></i> Lancer le suivi</button>
-        </form>
-    @else
-        <form method="POST" action="/admin/series/{{ $series['token'] }}/status">
-            @csrf
-            <input type="hidden" name="status" value="upcoming">
-            <button type="submit" class="admin-btn"><i class="fa-solid fa-pause"></i> Mettre en pause</button>
-        </form>
-        <form method="POST" action="/admin/series/{{ $series['token'] }}/status">
-            @csrf
-            <input type="hidden" name="status" value="finished">
-            <button type="submit" class="admin-btn"><i class="fa-solid fa-flag-checkered"></i> Terminer</button>
+            <button type="submit" class="admin-btn admin-btn--primary"
+                    title="Relit le match ETF2L : équipes TBD devenues connues, rosters, maps révélées par le pick / ban.">
+                <i class="fa-solid fa-arrows-rotate"></i> Resynchroniser depuis ETF2L
+            </button>
         </form>
     @endif
     <form method="POST" action="/admin/series/{{ $series['token'] }}/delete"
@@ -57,28 +46,14 @@
     </form>
 </div>
 
-@if ($series['status'] === 'live')
-    <p style="color:#aaa; font-size:13px;">
-        Suivi actif depuis le {{ date('d/m/Y H:i', (int) ($series['started_at'] ?? $series['created_at'])) }} :
-        chaque nouveau log logs.tf des deux rosters met à jour les maps automatiquement (vérification chaque minute).
-    </p>
-@elseif ($series['status'] !== 'finished')
-    <p style="color:#d9a544; font-size:13px;">
-        <i class="fa-solid fa-triangle-exclamation"></i>
-        Le suivi n'est pas lancé : l'overlay n'est pas actif et aucun log n'est récupéré.
-        Cliquez sur « Lancer le suivi » pour que l'overlay se mette à jour et que la récupération des logs soit effective.
-    </p>
-@endif
-
 <h3 class="admin-section-title"><i class="fa-solid fa-trophy"></i> Équipes</h3>
 @include('admin.partials.etf2l_teams', ['competitions' => $competitions, 'prefix' => 'series'])
 <div style="border:2px solid #4cc46a; border-radius:10px; padding:16px; margin-bottom:16px; background:rgba(76,196,106,0.08);">
-    <h4 style="margin:0 0 8px;"><i class="fa-solid fa-right-left"></i> L'affichage des logs est inversé ?</h4>
+    <h4 style="margin:0 0 8px;"><i class="fa-solid fa-right-left"></i> L'ordre d'affichage est inversé ?</h4>
     <p style="margin:0 0 12px; font-size:14px; line-height:1.5;">
-        Si les noms d'équipe et avatars apparaissent du mauvais côté par rapport aux logs, ce bouton échange
-        <strong>uniquement les noms et les avatars</strong> des équipes A et B — les rosters ne bougent pas (ce sont
-        eux qui alignent les logs sur les équipes), le score reste sur son côté, et l'overlay se rafraîchit
-        immédiatement dans OBS.
+        Si les équipes A et B sont du mauvais côté sur l'overlay, ce bouton échange
+        <strong>uniquement leurs noms et leurs avatars</strong> — le score acquis et les rosters ne bougent pas,
+        et l'overlay se rafraîchit immédiatement dans OBS.
     </p>
     <form method="POST" action="/admin/series/{{ $series['token'] }}/swap"
           onsubmit="return confirm('Intervertir les équipes A et B (noms et avatars) ?');">
@@ -91,11 +66,10 @@
 <p style="color:#aaa; font-size:13px;">
     Les noms s'affichent tels quels sur l'overlay : utilisez l'acronyme de l'équipe (ex : Inglorious Gamblers → IG),
     l'espace y est très réduit. Modifiables à tout moment, y compris après la création (erreur d'acronyme, alias).
-    La couleur (A = côté gauche de l'overlay, B = côté droit) n'a aucune importance sur le match : elle ne fixe
-    que l'ordre d'affichage, les logs font ensuite le travail.
+    La couleur (A = côté gauche de l'overlay, B = côté droit) ne fixe que l'ordre d'affichage.
 </p>
 <p style="color:#aaa; font-size:13px;">
-    La liaison ETF2L (remplissage assisté ci-dessus) sert de référence aux rosters : elle permet de rafraîchir les
+    La liaison ETF2L (préremplissage depuis le match ou remplissage assisté ci-dessus) permet de rafraîchir les
     rosters des deux équipes d'un clic — transferts entre saisons, joueur ajouté en cours de saison — sans ressaisir
     les SteamIDs à la main. Sans liaison, les rosters saisis à la création restent valables tels quels.
 </p>
@@ -103,7 +77,7 @@
       onsubmit="return confirm('Remplacer les rosters des deux équipes par leurs rosters ETF2L actuels ?');">
     @csrf
     <button type="submit" class="admin-btn"
-            title="Récupère les SteamIDs actuels des deux équipes depuis ETF2L (nécessite la liaison des équipes via le remplissage assisté).">
+            title="Récupère les SteamIDs actuels des deux équipes depuis ETF2L (nécessite la liaison des équipes).">
         <i class="fa-solid fa-arrows-rotate"></i> Rafraîchir les rosters depuis ETF2L
     </button>
 </form>
@@ -117,6 +91,11 @@
                 <label class="admin-form-label" for="team-{{ $team }}-name">Nom équipe {{ $label }} (acronyme)</label>
                 <input type="text" id="team-{{ $team }}-name" name="{{ $team }}_name" class="form-control js-team-field-name"
                        value="{{ e($series['teams'][$team]['name']) }}" maxlength="64" required>
+                @if (trim((string) ($series['teams'][$team]['etf2l_name'] ?? '')) !== '')
+                    <p style="color:#777; font-size:12px; margin:6px 0 0;">
+                        Nom complet ETF2L : {{ e($series['teams'][$team]['etf2l_name']) }}
+                    </p>
+                @endif
                 <label class="admin-form-label" style="margin-top:10px;" for="team-{{ $team }}-avatar-url">Avatar par URL externe (optionnel)</label>
                 <input type="url" id="team-{{ $team }}-avatar-url" name="{{ $team }}_avatar_url" class="form-control js-team-field-avatar"
                        value="{{ e($series['teams'][$team]['avatar_url'] ?? '') }}"
@@ -135,28 +114,12 @@
 </p>
 <p style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
     <code style="background:#111; border:1px solid #333; border-radius:6px; padding:8px 12px; font-size:14px;">
-        {{ url('/series-overlay/'.$series['token'].'?delay=90') }}
+        {{ url('/series-overlay/'.$series['token']) }}
     </code>
-    <a class="admin-link-btn" href="/series-overlay/{{ $series['token'] }}?delay=90" target="_blank">Prévisualiser</a>
+    <a class="admin-link-btn" href="/series-overlay/{{ $series['token'] }}" target="_blank">Prévisualiser</a>
 </p>
 <p style="color:#aaa; font-size:13px;">
-    L'URL embarque déjà <code>?delay=90</code>, le retard classique d'une SourceTV : les logs rattachés n'apparaissent
-    sur l'overlay qu'une fois montrés par le flux retardé, sinon le score avance de 90 s sur les spectateurs. Ajustez
-    ce nombre au retard STV réel de votre broadcast (ou retirez-le pour un cast sans délai). Les points manuels, eux,
-    s'affichent dès leur saisie — entrez-les au moment où ils apparaissent sur le stream.
-</p>
-
-<h3 class="admin-section-title"><i class="fa-solid fa-table-list"></i> Overlay stats de match (automatique)</h3>
-<p style="color:#aaa; font-size:13px;">
-    Chaque log logs.tf rattaché à la série régénère automatiquement les stats de la map terminée sur cette page —
-    aucun copier-coller d'URL logs.tf, aucune action à faire pendant le cast. Avant le premier log, la page affiche
-    les équipes à 0-0 sans stats.
-</p>
-<p style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
-    <code style="background:#111; border:1px solid #333; border-radius:6px; padding:8px 12px; font-size:14px;">
-        {{ url('/series-overlay/'.$series['token'].'/match?delay=90') }}
-    </code>
-    <a class="admin-link-btn" href="/series-overlay/{{ $series['token'] }}/match?delay=90" target="_blank">Prévisualiser</a>
+    Les points s'affichent dès leur saisie — entrez-les au moment où ils apparaissent sur le stream.
 </p>
 
 @if ($has_avatar['red'] || $has_avatar['blue'])
@@ -184,15 +147,36 @@
 @endif
 
 <h3 class="admin-section-title"><i class="fa-solid fa-map"></i> Maps de la série</h3>
-@if ($series['status'] === 'live')
-    <form method="POST" action="/admin/series/{{ $series['token'] }}/reconcile" style="margin:0 0 12px;">
-        @csrf
-        <button type="submit" class="admin-btn admin-btn--primary"
-                title="Interroge logs.tf tout de suite au lieu d'attendre la vérification automatique de la minute suivante.">
-            <i class="fa-solid fa-rotate"></i> Chercher les logs maintenant
-        </button>
-    </form>
-@endif
+@php
+    // Pool de maps du menu « ajouter » : celui du format du match quand il
+    // est connu, les deux sinon (match ETF2L non chargé ou catégorie absente).
+    $category = (string) ($series['category'] ?? '');
+    $addableMaps = [];
+    foreach (['9v9', '6v6'] as $poolCategory) {
+        if ($category === '' || $poolCategory === $category) {
+            foreach ($mapPools[$poolCategory] ?? [] as $map) {
+                $addableMaps[] = $map;
+            }
+        }
+    }
+@endphp
+<form method="POST" action="/admin/series/{{ $series['token'] }}/map" style="display:flex; gap:10px; flex-wrap:wrap; align-items:flex-end; margin:0 0 12px;">
+    @csrf
+    <div style="flex:1; min-width:260px;">
+        <label class="admin-form-label" for="series-add-map">Ajouter une map</label>
+        <select id="series-add-map" name="map" class="form-control" required>
+            @forelse ($addableMaps as $map)
+                <option value="{{ e($map['name']) }}">{{ e(trim((string) ($map['label'] ?? '')) !== '' ? $map['label'] : $map['name']) }}</option>
+            @empty
+                <option value="" disabled>Aucune map active pour ce format</option>
+            @endforelse
+        </select>
+    </div>
+    <button type="submit" class="admin-btn admin-btn--primary"
+            title="BO qui va à sa dernière map, map décidée en cours de série.">
+        <i class="fa-solid fa-plus"></i> Ajouter la map
+    </button>
+</form>
 <div class="admin-table-scroll">
     <table class="admin-table">
         <thead>
@@ -202,22 +186,22 @@
                 <th>Rounds / score</th>
                 <th>Statut</th>
                 <th>Gagnant</th>
-                <th>Logs</th>
                 <th>Ajustement manuel</th>
+                <th></th>
             </tr>
         </thead>
         <tbody>
             @foreach ($state['maps'] as $map)
                 <tr>
                     <td>{{ e($map['name']) }}</td>
-                    <td>{{ $map['mode'] === 'double' ? 'Double attaque' : 'Log unique' }}</td>
+                    <td>{{ $map['mode'] === 'double' ? 'Double attaque' : 'Points' }}</td>
                     <td>
                         @if ($map['mode'] === 'double')
                             {{ (int) $map['rounds']['red'] }} - {{ (int) $map['rounds']['blue'] }}
                             <span style="color:#777;">(2 rounds pour décider la map)</span>
                         @else
                             {{ $map['scores'] !== null ? ((int) $map['scores']['red']).' - '.((int) $map['scores']['blue']) : '0 - 0' }}
-                            <span style="color:#777;">(première équipe à {{ (int) $map['winlimit'] }} points ; score final ramené par le log en fin de map)</span>
+                            <span style="color:#777;">(première équipe à {{ (int) $map['winlimit'] }} points)</span>
                         @endif
                         @if ($map['golden_cap'])
                             <span style="color:#d9a544;">golden cap en attente</span>
@@ -238,13 +222,6 @@
                         @endif
                     </td>
                     <td>
-                        @forelse ($map['log_ids'] as $logId)
-                            <a href="https://logs.tf/{{ $logId }}" target="_blank">#{{ $logId }}</a>@if (! $loop->last), @endif
-                        @empty
-                            —
-                        @endforelse
-                    </td>
-                    <td>
                         @if ($map['status'] !== 'decided')
                             <form method="POST" action="/admin/series/{{ $series['token'] }}/point" style="display:inline;">
                                 @csrf
@@ -262,6 +239,16 @@
                             </form>
                         @endif
                     </td>
+                    <td>
+                        <form method="POST" action="/admin/series/{{ $series['token'] }}/map/delete"
+                              onsubmit="return confirm('Retirer {{ e($map['name']) }} de la série ?');">
+                            @csrf
+                            <input type="hidden" name="map" value="{{ $map['name'] }}">
+                            <button type="submit" class="admin-btn" title="Uniquement si aucun point n'a compté sur cette map.">
+                                <i class="fa-solid fa-trash"></i> Retirer
+                            </button>
+                        </form>
+                    </td>
                 </tr>
             @endforeach
         </tbody>
@@ -270,8 +257,8 @@
 
 <h3 class="admin-section-title"><i class="fa-solid fa-clock-rotate-left"></i> Journal des événements</h3>
 <p style="color:#777; font-size:13px;">
-    Chaque point du score vient d'un événement de ce journal (source logs.tf ou manuelle). Annuler un événement
-    le retire du calcul tout en le gardant visible ici : l'historique reste auditable en cas de contestation.
+    Chaque point du score vient d'un événement de ce journal. Annuler un événement le retire du calcul tout en le
+    gardant visible ici : l'historique reste auditable en cas de contestation.
 </p>
 <div class="admin-table-scroll">
     <table class="admin-table">
@@ -290,7 +277,7 @@
                     <td>{{ date('H:i:s', (int) ($event['at'] ?? 0)) }}</td>
                     <td>
                         @if (($event['type'] ?? '') === 'log')
-                            Log logs.tf #{{ (int) ($event['log_id'] ?? 0) }}
+                            Log logs.tf #{{ (int) ($event['log_id'] ?? 0) }} (historique)
                         @elseif (($event['type'] ?? '') === 'manual')
                             Point manuel
                         @else

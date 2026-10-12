@@ -7,15 +7,14 @@ namespace App\Models;
 use Illuminate\Http\UploadedFile;
 
 /**
- * Persistance des séries de matchs (playoffs) pour le suivi automatique des
- * scores via logs.tf (outil admin « Overlay Scores »).
+ * Persistance des séries de matchs (playoffs) pour l'overlay de score à
+ * points manuels (outil admin « Overlay Scores »).
  *
  * Une série vit dans un cache JSON sous hlfr_data_path('series/') : un index
  * (liste des séries) et un payload complet par série. Le payload contient les
- * faits bruts (journal d'événements + logs logs.tf déjà vus) ; l'état dérivé
- * (score par map, score de série) est recalculé à la lecture par
- * SeriesScoreService — un changement de logique s'applique donc aux séries
- * existantes sans migration.
+ * faits bruts (journal d'événements) ; l'état dérivé (score par map, score de
+ * série) est recalculé à la lecture par SeriesScoreService — un changement de
+ * logique s'applique donc aux séries existantes sans migration.
  *
  * Aucun modèle Eloquent : état 100% fichiers, auditable et corrigeable.
  */
@@ -45,26 +44,6 @@ final class SeriesRepository
         usort($entries, static fn (array $a, array $b): int => ($b['created_at'] ?? 0) <=> ($a['created_at'] ?? 0));
 
         return $entries;
-    }
-
-    /**
-     * Liste des séries dont le suivi automatique est actif (statut « live »).
-     *
-     * @return array<int, array<string, mixed>>
-     */
-    public function allLive(): array
-    {
-        $live = [];
-        foreach ($this->all() as $entry) {
-            if (($entry['status'] ?? '') === 'live') {
-                $payload = $this->find((string) $entry['token']);
-                if ($payload !== null) {
-                    $live[] = $payload;
-                }
-            }
-        }
-
-        return $live;
     }
 
     /**
@@ -112,7 +91,6 @@ final class SeriesRepository
         $entry = [
             'token' => $token,
             'title' => (string) ($series['title'] ?? ''),
-            'status' => (string) ($series['status'] ?? 'upcoming'),
             'format' => (string) ($series['format'] ?? ''),
             'created_at' => (int) ($series['created_at'] ?? time()),
             'updated_at' => (int) $series['updated_at'],
@@ -158,8 +136,8 @@ final class SeriesRepository
      * Ajoute un événement au journal d'une série (append-only) et persiste.
      *
      * Le journal est la seule source de vérité du score : chaque événement
-     * porte sa source (« logstf », « manual », « void »), ce qui rend chaque
-     * incrément auditable et annulable sans perdre l'historique.
+     * porte sa source (« manual », « void »), ce qui rend chaque incrément
+     * auditable et annulable sans perdre l'historique.
      *
      * @param  array<string, mixed>  $event  Événement sans champ id/at.
      * @return string Identifiant de l'événement ajouté.
@@ -180,39 +158,6 @@ final class SeriesRepository
         $this->save($series);
 
         return (string) $event['id'];
-    }
-
-    /**
-     * Marque un log logs.tf comme vu pour une série (compté ou rejeté avec
-     * raison), pour ne jamais le retélécharger ni le compter deux fois.
-     *
-     * @param  array<string, string>  $seen  [log_id => 'applied'|'rejected:<raison>']
-     */
-    public function markSeenLogs(string $token, array $seen): void
-    {
-        $series = $this->find($token);
-        if ($series === null || $seen === []) {
-            return;
-        }
-
-        $known = is_array($series['seen_logs'] ?? null) ? $series['seen_logs'] : [];
-        foreach ($seen as $logId => $status) {
-            $known[(string) $logId] = $status;
-        }
-        $series['seen_logs'] = $known;
-
-        $this->save($series);
-    }
-
-    /**
-     * @return array<string, string>
-     */
-    public function seenLogs(string $token): array
-    {
-        $series = $this->find($token);
-        $seen = is_array($series['seen_logs'] ?? null) ? $series['seen_logs'] : [];
-
-        return $seen;
     }
 
     /**

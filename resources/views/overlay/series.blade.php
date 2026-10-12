@@ -54,9 +54,8 @@
             @foreach ($state['maps'] as $i => $map)
                 @php
                     // Score affiché par map : rounds pour la double attaque
-                    // (2-0, 2-1…), points pour les maps à log unique — score
-                    // live des points manuels, remplacé par le score final du
-                    // log au moment de son fetch (fin de map).
+                    // (2-0, 2-1…), points pour les maps à points — score
+                    // live des points manuels saisis depuis l'admin.
                     if ($map['mode'] === 'double') {
                         $mapScore = ((int) $map['rounds']['red']).' – '.((int) $map['rounds']['blue']);
                     } elseif ($map['scores'] !== null) {

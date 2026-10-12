@@ -106,7 +106,6 @@ Route::get('/overlay/{token}/version', [OverlayController::class, 'version'])->w
 Route::get('/overlay/{token}/avatar/{team}', [OverlayController::class, 'avatar'])->where('token', '[a-z0-9]{16}')->whereIn('team', ['red', 'blue']);
 Route::get('/series-overlay/{token}', [SeriesOverlayController::class, 'show'])->where('token', '[a-z0-9]{16}');
 Route::get('/series-overlay/{token}/version', [SeriesOverlayController::class, 'version'])->where('token', '[a-z0-9]{16}');
-Route::get('/series-overlay/{token}/match', [SeriesOverlayController::class, 'match'])->where('token', '[a-z0-9]{16}');
 Route::get('/series-overlay/{token}/avatar/{team}', [SeriesOverlayController::class, 'avatar'])->where('token', '[a-z0-9]{16}')->whereIn('team', ['red', 'blue']);
 Route::get('/bracket-overlay/{token}', [BracketOverlayController::class, 'show'])->where('token', '[a-z0-9]{16}');
 Route::get('/bracket-overlay/{token}/version', [BracketOverlayController::class, 'version'])->where('token', '[a-z0-9]{16}');
@@ -144,15 +143,17 @@ Route::middleware('overlay-tools')->prefix('admin')->group(function (): void {
     Route::post('/overlay/rosters/{token}/switch', [AdminRostersController::class, 'switch'])->where('token', '[a-z0-9]{16}');
     Route::post('/overlay/rosters/{token}/delete', [AdminRostersController::class, 'delete'])->where('token', '[a-z0-9]{16}');
     Route::get('/series', [AdminSeriesController::class, 'index'])->name('admin.series');
+    Route::get('/series/etf2l-match', [AdminSeriesController::class, 'etf2lMatch']);
     Route::post('/series/create', [AdminSeriesController::class, 'create']);
     Route::get('/series/{token}', [AdminSeriesController::class, 'show'])->where('token', '[a-z0-9]{16}');
-    Route::post('/series/{token}/status', [AdminSeriesController::class, 'status'])->where('token', '[a-z0-9]{16}');
     Route::post('/series/{token}/teams', [AdminSeriesController::class, 'teams'])->where('token', '[a-z0-9]{16}');
     Route::post('/series/{token}/rosters', [AdminSeriesController::class, 'rosters'])->where('token', '[a-z0-9]{16}');
+    Route::post('/series/{token}/resync', [AdminSeriesController::class, 'resync'])->where('token', '[a-z0-9]{16}');
     Route::post('/series/{token}/swap', [AdminSeriesController::class, 'swap'])->where('token', '[a-z0-9]{16}');
     Route::post('/series/{token}/point', [AdminSeriesController::class, 'point'])->where('token', '[a-z0-9]{16}');
+    Route::post('/series/{token}/map', [AdminSeriesController::class, 'addMap'])->where('token', '[a-z0-9]{16}');
+    Route::post('/series/{token}/map/delete', [AdminSeriesController::class, 'removeMap'])->where('token', '[a-z0-9]{16}');
     Route::post('/series/{token}/void', [AdminSeriesController::class, 'void'])->where('token', '[a-z0-9]{16}');
-    Route::post('/series/{token}/reconcile', [AdminSeriesController::class, 'reconcile'])->where('token', '[a-z0-9]{16}');
     Route::post('/series/{token}/avatar', [AdminSeriesController::class, 'avatar'])->where('token', '[a-z0-9]{16}');
     Route::post('/series/{token}/avatar/delete', [AdminSeriesController::class, 'avatarDelete'])->where('token', '[a-z0-9]{16}');
     Route::post('/series/{token}/delete', [AdminSeriesController::class, 'delete'])->where('token', '[a-z0-9]{16}');

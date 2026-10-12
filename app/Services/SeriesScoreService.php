@@ -11,35 +11,30 @@ namespace App\Services;
  * Le service est pur : il ne fait ni réseau ni I/O, uniquement du calcul sur
  * le payload de la série. Trois types d'événements composent le journal :
  *
- *  - « log »    : un log logs.tf rattaché à une map de la série, avec son
- *                 gagnant normalisé en équipe de série (« red »/« blue »,
- *                 indépendamment de la couleur en jeu) — événements produits
- *                 par le réconciliateur logs.tf (SeriesReconcileService) ;
+ *  - « log »    : un log logs.tf rattaché à une map de la série — type
+ *                 historique : plus aucun événement « log » n'est produit
+ *                 depuis la suppression de la récupération automatique, mais
+ *                 les séries créées à cette époque conservent leur journal et
+ *                 doivent continuer d'afficher leur score tel qu'il fut
+ *                 compté (aucune donnée n'est réécrite) ;
  *  - « manual » : un point marqué saisi à la main par un admin (scoring live
- *                 d'une map à log unique en attendant son log, contestation,
- *                 log manquant, rattrapage) ;
+ *                 d'une map à points, contestation, rattrapage) — la seule
+ *                 source de points depuis la refonte ;
  *  - « void »   : annulation d'un événement (cible « target ») — l'événement
  *                 annulé reste dans le journal pour l'audit mais ne compte plus.
  *
  * Règles d'agrégation par map (formats ETF2L Highlander) :
  *
  *  - « double » (payload pl_* et A/D type cp_steel : double attaque, une par
- *    équipe) : chaque log = un round gagné (1-0 / 0-1). La map est décidée à
- *    2 rounds pour une équipe ; 1-1 reste en attente de golden cap (3e log) ;
- *    le score final d'une telle map est donc 2-0, 2-1 ou 1-1 (non décidée).
- *  - « single » (KOTH, 5cp, payload race : un seul log) : le log ne remonte
- *    qu'à la fin de la map et porte son score final — score inégal → map
- *    décidée pour le meneur (winlimit atteint ou timelimit écoulé), égalité
- *    au timelimit (ex. 2-2 en 5cp à 30 min) → golden cap à jouer, map en
- *    attente du log de départage. En attendant le log, les points manuels
- *    s'accumulent en score live : la map n'est décidée qu'au winlimit
- *    atteint — 3 points en KOTH et payload race (mp_winlimit 3, pas de
- *    golden cap possible), 5 en 5cp (mp_winlimit 5, mp_timelimit 30).
- *
- * Toute équipe étant susceptible de changer de couleur entre les logs (les
- * équipes s'échangent RED/BLU d'une moitié à l'autre d'un payload), les
- * événements ne portent jamais de couleur : uniquement des clés d'équipe de
- * série, recalculées par le réconciliateur à chaque log.
+ *    équipe) : chaque round gagné vaut 1 (1-0 / 0-1). La map est décidée à
+ *    2 rounds pour une équipe ; 1-1 reste en attente de golden cap (3e
+ *    point) ; le score final d'une telle map est donc 2-0, 2-1 ou 1-1
+ *    (non décidée).
+ *  - « single » (KOTH, 5cp, payload race) : les points manuels s'accumulent
+ *    en score live et la map n'est décidée qu'au winlimit atteint — 3 points
+ *    en KOTH et payload race (mp_winlimit 3, une égalité y est impossible),
+ *    5 en 5cp (mp_winlimit 5, mp_timelimit 30 : une égalité au timelimit
+ *    part en golden cap, le point suivant tranche).
  */
 final class SeriesScoreService
 {

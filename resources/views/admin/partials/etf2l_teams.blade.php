@@ -4,12 +4,13 @@
      alors dans chaque bloc .js-etf2l-team du formulaire pour remplir nom,
      avatar (et pays le cas échéant) d'un clic (admin_etf2l_teams.js). Le
      menu lie aussi le bloc à l'équipe ETF2L choisie : l'outil
-     Scores récupère alors le roster de l'équipe (SteamIDs, en cache côté
-     serveur) pour aligner automatiquement les couleurs rouge/bleu des
-     logs sur les côtés A / B, et peut rafraîchir les rosters d'un clic
-     entre deux saisons. L'outil Overlay Logs ne l'utilise plus : les noms
-     d'équipes y sont identifiés automatiquement depuis les joueurs du
-     log. Les contrôleurs passent la liste des compétitions depuis
+     Scores peut alors récupérer le roster de l'équipe (SteamIDs, en cache
+     côté serveur) et rafraîchir les rosters d'un clic entre deux saisons.
+     Pour l'outil Scores, c'est le repli manuel : le préremplissage
+     principal vient du lien de match ETF2L (admin_series_match.js).
+     L'outil Overlay Logs ne l'utilise pas : les noms d'équipes y sont
+     identifiés automatiquement depuis les joueurs du log. Les
+     contrôleurs passent la liste des compétitions depuis
      Etf2lTeamService::competitionsBothFormats() (Highlander puis 6v6,
      marquées « (6v6) » dans le menu) ou ::competitions() pour l'outil
      Overlay Rosters, dont le format est déjà fixé par l'overlay ; une

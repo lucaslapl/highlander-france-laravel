@@ -1,0 +1,258 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Tests\Unit;
+
+use App\Services\Etf2lMatchService;
+use Illuminate\Foundation\Testing\RefreshDatabase;
+use Tests\TestCase;
+
+/**
+ * Matchs ETF2L (API v2) pour l'outil « Overlay Scores » : extraction de
+ * l'identifiant depuis un lien etf2l.org/matches/{id}, normalisation d'un
+ * match (équipes avec tag/acronyme, compétition et format, maps), titre
+ * généré (« Compétition — A vs B »), rosters des équipes connues, cache
+ * par URL dans etf2l_api_cache et cache négatif sur indisponibilité.
+ * Fetcher HTTP injecté : aucun réseau réel, seulement la base de test.
+ */
+class Etf2lMatchServiceTest extends TestCase
+{
+    use RefreshDatabase;
+
+    /**
+     * Fetcher factice : réponse par fragment d'URL (null = erreur réseau).
+     *
+     * @param  array<string, array|null>  $responses
+     */
+    private function service(array $responses = []): Etf2lMatchService
+    {
+        $fetcher = static function (string $url) use ($responses): ?array {
+            foreach ($responses as $fragment => $payload) {
+                if (str_contains($url, $fragment)) {
+                    return $payload;
+                }
+            }
+
+            return null;
+        };
+
+        return new Etf2lMatchService($fetcher, 0.0);
+    }
+
+    /**
+     * Payload d'un match Highlander avec deux équipes connues, tags et
+     * maps (forme de l'endpoint /matches/{id}).
+     *
+     * @return array<string, mixed>
+     */
+    private function matchPayload(): array
+    {
+        return [
+            'status' => ['code' => 200],
+            'match' => [
+                'id' => 93233,
+                'clan1' => [
+                    'id' => 21747,
+                    'name' => 'Les Baguettes',
+                    'tag' => 'LB',
+                    'country' => 'France',
+                    'steam' => ['avatar' => 'https://example.com/lb.png'],
+                ],
+                'clan2' => [
+                    'id' => 21748,
+                    'name' => 'Escouade 6',
+                    'tag' => 'E6',
+                    'country' => 'France',
+                    'steam' => ['avatar' => 'https://example.com/e6.png'],
+                ],
+                'competition' => ['id' => 1060, 'name' => 'Highlander Season 36: High Playoffs', 'type' => 'Highlander'],
+                'maps' => ['pl_upward_f10', 'koth_product_final'],
+                'r1' => null,
+                'r2' => null,
+            ],
+        ];
+    }
+
+    // ─── Lien de match ────────────────────────────────────────────────────
+
+    public function test_un_lien_de_match_donne_son_identifiant(): void
+    {
+        $this->assertSame(93233, Etf2lMatchService::matchIdFromUrl('https://etf2l.org/matches/93233/'));
+        $this->assertSame(93233, Etf2lMatchService::matchIdFromUrl('https://www.etf2l.org/matches/93233'));
+        $this->assertSame(93233, Etf2lMatchService::matchIdFromUrl('etf2l.org/matches/93233/'));
+    }
+
+    public function test_un_lien_qui_n_est_pas_un_match_est_rejete(): void
+    {
+        $this->assertNull(Etf2lMatchService::matchIdFromUrl('https://etf2l.org/team/21747'));
+        $this->assertNull(Etf2lMatchService::matchIdFromUrl('https://etf2l.org/'));
+        $this->assertNull(Etf2lMatchService::matchIdFromUrl(''));
+    }
+
+    // ─── Normalisation ────────────────────────────────────────────────────
+
+    public function test_un_match_est_normalise_avec_equipes_tags_et_maps(): void
+    {
+        $service = $this->service(['/matches/93233' => $this->matchPayload()]);
+
+        $match = $service->match(93233);
+
+        $this->assertNotNull($match);
+        $this->assertSame(93233, $match['id']);
+        $this->assertSame('https://etf2l.org/matches/93233/', $match['url']);
+        $this->assertSame('Highlander Season 36: High Playoffs', $match['competition']['name']);
+        $this->assertSame('9v9', $match['category']);
+        $this->assertSame(['pl_upward_f10', 'koth_product_final'], $match['maps']);
+
+        $this->assertSame(21747, $match['teams'][0]['id']);
+        $this->assertSame('Les Baguettes', $match['teams'][0]['name']);
+        $this->assertSame('LB', $match['teams'][0]['tag']);
+        $this->assertSame('https://example.com/lb.png', $match['teams'][0]['avatar']);
+
+        $this->assertSame(21748, $match['teams'][1]['id']);
+        $this->assertSame('E6', $match['teams'][1]['tag']);
+    }
+
+    public function test_le_titre_genere_utilise_la_competition_et_les_acronymes(): void
+    {
+        $service = $this->service(['/matches/93233' => $this->matchPayload()]);
+
+        $match = $service->match(93233);
+
+        $this->assertNotNull($match);
+        $this->assertSame('Highlander Season 36: High Playoffs — LB vs E6', $match['title']);
+    }
+
+    public function test_une_equipe_tbd_restre_inconnue(): void
+    {
+        // Playoffs : le vainqueur du tour précédent n'est pas encore connu.
+        $payload = $this->matchPayload();
+        $payload['match']['clan2'] = ['id' => 0, 'name' => 'TBD'];
+
+        $service = $this->service(['/matches/93233' => $payload]);
+
+        $match = $service->match(93233);
+
+        $this->assertNotNull($match);
+        $this->assertNotNull($match['teams'][0]);
+        $this->assertNull($match['teams'][1]);
+        // Le titre garde un repère pour le côté encore inconnu.
+        $this->assertSame('Highlander Season 36: High Playoffs — LB vs TBD', $match['title']);
+    }
+
+    public function test_un_match_6v6_est_categorise_6v6(): void
+    {
+        $payload = $this->matchPayload();
+        $payload['match']['competition']['type'] = '6v6';
+
+        $service = $this->service(['/matches/93233' => $payload]);
+
+        $match = $service->match(93233);
+
+        $this->assertNotNull($match);
+        $this->assertSame('6v6', $match['category']);
+    }
+
+    public function test_un_match_sans_type_de_competition_n_a_pas_de_categorie(): void
+    {
+        // Champ absent de l'API : le menu des maps reste sur les deux pools.
+        $payload = $this->matchPayload();
+        unset($payload['match']['competition']['type']);
+
+        $service = $this->service(['/matches/93233' => $payload]);
+
+        $match = $service->match(93233);
+
+        $this->assertNotNull($match);
+        $this->assertNull($match['category']);
+        // Sans tag connu, le titre replie sur le nom complet.
+        $this->assertSame('Highlander Season 36: High Playoffs — LB vs E6', $match['title']);
+    }
+
+    public function test_le_nom_complet_remplace_le_tag_absent(): void
+    {
+        $payload = $this->matchPayload();
+        $payload['match']['clan1']['tag'] = null;
+
+        $service = $this->service(['/matches/93233' => $payload]);
+
+        $match = $service->match(93233);
+
+        $this->assertNotNull($match);
+        $this->assertSame('', $match['teams'][0]['tag']);
+        $this->assertSame('Highlander Season 36: High Playoffs — Les Baguettes vs E6', $match['title']);
+    }
+
+    // ─── Rosters ──────────────────────────────────────────────────────────
+
+    public function test_les_rosters_des_equipes_connues_sont_embarques(): void
+    {
+        $service = $this->service([
+            '/matches/93233' => $this->matchPayload(),
+            '/team/21747' => [
+                'status' => ['code' => 200],
+                'team' => ['id' => 21747, 'name' => 'Les Baguettes', 'players' => [
+                    ['name' => 'Baguette One', 'steam' => ['id64' => '76561198000000001']],
+                    ['name' => 'Baguette Two', 'steam' => ['id64' => '76561198000000002']],
+                ]],
+            ],
+            '/team/21748' => [
+                'status' => ['code' => 200],
+                'team' => ['id' => 21748, 'name' => 'Escouade 6', 'players' => [
+                    ['name' => 'Escouade One', 'steam' => ['id64' => '76561198000000011']],
+                ]],
+            ],
+        ]);
+
+        $match = $service->matchWithRosters(93233);
+
+        $this->assertNotNull($match);
+        $this->assertSame(['76561198000000001', '76561198000000002'], $match['teams'][0]['players']);
+        $this->assertSame('Baguette One', $match['teams'][0]['names']['76561198000000001']);
+        $this->assertSame(['76561198000000011'], $match['teams'][1]['players']);
+    }
+
+    public function test_un_roster_indisponible_ne_casse_pas_le_match(): void
+    {
+        // L'API de la deuxième équipe échoue : elle reste sans roster, la
+        // saisie manuelle de l'outil prend le relais.
+        $service = $this->service([
+            '/matches/93233' => $this->matchPayload(),
+            '/team/21747' => [
+                'status' => ['code' => 200],
+                'team' => ['id' => 21747, 'name' => 'Les Baguettes', 'players' => [
+                    ['name' => 'Baguette One', 'steam' => ['id64' => '76561198000000001']],
+                ]],
+            ],
+        ]);
+
+        $match = $service->matchWithRosters(93233);
+
+        $this->assertNotNull($match);
+        $this->assertSame(['76561198000000001'], $match['teams'][0]['players']);
+        $this->assertSame([], $match['teams'][1]['players']);
+    }
+
+    // ─── Indisponibilités et cache ────────────────────────────────────────
+
+    public function test_une_api_indisponible_renvoie_null(): void
+    {
+        $service = $this->service(['/matches/93233' => null]);
+
+        $this->assertNull($service->match(93233));
+        $this->assertNull($service->matchWithRosters(93233));
+    }
+
+    public function test_un_match_inconnu_renvoie_null(): void
+    {
+        $service = $this->service(['/matches/93233' => ['status' => ['code' => 404]]]);
+
+        $this->assertNull($service->match(93233));
+    }
+
+    public function test_un_identifiant_invalide_est_rejete_sans_appel(): void
+    {
+        $this->assertNull($this->service()->match(0));
+    }
+}

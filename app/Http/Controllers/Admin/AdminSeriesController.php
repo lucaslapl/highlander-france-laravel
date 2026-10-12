@@ -5,29 +5,36 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\Etf2lMapRepository;
 use App\Models\SeriesRepository;
 use App\Services\AdminLogger;
 use App\Services\Auth;
-use App\Services\Crons\SeriesReconcileService;
+use App\Services\Etf2lMatchService;
 use App\Services\Etf2lTeamService;
 use App\Services\SeriesScoreService;
 use App\Services\SteamId;
 use Illuminate\Contracts\View\View;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 
 /**
- * Outil « Overlay Scores » : overlay de score d'une série de playoffs avec
- * suivi automatique via logs.tf (réconciliateur app:series-reconcile), et
- * ajustements manuels (point de map, annulation d'un événement, renommage
- * des équipes et avatars par URL) pour les contestations et les cas que
- * l'automatisme ne couvre pas. Le remplissage assisté des équipes est le
- * même que pour les autres outils overlay (compétition → équipes ETF2L) :
- * il remplit aussi les rosters (SteamIDs) depuis ETF2L et lie chaque
- * équipe à son identifiant, pour rafraîcher les rosters entre saisons
- * (transferts) sans les ressaisir à la main. Accessible aux admins et
- * aux rôles caster / prod (hub des overlays /admin/overlays-stream).
+ * Outil « Overlay Scores » : overlay de score d'une série de playoffs à
+ * points manuels (chaque map gagnée est saisie à la main depuis le détail
+ * de la série, chaque événement est visible et annulable dans le journal).
+ *
+ * La série est remplie depuis un lien de match ETF2L
+ * (https://etf2l.org/matches/{id}/) : il génère le titre (« Compétition —
+ * A vs B »), les noms d'équipes (acronyme « tag » ETF2L le cas échéant,
+ * modifiable), leurs avatars et leurs rosters, et les maps jouées si
+ * ETF2L les connaît — sinon elles sont choisies dans le menu des maps du
+ * site, filtré par le format du match (Highlander → 9v9, 6v6 → 6v6). Les
+ * équipes encore inconnues (TBD en playoffs) ou une API indisponible
+ * laissent la saisie manuelle prendre le relais, et une série existante
+ * peut être resynchronisée depuis ETF2L à tout moment. Accessible aux
+ * admins et aux rôles caster / prod (hub des overlays
+ * /admin/overlays-stream).
  */
 final class AdminSeriesController extends Controller
 {
@@ -35,18 +42,21 @@ final class AdminSeriesController extends Controller
 
     private SeriesRepository $series;
 
+    private Etf2lMatchService $etf2lMatches;
+
     private Etf2lTeamService $etf2lTeams;
 
     public function __construct()
     {
         $this->series = new SeriesRepository;
+        $this->etf2lMatches = new Etf2lMatchService;
         $this->etf2lTeams = new Etf2lTeamService;
     }
 
     /**
      * Compétitions ETF2L (Highlander et 6v6) pour le remplissage assisté
-     * (liste vide si l'API est indisponible : la boîte est masquée, la
-     * saisie manuelle reste possible).
+     * manuel (repli quand un match n'est pas exploitable : liste vide si
+     * l'API est indisponible, la boîte est masquée).
      *
      * @return array<int, array{id: int, name: string, archived: bool, type: string}>
      */
@@ -60,6 +70,21 @@ final class AdminSeriesController extends Controller
     }
 
     /**
+     * Maps actives du site groupées par catégorie (6v6 / 9v9) pour le menu
+     * déroulant des maps de la série.
+     *
+     * @return array<string, array<int, array<string, mixed>>>
+     */
+    private function mapPools(): array
+    {
+        try {
+            return (new Etf2lMapRepository)->activeByCategory();
+        } catch (\Throwable) {
+            return ['6v6' => [], '9v9' => []];
+        }
+    }
+
+    /**
      * GET /admin/series — liste des séries + formulaire de création.
      */
     public function index(): View
@@ -68,43 +93,86 @@ final class AdminSeriesController extends Controller
 
         return view('admin.series', [
             'title' => 'Admin - Overlay Scores',
-            'description' => 'Overlay de score des séries de playoffs avec suivi logs.tf automatique et ajustements manuels.',
+            'description' => 'Overlay de score des séries de playoffs rempli depuis un match ETF2L, à points manuels.',
             'seriesList' => $this->series->all(),
             'competitions' => $this->competitions(),
+            'mapPools' => $this->mapPools(),
         ]);
     }
 
     /**
-     * POST /admin/series/create — crée une série (équipes, joueurs, maps).
+     * GET /admin/series/etf2l-match?url=… — match ETF2L (équipes, avatars,
+     * rosters, maps, compétition) pour le préremplissage du formulaire de
+     * création, interrogé en JavaScript par admin_series_match.js. Match
+     * null (URL invalide, API indisponible) : message explicite côté
+     * client, la saisie manuelle reste possible.
+     */
+    public function etf2lMatch(Request $request): JsonResponse
+    {
+        Auth::requireOverlayTools();
+
+        $data = $request->validate([
+            'match_url' => ['required', 'string', 'max:500'],
+        ]);
+
+        $matchId = Etf2lMatchService::matchIdFromUrl((string) $data['match_url']);
+        if ($matchId === null) {
+            return response()
+                ->json(['match' => null, 'error' => 'Lien de match ETF2L invalide : il doit ressembler à https://etf2l.org/matches/93233/.'])
+                ->header('Cache-Control', 'no-store, no-cache, must-revalidate');
+        }
+
+        $match = null;
+        try {
+            $match = $this->etf2lMatches->matchWithRosters($matchId);
+        } catch (\Throwable) {
+            // API indisponible : match null, message explicite côté client.
+        }
+
+        return response()
+            ->json([
+                'match' => $match,
+                'error' => $match === null ? 'Match ETF2L introuvable ou API indisponible pour le moment : remplissez la série à la main, ou réessayez plus tard.' : null,
+            ])
+            ->header('Cache-Control', 'no-store, no-cache, must-revalidate');
+    }
+
+    /**
+     * POST /admin/series/create — crée une série depuis un lien de match
+     * ETF2L (équipes, joueurs, maps).
      *
-     * Les noms d'équipes sont attendus sous forme d'acronyme (peu d'espace
-     * sur l'overlay). Un à deux SteamIDs de joueurs du match par équipe
-     * suffisent à retrouver les logs ; le remplissage assisté ETF2L
-     * remplit tout seul le roster complet et lie chaque équipe à son
-     * identifiant ETF2L (rafraîchissement des rosters possible après
-     * création, voir rosters()). Les SteamIDs acceptés : SteamID64,
-     * « STEAM_1:X:Y » ou « [U:1:N] », un par ligne ou séparés par des
-     * virgules. Les maps acceptent un mode explicite (« double » /
-     * « single ») en second mot de la ligne, sinon le mode est déduit
-     * (pl_ et A/D connus en double attaque).
+     * Le lien génère le titre et, si l'API répond, lie chaque équipe à son
+     * identifiant ETF2L (rafraîchissement des rosters et resynchronisation
+     * possibles après création) ; les champs préremplis restent corrigibles
+     * avant envoi (mercs, TBD, API indisponible : saisie manuelle en repli).
+     * Les SteamIDs acceptés : SteamID64, « STEAM_1:X:Y » ou « [U:1:N] »,
+     * un par ligne ou séparés par des virgules. Les maps sont choisies dans
+     * le menu du site ; le mode (double attaque / log unique) est déduit du
+     * nom (pl_ et A/D connus en double attaque).
      */
     public function create(Request $request): RedirectResponse
     {
         Auth::requireOverlayTools();
 
         $data = $request->validate([
-            'title' => ['required', 'string', 'max:255'],
+            'match_url' => ['required', 'string', 'max:500'],
             'format' => ['required', 'in:bo3,bo5,fixed'],
             'red_name' => ['required', 'string', 'max:'.self::MAX_NAME_LEN],
             'blue_name' => ['required', 'string', 'max:'.self::MAX_NAME_LEN],
             'red_players' => ['required', 'string', 'max:5000'],
             'blue_players' => ['required', 'string', 'max:5000'],
-            'maps' => ['required', 'string', 'max:2000'],
+            'maps' => ['required', 'array', 'min:1'],
+            'maps.*' => ['required', 'string', 'max:128', 'regex:/^[a-z0-9_]+$/'],
             'red_avatar_url' => ['nullable', 'url:http,https', 'max:500'],
             'blue_avatar_url' => ['nullable', 'url:http,https', 'max:500'],
             'red_etf2l_id' => ['nullable', 'integer', 'min:1'],
             'blue_etf2l_id' => ['nullable', 'integer', 'min:1'],
         ]);
+
+        $matchId = Etf2lMatchService::matchIdFromUrl((string) $data['match_url']);
+        if ($matchId === null) {
+            return back()->with('error', 'Lien de match ETF2L invalide : il doit ressembler à https://etf2l.org/matches/93233/.');
+        }
 
         $red = $this->parsePlayers((string) $data['red_players']);
         $blue = $this->parsePlayers((string) $data['blue_players']);
@@ -118,38 +186,54 @@ final class AdminSeriesController extends Controller
             return back()->with('error', 'Chaque équipe doit avoir au moins un joueur de roster.');
         }
 
-        $maps = $this->parseMaps((string) $data['maps']);
+        $maps = $this->parseMaps((array) $data['maps']);
         if ($maps === []) {
-            return back()->with('error', 'Aucune map valide : une par ligne, ex. « pl_upward_f10 » ou « koth_product_final single ».');
+            return back()->with('error', 'Aucune map valide : choisissez-les dans le menu des maps de la série.');
+        }
+
+        // Le match est relu côté serveur (cache court) : le titre et la
+        // liaison des équipes ne viennent jamais du client seul. Une API
+        // indisponible n'empêche pas la création : titre de repli sur
+        // l'identifiant du match, liaison absente.
+        $match = null;
+        try {
+            $match = $this->etf2lMatches->match($matchId);
+        } catch (\Throwable) {
+            // API indisponible : saisie manuelle, la série reste créable.
         }
 
         $token = bin2hex(random_bytes(8));
-        $teams = [
-            'red' => ['name' => trim((string) $data['red_name']), 'players' => $red['players'], 'avatar_url' => $this->cleanUrl($data['red_avatar_url'] ?? null), 'etf2l_id' => (int) ($data['red_etf2l_id'] ?? 0) ?: null],
-            'blue' => ['name' => trim((string) $data['blue_name']), 'players' => $blue['players'], 'avatar_url' => $this->cleanUrl($data['blue_avatar_url'] ?? null), 'etf2l_id' => (int) ($data['blue_etf2l_id'] ?? 0) ?: null],
-        ];
+        $teams = [];
+        foreach (['red', 'blue'] as $team) {
+            $teams[$team] = [
+                'name' => trim((string) $data[$team.'_name']),
+                'players' => $team === 'red' ? $red['players'] : $blue['players'],
+                'avatar_url' => $this->cleanUrl($data[$team.'_avatar_url'] ?? null),
+                'etf2l_id' => (int) ($data[$team.'_etf2l_id'] ?? 0) ?: null,
+                'etf2l_name' => $this->matchTeamName($match, (int) ($data[$team.'_etf2l_id'] ?? 0)),
+            ];
+        }
 
         $this->series->save([
             'token' => $token,
-            'title' => trim((string) $data['title']),
+            'title' => $match !== null ? $match['title'] : 'Match ETF2L #'.$matchId,
+            'etf2l_match_id' => $matchId,
+            'category' => $match['category'] ?? null,
             'format' => (string) $data['format'],
             'wins_needed' => match ((string) $data['format']) {
                 'bo3' => 2,
                 'bo5' => 3,
                 default => null,
             },
-            'status' => 'upcoming',
-            'started_at' => null,
             'created_at' => time(),
             'teams' => $teams,
             'maps' => $maps,
             'journal' => [],
-            'seen_logs' => [],
         ]);
 
-        AdminLogger::log('admin_series_create', null, 'SUCCESS (série '.$token.' : '.trim((string) $data['title']).')');
+        AdminLogger::log('admin_series_create', null, 'SUCCESS (série '.$token.' : match ETF2L #'.$matchId.')');
 
-        return redirect('/admin/series/'.$token)->with('success', 'Série créée. Attention : cliquez sur « Lancer le suivi » pour que l\'overlay soit actif et que la récupération des logs soit effective.');
+        return redirect('/admin/series/'.$token)->with('success', 'Série créée : les points de maps se saisissent dans le détail, un par map gagnée.');
     }
 
     /**
@@ -168,7 +252,7 @@ final class AdminSeriesController extends Controller
 
         return view('admin.series_edit', [
             'title' => 'Admin - Overlay Scores : '.($series['title'] ?? ''),
-            'description' => 'Overlay de score d\'une série de playoffs avec suivi logs.tf et ajustements manuels.',
+            'description' => 'Overlay de score d\'une série de playoffs à points manuels.',
             'series' => $series,
             'state' => $state,
             'has_avatar' => [
@@ -176,13 +260,14 @@ final class AdminSeriesController extends Controller
                 'blue' => $this->series->hasAvatar($token, 'blue'),
             ],
             'competitions' => $this->competitions(),
+            'mapPools' => $this->mapPools(),
         ]);
     }
 
     /**
      * POST /admin/series/{token}/avatar — upload de l'avatar d'une équipe
-     * (affiché par l'overlay de stats de la série ; l'URL externe, si
-     * renseignée, prime sur l'upload).
+     * (affiché par l'overlay ; l'URL externe, si renseignée, prime sur
+     * l'upload).
      */
     public function avatar(Request $request, string $token): RedirectResponse
     {
@@ -227,8 +312,8 @@ final class AdminSeriesController extends Controller
     /**
      * POST /admin/series/{token}/teams — renomme les équipes après création
      * (correction d'un acronyme erroné), met à jour leur avatar par URL et
-     * leur liaison ETF2L (remplissage assisté) : c'est cette liaison qui
-     * permet de rafraîchir les rosters depuis ETF2L (voir rosters()).
+     * leur liaison ETF2L : c'est cette liaison qui permet de rafraîchir les
+     * rosters et de resynchroniser la série depuis ETF2L.
      */
     public function teams(Request $request, string $token): RedirectResponse
     {
@@ -271,11 +356,10 @@ final class AdminSeriesController extends Controller
 
     /**
      * POST /admin/series/{token}/rosters — remplace le roster de chaque
-     * équipe par son roster ETF2L courant (transferts entre saisons,
-     * joueur ajouté en cours de saison, mercs officialisés). Nécessite
-     * la liaison ETF2L de l'équipe (remplissage assisté à la création ou
-     * au renommage) : les rosters sont la référence d'identité du
-     * réconciliateur, ils ne s'échangent jamais entre les côtés.
+     * équipe par son roster ETF2L courant (transferts entre saisons, joueur
+     * ajouté en cours de saison, mercs officialisés). Nécessite la liaison
+     * ETF2L de l'équipe (préremplissage depuis le match ou remplissage
+     * assisté).
      */
     public function rosters(string $token): RedirectResponse
     {
@@ -340,12 +424,87 @@ final class AdminSeriesController extends Controller
     }
 
     /**
+     * POST /admin/series/{token}/resync — resynchronise la série depuis
+     * son match ETF2L (équipes TBD devenues connues, rosters, maps
+     * révélées par le pick / ban, titre). Les noms affichés, avatars et
+     * rosters sont remplacés par les données ETF2L actuelles (les
+     * corrections manuelles d'acronyme sont à refaire après coup) ; les
+     * maps sont uniquement ajoutées, jamais retirées — le score acquis
+     * sur une map existante ne bouge pas.
+     */
+    public function resync(string $token): RedirectResponse
+    {
+        Auth::requireOverlayTools();
+
+        $series = $this->series->find($token);
+        if ($series === null) {
+            abort(404);
+        }
+
+        $matchId = (int) ($series['etf2l_match_id'] ?? 0);
+        if ($matchId <= 0) {
+            return back()->with('error', 'Cette série n\'est pas liée à un match ETF2L : resynchronisation impossible.');
+        }
+
+        $match = null;
+        try {
+            $match = $this->etf2lMatches->matchWithRosters($matchId);
+        } catch (\Throwable) {
+            $match = null;
+        }
+        if ($match === null) {
+            return back()->with('error', 'Match ETF2L introuvable ou API indisponible pour le moment, réessayez plus tard.');
+        }
+
+        foreach (['red', 'blue'] as $i => $team) {
+            $etf2lTeam = $match['teams'][$i] ?? null;
+            if ($etf2lTeam === null) {
+                continue;
+            }
+
+            $series['teams'][$team]['etf2l_id'] = (int) $etf2lTeam['id'];
+            $series['teams'][$team]['etf2l_name'] = (string) $etf2lTeam['name'];
+            $series['teams'][$team]['name'] = $etf2lTeam['tag'] !== '' ? $etf2lTeam['tag'] : (string) $etf2lTeam['name'];
+
+            if ((string) ($etf2lTeam['avatar'] ?? '') !== '') {
+                $series['teams'][$team]['avatar_url'] = (string) $etf2lTeam['avatar'];
+            }
+
+            if (($etf2lTeam['players'] ?? []) !== []) {
+                $series['teams'][$team]['players'] = $etf2lTeam['players'];
+            }
+        }
+
+        // Maps : seules les maps encore inconnues de la série sont
+        // ajoutées (correspondance par préfixe, ex. « cp_steel » pour
+        // « cp_steel_f12 ») — jamais de retrait, le score acquis tient.
+        $addedMaps = [];
+        foreach ($match['maps'] as $mapName) {
+            if (SeriesScoreService::matchSeriesMap($series, $mapName) === null) {
+                $series['maps'][] = ['name' => $mapName, 'mode' => SeriesScoreService::deriveMode($mapName)];
+                $addedMaps[] = $mapName;
+            }
+        }
+
+        if (($series['category'] ?? null) === null && ($match['category'] ?? null) !== null) {
+            $series['category'] = $match['category'];
+        }
+
+        $series['title'] = (string) $match['title'];
+        $this->series->save($series);
+
+        $summary = 'équipes et rosters ETF2L à jour'.($addedMaps !== [] ? ', maps ajoutées : '.implode(', ', $addedMaps) : '');
+        AdminLogger::log('admin_series_resync', null, 'SUCCESS (série '.$token.' : '.$summary.')');
+
+        return back()->with('success', 'Série resynchronisée depuis ETF2L : '.$summary.'.');
+    }
+
+    /**
      * POST /admin/series/{token}/swap — intervertit les équipes A et B côté
-     * personnalisation : noms, avatars par URL et avatars uploadés. Les
-     * rosters ne bougent pas : ce sont eux qui alignent les couleurs des
-     * logs sur les équipes (SeriesReconcileService), ce bouton ne fait donc
-     * que corriger l'ordre d'affichage sur l'overlay — même logique que
-     * l'outil Overlay Logs.
+     * personnalisation : noms, avatars par URL et avatars uploadés. Le
+     * score acquis et les rosters ne bougent pas : ce bouton corrige
+     * uniquement l'ordre d'affichage sur l'overlay si les côtés ont été
+     * mal choisis à la création — même logique que l'outil Overlay Logs.
      */
     public function swap(string $token): RedirectResponse
     {
@@ -373,43 +532,13 @@ final class AdminSeriesController extends Controller
     }
 
     /**
-     * POST /admin/series/{token}/status — lance, arrête ou termine le suivi.
-     *
-     * « live » fige l'horodatage de référence : seuls les logs uploadés après
-     * le lancement du suivi sont rattachés à la série.
-     */
-    public function status(Request $request, string $token): RedirectResponse
-    {
-        Auth::requireOverlayTools();
-
-        $series = $this->series->find($token);
-        if ($series === null) {
-            abort(404);
-        }
-
-        $data = $request->validate(['status' => ['required', 'in:upcoming,live,finished']]);
-
-        if ($data['status'] === 'live' && ($series['started_at'] ?? null) === null) {
-            $series['started_at'] = time();
-        }
-        $series['status'] = (string) $data['status'];
-        $this->series->save($series);
-
-        AdminLogger::log('admin_series_status', null, 'SUCCESS (série '.$token.' → '.$data['status'].')');
-
-        return back()->with('success', 'Statut de la série mis à jour.');
-    }
-
-    /**
      * POST /admin/series/{token}/point — point marqué manuel (scoring live
-     * d'une map à log unique en attendant son log, contestation, log
-     * manquant, rattrapage). Prioritaire sur l'automatique par construction :
-     * c'est un événement du journal comme les autres, visible et annulable.
+     * d'une map à log unique, contestation, rattrapage). C'est un
+     * événement du journal comme les autres, visible et annulable.
      *
-     * Sur une map à log unique, le point s'accumule en score live : la map
-     * n'est décidée qu'au winlimit (KOTH : 3 points, 5cp : 5), sauf golden
-     * cap en attente que le point tranche. Le log de fin de map remplace
-     * ensuite ce score par le score final.
+     * Sur une map à points (KOTH, 5cp), le point s'accumule en score live :
+     * la map n'est décidée qu'au winlimit (KOTH : 3 points, 5cp : 5), sauf
+     * golden cap en attente que le point tranche.
      */
     public function point(Request $request, string $token): RedirectResponse
     {
@@ -489,29 +618,89 @@ final class AdminSeriesController extends Controller
     }
 
     /**
-     * POST /admin/series/{token}/reconcile — force la réconciliation logs.tf
-     * immédiatement, sans attendre le cron d'une minute (log fraîchement
-     * uploadé en fin de map, rattrapage rapide pendant le cast). Le service
-     * garde son verrou flock : un clic pendant une exécution en cours est
-     * ignoré proprement, et les logs déjà vus ne sont jamais recomptés.
+     * POST /admin/series/{token}/map — ajoute une map à la série (BO qui
+     * va à sa dernière map, map décidée en cours de série). La map vient
+     * du menu des maps du site, filtré par le format du match.
      */
-    public function reconcile(string $token): RedirectResponse
+    public function addMap(Request $request, string $token): RedirectResponse
     {
         Auth::requireOverlayTools();
 
-        if ($this->series->find($token) === null) {
+        $series = $this->series->find($token);
+        if ($series === null) {
             abort(404);
         }
 
-        // Le réconciliateur enchaîne des appels HTTP vers logs.tf : la
-        // limite par défaut du web peut être dépassée sur une série lente.
-        set_time_limit(300);
+        $data = $request->validate([
+            'map' => ['required', 'string', 'max:128', 'regex:/^[a-z0-9_]+$/'],
+        ]);
 
-        $summary = (new SeriesReconcileService)->run();
+        $mapName = strtolower((string) $data['map']);
+        if (SeriesScoreService::matchSeriesMap($series, $mapName) !== null) {
+            return back()->with('error', 'Cette map (ou une version proche) est déjà dans la série.');
+        }
 
-        AdminLogger::log('admin_series_reconcile', null, 'SUCCESS (série '.$token.' : '.$summary.')');
+        $series['maps'] = is_array($series['maps'] ?? null) ? $series['maps'] : [];
+        $series['maps'][] = ['name' => $mapName, 'mode' => SeriesScoreService::deriveMode($mapName)];
+        $this->series->save($series);
 
-        return back()->with('success', $summary);
+        AdminLogger::log('admin_series_map_add', null, 'SUCCESS (série '.$token.' : map '.$mapName.' ajoutée)');
+
+        return back()->with('success', 'Map ajoutée à la série.');
+    }
+
+    /**
+     * POST /admin/series/{token}/map/delete — retire une map de la série,
+     * uniquement si aucun événement du journal ne la référence (erreur de
+     * saisie) : une map qui a compté ne disparaît jamais, son historique
+     * d'audit prime.
+     */
+    public function removeMap(Request $request, string $token): RedirectResponse
+    {
+        Auth::requireOverlayTools();
+
+        $series = $this->series->find($token);
+        if ($series === null) {
+            abort(404);
+        }
+
+        $data = $request->validate([
+            'map' => ['required', 'string', 'max:128', 'regex:/^[a-z0-9_]+$/'],
+        ]);
+
+        $mapName = strtolower((string) $data['map']);
+        $used = false;
+        foreach (is_array($series['journal'] ?? null) ? $series['journal'] : [] as $event) {
+            if ((string) ($event['map'] ?? '') === $mapName) {
+                $used = true;
+                break;
+            }
+        }
+
+        $maps = [];
+        $found = false;
+        foreach (is_array($series['maps'] ?? null) ? $series['maps'] : [] as $map) {
+            if (($map['name'] ?? '') === $mapName) {
+                $found = true;
+
+                continue;
+            }
+            $maps[] = $map;
+        }
+
+        if (! $found) {
+            return back()->with('error', 'Map inconnue dans cette série.');
+        }
+        if ($used) {
+            return back()->with('error', 'Cette map a déjà compté dans le journal : elle ne peut plus être retirée (annulez ses événements d\'abord).');
+        }
+
+        $series['maps'] = $maps;
+        $this->series->save($series);
+
+        AdminLogger::log('admin_series_map_delete', null, 'SUCCESS (série '.$token.' : map '.$mapName.' retirée)');
+
+        return back()->with('success', 'Map retirée de la série.');
     }
 
     /**
@@ -525,6 +714,29 @@ final class AdminSeriesController extends Controller
         AdminLogger::log('admin_series_delete', null, 'SUCCESS (série '.$token.')');
 
         return redirect('/admin/series')->with('success', 'Série supprimée.');
+    }
+
+    /**
+     * Nom complet ETF2L de l'équipe liée d'un côté de la série, depuis le
+     * match relu côté serveur (null si le côté n'est pas lié ou si l'API
+     * n'a pas répondu) : l'acronyme affiché reste modifiable, le nom
+     * complet garde la référence ETF2L.
+     *
+     * @param  array<string, mixed>|null  $match
+     */
+    private function matchTeamName(?array $match, int $etf2lId): ?string
+    {
+        if ($match === null || $etf2lId <= 0) {
+            return null;
+        }
+
+        foreach ($match['teams'] as $team) {
+            if (is_array($team) && (int) $team['id'] === $etf2lId) {
+                return (string) $team['name'];
+            }
+        }
+
+        return null;
     }
 
     /**
@@ -585,32 +797,23 @@ final class AdminSeriesController extends Controller
     }
 
     /**
-     * Analyse la saisie des maps : une par ligne, nom seul (mode déduit) ou
-     * suivi du mode explicite (« double » / « single »).
+     * Analyse les maps choisies dans le menu : noms seuls, mode déduit par
+     * préfixe (pl_ et A/D connus en double attaque, le reste en points).
      *
+     * @param  array<int, string>  $input
      * @return array<int, array{name: string, mode: string}>
      */
-    private function parseMaps(string $input): array
+    private function parseMaps(array $input): array
     {
         $maps = [];
 
-        foreach (explode("\n", $input) as $line) {
-            $parts = preg_split('/\s+/', trim($line)) ?: [];
-            $name = strtolower((string) ($parts[0] ?? ''));
-            if ($name === '') {
+        foreach ($input as $name) {
+            $name = strtolower(trim((string) $name));
+            if ($name === '' || preg_match('/^[a-z0-9_]+$/', $name) !== 1) {
                 continue;
             }
 
-            if (! preg_match('/^[a-z0-9_]+$/', $name)) {
-                continue;
-            }
-
-            $mode = strtolower((string) ($parts[1] ?? ''));
-            if ($mode !== SeriesScoreService::MODE_DOUBLE && $mode !== SeriesScoreService::MODE_SINGLE) {
-                $mode = SeriesScoreService::deriveMode($name);
-            }
-
-            $maps[$name] = ['name' => $name, 'mode' => $mode];
+            $maps[$name] = ['name' => $name, 'mode' => SeriesScoreService::deriveMode($name)];
         }
 
         return array_values($maps);

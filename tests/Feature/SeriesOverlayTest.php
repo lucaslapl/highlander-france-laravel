@@ -13,7 +13,10 @@ use Tests\TestCase;
  * Overlay OBS du scoreboard de série : page publique par token (source
  * navigateur OBS, fond transparent) et endpoint de version interrogé par la
  * page pour se rafraîchir. Aucune donnée sensible : noms d'équipes et scores
- * de matchs publics.
+ * de matchs publics. Les événements « log » ne sont plus produits depuis la
+ * suppression de la récupération automatique, mais les journaux des séries
+ * créées à cette époque doivent continuer d'afficher leur score tel qu'il
+ * fut compté — d'où les fixtures « log » ci-dessous.
  */
 class SeriesOverlayTest extends TestCase
 {
@@ -56,12 +59,22 @@ class SeriesOverlayTest extends TestCase
     {
         $this->get('/series-overlay/'.self::TOKEN)->assertNotFound();
         $this->get('/series-overlay/'.self::TOKEN.'/version')->assertNotFound();
-        $this->get('/series-overlay/'.self::TOKEN.'/match')->assertNotFound();
         $this->get('/series-overlay/'.self::TOKEN.'/avatar/red')->assertNotFound();
+    }
+
+    public function test_l_overlay_de_stats_de_match_n_existe_plus(): void
+    {
+        // L'overlay de stats de la dernière map jouée était alimenté
+        // uniquement par les logs récupérés automatiquement : la route a
+        // disparu avec eux (l'outil « Overlay Logs » reste pour ça).
+        $this->seedSeries();
+        $this->get('/series-overlay/'.self::TOKEN.'/match')->assertNotFound();
     }
 
     public function test_l_overlay_affiche_equipes_score_et_maps(): void
     {
+        // Journal historique « log » : le score acquis avant la refonte
+        // doit continuer de s'afficher tel quel (aucune donnée réécrite).
         $this->seedSeries([
             'e1' => ['map' => 'pl_upward_f10', 'winner' => 'red'],
             'e2' => ['map' => 'pl_upward_f10', 'winner' => 'red'],
@@ -112,107 +125,27 @@ class SeriesOverlayTest extends TestCase
         $this->assertNotSame($initial, $updated);
     }
 
-    public function test_le_delai_stv_masque_un_log_trop_recent(): void
+    public function test_l_endpoint_version_reflete_le_renommage_des_equipes(): void
     {
-        // Cast sur SourceTV retardée (?delay=90) : un log rattaché à l'instant
-        // (fin réelle de la map sur le serveur) ne doit pas s'afficher avant
-        // que le flux STV retardé ne l'ait montré.
+        // Changement cosmétique sans nouveau point : l'overlay doit quand
+        // même se recharger (le nom affiché a changé).
         $this->seedSeries();
-        (new SeriesRepository)->appendEvent(self::TOKEN, [
-            'type' => 'log',
-            'source' => 'logstf',
-            'log_id' => 424242,
-            'map' => 'koth_product_final',
-            'winner' => 'blue',
-            'scores' => ['red' => 1, 'blue' => 3],
-            'title' => 'HLFR : match',
-        ]);
 
-        // Sans délai : la map est décidée pour l'équipe bleue.
-        $html = (string) $this->get('/series-overlay/'.self::TOKEN)->assertOk()->getContent();
-        $this->assertStringContainsString('series-map--decided', $html);
-        $this->assertStringContainsString('series-map__winner">Escouade 6', $html);
+        $initial = $this->get('/series-overlay/'.self::TOKEN.'/version')->assertOk()->json('version');
 
-        // Avec le délai STV : le log est masqué, la map reste en attente.
-        $html = (string) $this->get('/series-overlay/'.self::TOKEN.'?delay=90')->assertOk()->getContent();
-        $this->assertStringNotContainsString('series-map--decided', $html);
-        $this->assertStringNotContainsString('series-map__winner', $html);
-    }
+        $repo = new SeriesRepository;
+        $series = $repo->find(self::TOKEN);
+        $series['teams']['red']['name'] = 'LB';
+        $repo->save($series);
 
-    public function test_les_points_manuels_passent_au_travers_du_delai_stv(): void
-    {
-        // Les points manuels sont saisis par un humain synchronisé sur le
-        // flux diffusé : ils s'affichent immédiatement, délai STV ou non.
-        $this->seedSeries();
-        (new SeriesRepository)->appendEvent(self::TOKEN, [
-            'type' => 'manual',
-            'source' => 'manual',
-            'map' => 'koth_product_final',
-            'team' => 'red',
-            'note' => '',
-        ]);
-
-        $html = (string) $this->get('/series-overlay/'.self::TOKEN.'?delay=90')->assertOk()->getContent();
-
-        $this->assertStringContainsString('series-map__score">1 – 0', $html);
-    }
-
-    public function test_le_delai_stv_masque_les_stats_de_l_overlay_match(): void
-    {
-        // Les stats de la map terminée sont embarquées dans l'événement du
-        // journal : l'overlay retardé sert celles du dernier log *visible*,
-        // pas celles du dernier log rattaché.
-        $this->seedSeries();
-        (new SeriesRepository)->appendEvent(self::TOKEN, [
-            'type' => 'log',
-            'source' => 'logstf',
-            'log_id' => 4242,
-            'map' => 'koth_product_final',
-            'winner' => 'red',
-            'scores' => ['red' => 3, 'blue' => 1],
-            'title' => 'HLFR : match',
-            'stats' => $this->matchStats(),
-        ]);
-
-        // Sans délai : stats de la map terminée.
-        $html = (string) $this->get('/series-overlay/'.self::TOKEN.'/match')->assertOk()->getContent();
-        $this->assertStringContainsString('Joueur Rouge', $html);
-
-        // Avec le délai STV : le log est encore masqué, repli 0-0 sans stats.
-        $html = (string) $this->get('/series-overlay/'.self::TOKEN.'/match?delay=90')->assertOk()->getContent();
-        $this->assertStringNotContainsString('Joueur Rouge', $html);
-        $this->assertStringContainsString('overlay-team__score--red">0', $html);
-    }
-
-    public function test_la_version_retardee_reflete_l_etat_visible_et_pas_le_compteur(): void
-    {
-        // Avec un délai STV, la version est une empreinte de l'état visible :
-        // un log rattaché mais masqué donne une version différente de la vue
-        // directe — l'overlay retardé ne se rechargera qu'au moment où le log
-        // devient visible, sans écriture nouvelle sur la série.
-        $this->seedSeries();
-        (new SeriesRepository)->appendEvent(self::TOKEN, [
-            'type' => 'log',
-            'source' => 'logstf',
-            'log_id' => 424242,
-            'map' => 'koth_product_final',
-            'winner' => 'blue',
-            'scores' => ['red' => 1, 'blue' => 3],
-            'title' => 'HLFR : match',
-        ]);
-
-        $live = $this->get('/series-overlay/'.self::TOKEN.'/version')->assertOk()->json('version');
-        $stv = $this->get('/series-overlay/'.self::TOKEN.'/version?delay=90')->assertOk()->json('version');
-
-        $this->assertIsInt($stv);
-        $this->assertNotSame($live, $stv);
+        $updated = $this->get('/series-overlay/'.self::TOKEN.'/version')->assertOk()->json('version');
+        $this->assertNotSame($initial, $updated);
     }
 
     public function test_des_points_manuels_comptent_le_score_live_d_une_map_koth(): void
     {
         // Scoring live d'un KOTH (mp_winlimit 3) par points manuels : le
-        // score s'affiche au fil du match, la map n'est décidée qu'à 3
-        // points — le score final du log la remplace en fin de map.
+        // score s'affiche au fil du match, la map n'est décidée qu'à 3 points.
         $this->seedSeries();
         $repo = new SeriesRepository;
         foreach ([1, 2] as $i) {
@@ -287,53 +220,6 @@ class SeriesOverlayTest extends TestCase
         $this->assertStringNotContainsString('series-map--has-thumb', $html);
     }
 
-    public function test_l_overlay_de_stats_affiche_les_stats_de_la_derniere_map(): void
-    {
-        // Flux du réconciliateur sur une série d'avant l'embarquement des
-        // stats dans le journal : log rattaché au journal, payload « stats »
-        // persisté à part — le repli le sert au rendu.
-        $this->seedSeries();
-        (new SeriesRepository)->appendEvent(self::TOKEN, [
-            'type' => 'log',
-            'source' => 'logstf',
-            'log_id' => 4242,
-            'map' => 'koth_product_final',
-            'winner' => 'red',
-            'scores' => ['red' => 3, 'blue' => 1],
-            'title' => 'HLFR : match',
-        ]);
-        $this->seedStats($this->matchStats());
-
-        $html = (string) $this->get('/series-overlay/'.self::TOKEN.'/match')->assertOk()->getContent();
-
-        // Noms d'équipes de la série, jamais les RED/BLU génériques du log.
-        $this->assertStringContainsString('Les Baguettes', $html);
-        $this->assertStringContainsString('Escouade 6', $html);
-        $this->assertStringNotContainsString('>RED<', $html);
-
-        // Score du log et joueur de la map terminée.
-        $this->assertStringContainsString('overlay-team__score--red">3', $html);
-        $this->assertStringContainsString('Joueur Rouge', $html);
-
-        // Nom de map raccourci et polling sur l'endpoint de version de série.
-        $this->assertStringContainsString('Product', $html);
-        $this->assertStringContainsString('data-version-url="/series-overlay/'.self::TOKEN.'/version"', $html);
-    }
-
-    public function test_l_overlay_de_stats_sans_log_affiche_les_equipes_a_zero(): void
-    {
-        // Avant le premier log rattaché : page transparente avec les équipes
-        // à 0-0, la source OBS peut être ajoutée en amont du stream.
-        $this->seedSeries();
-
-        $html = (string) $this->get('/series-overlay/'.self::TOKEN.'/match')->assertOk()->getContent();
-
-        $this->assertStringContainsString('Les Baguettes', $html);
-        $this->assertStringContainsString('Escouade 6', $html);
-        $this->assertStringContainsString('overlay-team__score--red">0', $html);
-        $this->assertStringContainsString('overlay-team__score--blue">0', $html);
-    }
-
     public function test_l_avatar_d_une_equipe_sans_upload_renvoie_404(): void
     {
         $this->seedSeries();
@@ -342,7 +228,7 @@ class SeriesOverlayTest extends TestCase
     }
 
     /**
-     * Série en direct avec un journal optionnel (événements « log » simplifiés).
+     * Série avec un journal optionnel (« log » historiques ou rien).
      *
      * @param  array<string, array{map: string, winner: string}>  $journal
      * @param  array<int, array{name: string, mode: string}>|null  $maps
@@ -369,8 +255,6 @@ class SeriesOverlayTest extends TestCase
             'title' => 'Finale playoffs — Les Baguettes vs Escouade 6',
             'format' => 'bo3',
             'wins_needed' => 2,
-            'status' => 'live',
-            'started_at' => time() - 3600,
             'created_at' => time() - 4000,
             'version' => 1000,
             'teams' => [
@@ -382,62 +266,6 @@ class SeriesOverlayTest extends TestCase
                 ['name' => 'koth_product_final', 'mode' => SeriesScoreService::MODE_SINGLE],
             ],
             'journal' => $events,
-            'seen_logs' => [],
         ]);
-    }
-
-    /**
-     * Écrit un payload « stats » dans la série (comme le ferait le
-     * réconciliateur logs.tf après un log rattaché).
-     *
-     * @param  array<string, mixed>  $stats
-     */
-    private function seedStats(array $stats): void
-    {
-        $repo = new SeriesRepository;
-        $series = $repo->find(self::TOKEN);
-        $series['stats'] = $stats;
-        $repo->save($series);
-    }
-
-    /**
-     * Payload de stats au format OverlayStatsService::buildPayload().
-     *
-     * @return array<string, mixed>
-     */
-    private function matchStats(): array
-    {
-        return [
-            'log_id' => 4242,
-            'title' => 'HLFR : Les Baguettes vs Escouade 6',
-            'map' => 'koth_product_final',
-            'date' => time() - 120,
-            'length' => 1800,
-            'teams' => [
-                'red' => ['name' => 'RED', 'score' => 3],
-                'blue' => ['name' => 'BLU', 'score' => 1],
-            ],
-            'players' => [
-                'red' => [[
-                    'steamid3' => '[U:1:11101]',
-                    'name' => 'Joueur Rouge',
-                    'class' => 'soldier',
-                    'kills' => 10,
-                    'assists' => 2,
-                    'deaths' => 3,
-                    'dmg' => 4000,
-                    'dapm' => 400,
-                    'hr' => 0,
-                    'dt' => 900,
-                    'kd' => 3.33,
-                    'best' => [],
-                ]],
-                'blue' => [],
-            ],
-            'medics' => [
-                'red' => ['heal' => 9000, 'ubers' => 4, 'drops' => 0, 'avg_uber_length' => 6.5, 'count' => 1],
-                'blue' => ['heal' => 0, 'ubers' => 0, 'drops' => 0, 'avg_uber_length' => null, 'count' => 0],
-            ],
-        ];
     }
 }
