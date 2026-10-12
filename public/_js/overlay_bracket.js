@@ -1,9 +1,17 @@
 /* Overlay bracket / classement (/bracket-overlay/{token}) : construction
-   du bracket (cartes, étiquettes, connecteurs animés) et auto-
-   rafraîchissement. La page interroge /bracket-overlay/{token}/version
-   toutes les 5 s ; chaque enregistrement côté admin — ou chaque événement
-   de la série attachée au match « EN DIRECT » — bump la version et la page
-   se recharge entièrement, comme l'overlay série. */
+   du bracket et auto-rafraîchissement. La page interroge
+   /bracket-overlay/{token}/version toutes les 5 s ; chaque enregistrement
+   côté admin — ou chaque événement de la série attachée au match « EN
+   DIRECT » — bump la version et la page se recharge entièrement, comme
+   l'overlay série.
+
+   Le layout des cases, étiquettes et connecteurs est calculé par le
+   moteur partagé bracket_layout.js (HlfrBracket.layout) : positions
+   dérivées de l'arbre, connecteurs en un seul chemin SVG, mise à
+   l'échelle automatique vers la zone utile 1920x1080 sous le titre —
+   n'importe quelle forme de bracket s'affiche sans constante à retoucher.
+   Cette page ne fait que poser les éléments (cartes HTML, chemins SVG)
+   avec l'échelonnement d'apparition. */
 (function () {
     'use strict';
 
@@ -48,20 +56,20 @@
         return;
     }
 
-    var CARD_W = 380;
-    var CARD_H = 112;
-    var GF_W = 400;
-    var GF_H = 292;
-    var GAP_X = 130;
-    var GAP_Y = 40;
-    var MARGIN_X = 90;
-    var BANDS = {
-        upper: { top: 215, height: 350 },
-        lower: { top: 645, height: 350 },
-        final: { top: 215, height: 830 }
-    };
+    /* Zone utile sous le titre (1920x1080, header ~215 px) : le bracket
+       s'y inscrit centré, à l'échelle, sans agrandissement (maxScale 1). */
+    var VIEWPORT = { x: 90, y: 215, w: 1740, h: 835 };
 
     var replayGuard = Date.now();
+    var counter = 0;
+
+    /* Délai d'apparition d'un élément : 1 s d'attente avant que
+       l'animation du bracket ne se lance, puis échelonnement de .18 s
+       par élément (étiquettes, cases, connecteurs). */
+    function delay() {
+        counter += 1;
+        return (1.25 + counter * 0.18).toFixed(2);
+    }
 
     function build() {
         var host = document.getElementById('bracket');
@@ -69,81 +77,80 @@
             return;
         }
         host.innerHTML = '';
+        counter = 0;
 
-        var lanes = { upper: [], lower: [], final: [] };
-        (data.columns || []).forEach(function (column) {
-            var lane = lanes[column.lane] ? column.lane : 'upper';
-            lanes[lane].push(column);
+        var result = HlfrBracket.layout(data);
+        if (result.cards.length === 0) {
+            return;
+        }
+
+        var f = HlfrBracket.fit(result.bounds, VIEWPORT);
+
+        var wrap = document.createElement('div');
+        wrap.className = 'wrap';
+        wrap.style.width = result.bounds.w + 'px';
+        wrap.style.height = result.bounds.h + 'px';
+        wrap.style.transform = 'translate(' + f.x + 'px, ' + f.y + 'px) scale(' + f.scale + ')';
+
+        /* Connecteurs : un seul <path> par lien (H-V-H), posés sous les
+           cartes. pathLength=1 normalise la longueur : l'animation de
+           tracé par stroke-dashoffset fonctionne quelle que soit la
+           longueur réelle du chemin. */
+        var svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+        svg.setAttribute('class', 'lines');
+        svg.setAttribute('width', String(result.bounds.w));
+        svg.setAttribute('height', String(result.bounds.h));
+        svg.setAttribute('viewBox', '0 0 ' + result.bounds.w + ' ' + result.bounds.h);
+        wrap.appendChild(svg);
+
+        result.labels.forEach(function (label) {
+            var el = document.createElement('div');
+            el.className = 'label anim' + (label.lane === 'lower' ? ' lower' : '');
+            el.style.left = label.x + 'px';
+            el.style.top = label.y + 'px';
+            el.style.setProperty('--d', delay() + 's');
+            el.textContent = label.text || '';
+            wrap.appendChild(el);
         });
 
-        var counter = 0;
-        var placed = { upper: [], lower: [], final: [] };
-
-        /* La voie « final » est la dernière colonne du bracket : elle se
-           place à droite, après la voie la plus profonde (elle est seule
-           dans sa voie, son index interne partirait sinon de la gauche et
-           écraserait la première colonne des voies haute et basse). */
-        var stride = CARD_W + GAP_X;
-        var finalOffset = Math.max(lanes.upper.length, lanes.lower.length);
-
-        ['upper', 'lower', 'final'].forEach(function (lane) {
-            lanes[lane].forEach(function (column, depth) {
-                var gf = lane === 'final';
-                var w = gf ? GF_W : CARD_W;
-                var h = gf ? GF_H : CARD_H;
-                var x = MARGIN_X + (lane === 'final' ? finalOffset + depth : depth) * stride;
-                var n = (column.matches || []).length;
-                var total = n * h + Math.max(0, n - 1) * GAP_Y;
-                var band = BANDS[lane];
-                var top = band.top + (band.height - total) / 2;
-
-                if (n > 0 && !gf) {
-                    host.appendChild(label(column.label, lane, x, top - 38, delay(++counter)));
-                }
-
-                (column.matches || []).forEach(function (match, i) {
-                    var y = top + i * (h + GAP_Y);
-                    var card = buildCard(column, match, lane, gf, x, y, w, h, delay(++counter));
-                    host.appendChild(card);
-                    placed[lane].push({ x: x, y: y, w: w, h: h, depth: depth, index: i, card: card });
-                });
-            });
+        result.cards.forEach(function (card) {
+            wrap.appendChild(buildCard(card));
         });
 
-        drawConnectors(host, lanes, placed);
+        /* Les connecteurs suivent les cases avec un léger décalage
+           (12 rangs), comme la version précédente. */
+        counter += 12;
+        result.links.forEach(function (link) {
+            var path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+            path.setAttribute('d', link.d);
+            path.setAttribute('pathLength', '1');
+            path.setAttribute('class', 'link');
+            path.style.setProperty('--d', delay() + 's');
+            svg.appendChild(path);
+        });
+
+        host.appendChild(wrap);
     }
 
-    /* Délai d'apparition d'un élément : 1 s d'attente avant que
-       l'animation du bracket ne se lance, puis échelonnement de .18 s
-       par élément (titre, colonnes, cases, connecteurs). */
-    function delay(counter) {
-        return (1.25 + counter * 0.18).toFixed(2);
-    }
+    function buildCard(card) {
+        var match = card.match;
+        var column = card.column;
 
-    function label(text, lane, x, y, d) {
         var el = document.createElement('div');
-        el.className = 'label anim' + (lane === 'lower' ? ' lower' : '');
-        el.style.left = x + 'px';
-        el.style.top = y + 'px';
-        el.style.setProperty('--d', d + 's');
-        el.textContent = text || '';
-        return el;
-    }
+        el.className = 'card anim'
+            + (card.gf ? ' gf' : '')
+            + (card.lane === 'lower' ? ' lower' : '');
+        el.style.left = card.x + 'px';
+        el.style.top = card.y + 'px';
+        el.style.width = card.w + 'px';
+        el.style.height = card.h + 'px';
+        el.style.setProperty('--d', delay() + 's');
 
-    function buildCard(column, match, lane, gf, x, y, w, h, d) {
-        var card = document.createElement('div');
-        card.className = 'card anim' + (gf ? ' gf' : '') + (lane === 'lower' ? ' lower' : '');
-        card.style.left = x + 'px';
-        card.style.top = y + 'px';
-        card.style.width = w + 'px';
-        card.style.height = h + 'px';
-        card.style.setProperty('--d', d + 's');
-
-        if (gf) {
+        if (card.gf) {
             var head = document.createElement('div');
             head.className = 'gf-head';
             head.textContent = column.label || 'Grand Final';
-            card.appendChild(head);
+            el.appendChild(head);
         }
 
         (match.teams || []).forEach(function (team) {
@@ -168,96 +175,17 @@
             score.textContent = team.score === '' || team.score === null ? '–' : team.score;
             row.appendChild(score);
 
-            card.appendChild(row);
+            el.appendChild(row);
         });
 
         if (match.live) {
             var live = document.createElement('div');
             live.className = 'live anim';
-            live.style.setProperty('--d', (parseFloat(d) + 0.3).toFixed(2) + 's');
+            live.style.setProperty('--d', (parseFloat(el.style.getPropertyValue('--d')) + 0.3).toFixed(2) + 's');
             live.innerHTML = '<span class="dot"></span>EN DIRECT !';
-            card.appendChild(live);
+            el.appendChild(live);
         }
 
-        return card;
-    }
-
-    /* Connecteurs : au sein d'une voie, chaque case d'une colonne alimente
-       la case floor(i/2) de la colonne suivante (câblage standard d'un
-       bracket, sans saisie supplémentaire). Le câblage est piloté par les
-       sources : toutes les cases d'une colonne reçoivent un trait, y
-       compris quand la colonne suivante compte moins de cases que la
-       moitié (pré-remplissage manuel, BYE) — les cases en surnombre
-       rejoignent alors la dernière case disponible ; les dernières cases
-       des voies haute et basse alimentent la grande finale. */
-    function drawConnectors(host, lanes, placed) {
-        var counter = 0;
-
-        function byDepth(lane, depth) {
-            return placed[lane].filter(function (p) { return p.depth === depth; });
-        }
-
-        function connect(src, tgt) {
-            if (!src || !tgt) {
-                return;
-            }
-            var x1 = src.x + src.w;
-            var y1 = src.y + src.h / 2;
-            var x3 = tgt.x;
-            var y2 = tgt.y + tgt.h / 2;
-            var midX = x1 + (x3 - x1) / 2;
-            var d = delay(++counter + 12);
-
-            host.appendChild(hline(x1, y1, midX - x1, d));
-            if (Math.abs(y2 - y1) > 2) {
-                host.appendChild(vline(midX, y1, y2 - y1, d));
-            }
-            host.appendChild(hline(midX, y2, x3 - midX, d));
-        }
-
-        ['upper', 'lower'].forEach(function (lane) {
-            for (var depth = 1; depth < lanes[lane].length; depth++) {
-                var sources = byDepth(lane, depth - 1);
-                var targets = byDepth(lane, depth);
-                if (sources.length === 0 || targets.length === 0) {
-                    continue;
-                }
-                sources.forEach(function (src) {
-                    connect(src, targets[Math.min(Math.floor(src.index / 2), targets.length - 1)]);
-                });
-            }
-        });
-
-        var finals = byDepth('final', 0);
-        if (finals.length > 0) {
-            ['upper', 'lower'].forEach(function (lane) {
-                var deepest = placed[lane].filter(function (p) {
-                    return p.depth === lanes[lane].length - 1;
-                });
-                if (deepest.length > 0) {
-                    connect(deepest[deepest.length - 1], finals[0]);
-                }
-            });
-        }
-    }
-
-    function hline(x, y, w, d) {
-        var el = document.createElement('div');
-        el.className = 'hl';
-        el.style.left = x + 'px';
-        el.style.top = (y - 1.5) + 'px';
-        el.style.width = Math.max(0, w) + 'px';
-        el.style.setProperty('--d', d + 's');
-        return el;
-    }
-
-    function vline(x, y1, dy, d) {
-        var el = document.createElement('div');
-        el.className = 'vl' + (dy < 0 ? ' up' : '');
-        el.style.left = (x - 1.5) + 'px';
-        el.style.top = Math.min(y1, y1 + dy) + 'px';
-        el.style.height = Math.abs(dy) + 'px';
-        el.style.setProperty('--d', d + 's');
         return el;
     }
 

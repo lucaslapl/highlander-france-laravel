@@ -6,10 +6,10 @@
 @section('content')
 @include('admin.partials.panel_back_link')
 
+<link rel="stylesheet" href="{{ hlfr_asset('/_css/admin_overlay.css') }}">
+
 @php
     $isBracket = ($bracket['kind'] ?? 'bracket') === 'table' ? false : true;
-    $live = $bracket['live'] ?? null;
-    $liveValue = is_array($live) ? ((string) ($live['column'] ?? '')).':'.((string) ($live['match'] ?? '')) : '';
 @endphp
 
 <div class="admin-header" style="--accent:#9b6dff;">
@@ -17,7 +17,11 @@
         <i class="fa-solid fa-sitemap"></i>
         Overlay {{ $isBracket ? 'Bracket' : 'Classement' }} — {{ e($bracket['title'] !== '' ? $bracket['title'] : $bracket['token']) }}
     </h2>
-    <p>Modifiez les titres, {{ $isBracket ? 'les colonnes, les cases et le match « EN DIRECT »' : 'les lignes du classement et le top X surligné' }}. L'overlay OBS se rafraîchit tout seul à chaque enregistrement.</p>
+    <p>
+        {{ $isBracket
+            ? 'Éditez le bracket directement sur son rendu : générez un squelette, puis cliquez sur une case ou une colonne pour la remplir et la déplacer.'
+            : 'Modifiez les titres et les lignes du classement. L\'overlay OBS se rafraîchit tout seul à chaque enregistrement.' }}
+    </p>
 </div>
 
 <div style="border:2px solid #9b6dff; border-radius:10px; padding:16px; margin-bottom:24px; background:rgba(155,109,255,0.08);">
@@ -71,32 +75,135 @@
 
     @if ($isBracket)
 
-        <h3 class="admin-section-title"><i class="fa-solid fa-table-columns"></i> Colonnes du bracket</h3>
-        <p style="color:#777; font-size:13px; margin:0 0 10px;">
-            L'ordre des colonnes ci-dessous (de gauche à droite) fait l'ordre d'affichage ; la voie détermine la bande
-            verticale : « Haute » en haut, « Basse » en bas, « Finale » en grande carte centrale à droite. Le câblage
-            des connecteurs est automatique : chaque case est alimentée par la case située au-dessus d'elle dans la
-            colonne précédente (deux par deux).
+        <h3 class="admin-section-title"><i class="fa-solid fa-sitemap"></i> Bracket</h3>
+        <p style="color:#777; font-size:13px; margin:0 0 12px;">
+            Générez d'abord un squelette (colonnes des voies haute / basse et grande finale, câblage automatique des
+            connecteurs), puis complétez case par case : chaque clic sur une case ouvre son édition à droite. Les
+            étiquettes de round se cliquent pour déplacer, renommer ou supprimer une colonne.
         </p>
-        <div id="bracket-columns">
-            @foreach ($bracket['columns'] as $column)
-                @include('admin.partials.bracket_column', ['column' => $column, 'index' => $loop->index, 'liveValue' => $liveValue, 'seriesList' => $seriesList])
-            @endforeach
-        </div>
-        <div style="margin-top:12px;">
-            <button type="button" class="admin-btn" id="bracket-add-column"><i class="fa-solid fa-plus"></i> Ajouter une colonne</button>
+        <noscript>
+            <p style="color:#ff8080;">L'éditeur visuel nécessite JavaScript : sans lui, les cases du bracket ne seraient pas enregistrées.</p>
+        </noscript>
+
+        <div class="bkv-generator">
+            <div>
+                <label class="admin-form-label" for="bkv-gen-teams">Équipes</label>
+                <select id="bkv-gen-teams" class="form-control">
+                    <option value="4">4</option>
+                    <option value="8" selected>8</option>
+                    <option value="16">16</option>
+                </select>
+            </div>
+            <div>
+                <label class="admin-form-label" for="bkv-gen-type">Format</label>
+                <select id="bkv-gen-type" class="form-control">
+                    <option value="double" selected>Double élimination (WB / LB / grande finale)</option>
+                    <option value="single">Simple élimination</option>
+                </select>
+            </div>
+            <button type="button" class="admin-btn" id="bkv-gen-run">
+                <i class="fa-solid fa-wand-magic-sparkles"></i> Générer le squelette
+            </button>
         </div>
 
-        {{-- Modèles pour l'ajout de colonnes / cases en JavaScript --}}
-        <template id="tpl-bracket-column">
-            @include('admin.partials.bracket_column', [
-                'column' => ['id' => '', 'label' => '', 'lane' => 'upper', 'matches' => [['id' => '', 'teams' => [['name' => '', 'avatar' => '', 'country' => '', 'score' => ''], ['name' => '', 'avatar' => '', 'country' => '', 'score' => '']], 'series_token' => null, 'manual_scores' => false]]],
-                'index' => '__CIDX__',
-                'liveValue' => $liveValue,
-                'seriesList' => $seriesList,
-                'tpl' => true,
-            ])
-        </template>
+        <div class="bkv-layout">
+            <div class="bkv-canvas" id="bkv-canvas"></div>
+            <aside class="bkv-panel">
+                <div class="bkv-panel-hint" id="bkv-panel-hint">
+                    Cliquez sur une case du bracket pour éditer ses équipes, son score, sa série ou la marquer
+                    « EN DIRECT » ; cliquez sur une étiquette de round pour éditer la colonne.
+                </div>
+
+                <div id="bkv-column-section" hidden>
+                    <h4 id="bkv-column-title">Colonne</h4>
+                    <label class="admin-form-label">Label du round (ex : « LB Final »)</label>
+                    <input type="text" id="bkv-column-label" class="form-control" maxlength="48">
+                    <label class="admin-form-label">Voie</label>
+                    <select id="bkv-column-lane" class="form-control">
+                        <option value="upper">Haute</option>
+                        <option value="lower">Basse</option>
+                        <option value="final">Finale (grande carte)</option>
+                    </select>
+                    <div class="bkv-panel-buttons">
+                        <button type="button" class="admin-btn" id="bkv-column-left" title="Déplacer la colonne vers la gauche">
+                            <i class="fa-solid fa-arrow-left"></i> Gauche
+                        </button>
+                        <button type="button" class="admin-btn" id="bkv-column-right" title="Déplacer la colonne vers la droite">
+                            <i class="fa-solid fa-arrow-right"></i> Droite
+                        </button>
+                        <button type="button" class="admin-btn admin-btn--danger" id="bkv-column-delete">
+                            <i class="fa-solid fa-trash"></i> Supprimer
+                        </button>
+                    </div>
+                </div>
+
+                <div id="bkv-match-section" hidden>
+                    <h4 id="bkv-match-title">Case</h4>
+
+                    @foreach ([1 => 'A', 2 => 'B'] as $side => $label)
+                        <div class="js-etf2l-team" style="border:1px solid #333; border-radius:8px; padding:12px; margin-top:10px;">
+                            <h5 style="margin:0 0 8px; color:#bbb;">Équipe {{ $label }}</h5>
+                            <label class="admin-form-label">Nom</label>
+                            <input type="text" id="bkv-t{{ $side }}-name" class="form-control js-team-field-name" maxlength="64">
+                            <label class="admin-form-label" style="margin-top:8px;">Avatar par URL (optionnel)</label>
+                            <input type="url" id="bkv-t{{ $side }}-avatar" class="form-control js-team-field-avatar"
+                                   maxlength="500" placeholder="https://…/logo.png">
+                            <label class="admin-form-label" style="margin-top:8px;">Pays (optionnel)</label>
+                            <input type="text" id="bkv-t{{ $side }}-country" class="form-control js-team-field-country"
+                                   maxlength="32" placeholder="France">
+                            <label class="admin-form-label" style="margin-top:8px;">Score</label>
+                            <input type="text" id="bkv-t{{ $side }}-score" class="form-control" maxlength="3"
+                                   inputmode="numeric">
+                        </div>
+                    @endforeach
+
+                    <label class="admin-form-label" style="margin-top:12px;">Série suivie pour le score live (optionnel)</label>
+                    <select id="bkv-match-series" class="form-control">
+                        <option value="">— Aucune (score saisi ci-dessus) —</option>
+                        @foreach (($seriesList ?? []) as $series)
+                            <option value="{{ e((string) ($series['token'] ?? '')) }}">
+                                {{ e((string) ($series['title'] ?? '')) }}
+                                — {{ e((string) ($series['teams']['red']['name'] ?? '')) }} vs {{ e((string) ($series['teams']['blue']['name'] ?? '')) }}
+                            </option>
+                        @endforeach
+                    </select>
+                    <label class="admin-form-label" style="margin-top:12px; margin-bottom:6px;">
+                        <input type="checkbox" id="bkv-match-manual" value="1">
+                        Score manuel forcé (ignorer la série)
+                    </label>
+                    <label class="admin-form-label" style="margin-bottom:6px;">
+                        <input type="checkbox" id="bkv-match-live" value="1">
+                        Match « EN DIRECT » (badge rouge, score suivi en direct)
+                    </label>
+                    <div class="bkv-panel-buttons">
+                        <button type="button" class="admin-btn" id="bkv-match-up" title="Monter la case dans sa colonne">
+                            <i class="fa-solid fa-arrow-up"></i>
+                        </button>
+                        <button type="button" class="admin-btn" id="bkv-match-down" title="Descendre la case dans sa colonne">
+                            <i class="fa-solid fa-arrow-down"></i>
+                        </button>
+                        <button type="button" class="admin-btn admin-btn--danger" id="bkv-match-delete">
+                            <i class="fa-solid fa-trash"></i> Supprimer la case
+                        </button>
+                    </div>
+                </div>
+            </aside>
+        </div>
+
+        <div class="bkv-toolbar">
+            <button type="button" class="admin-btn" id="bkv-add-column"><i class="fa-solid fa-plus"></i> Ajouter une colonne</button>
+            <button type="button" class="admin-btn" id="bkv-add-match" disabled>
+                <i class="fa-solid fa-plus"></i> Ajouter une case à la colonne sélectionnée
+            </button>
+        </div>
+
+        {{-- État de l'éditeur : colonnes et match EN DIRECT, sérialisés en
+             POST au moment d'enregistrer (admin_bracket_editor.js). --}}
+        <script type="application/json" id="bkv-data">{!! json_encode([
+            'columns' => $bracket['columns'] ?? [],
+            'live' => $bracket['live'] ?? null,
+        ], JSON_HEX_TAG | JSON_UNESCAPED_UNICODE) !!}</script>
+        <div id="bkv-serialized" aria-hidden="true"></div>
 
     @else
 
@@ -144,5 +251,10 @@
 </div>
 
 <script src="{{ hlfr_asset('/_js/admin_etf2l_teams.js') }}" defer></script>
-<script src="{{ hlfr_asset('/_js/admin_bracket.js') }}" defer></script>
+@if ($isBracket)
+    <script src="{{ hlfr_asset('/_js/bracket_layout.js') }}" defer></script>
+    <script src="{{ hlfr_asset('/_js/admin_bracket_editor.js') }}" defer></script>
+@else
+    <script src="{{ hlfr_asset('/_js/admin_bracket.js') }}" defer></script>
+@endif
 @endsection

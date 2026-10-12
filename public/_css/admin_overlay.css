@@ -27,3 +27,246 @@
     pointer-events: none;
     background: transparent;
 }
+
+/* ─── Éditeur visuel « Overlay Bracket » ────────────────────────────── */
+
+/* Éditeur visuel du bracket de playoffs (/admin/overlay/bracket/{token},
+   type bracket) : canvas interactif rendu par le même moteur que l'overlay
+   OBS (bracket_layout.js) + panneau latéral d'édition. Préfixe .bkv-
+   (bracket visual editor). */
+
+.bkv-generator {
+    display: flex;
+    gap: 12px;
+    align-items: flex-end;
+    flex-wrap: wrap;
+    border: 1px solid #444;
+    border-radius: 8px;
+    padding: 14px;
+    margin-bottom: 14px;
+    background: rgba(0, 0, 0, 0.15);
+}
+
+.bkv-generator > div {
+    flex: 1;
+    min-width: 180px;
+}
+
+.bkv-layout {
+    display: flex;
+    gap: 16px;
+    align-items: stretch;
+    flex-wrap: wrap;
+}
+
+.bkv-canvas {
+    position: relative;
+    flex: 1 1 640px;
+    min-width: 460px;
+    height: 500px;
+    border: 1px solid #333;
+    border-radius: 8px;
+    overflow: hidden;
+    background: repeating-conic-gradient(#16131d 0% 25%, #1d1a26 0% 50%) 0 0 / 24px 24px;
+}
+
+.bkv-panel {
+    flex: 0 1 380px;
+    min-width: 300px;
+    border: 1px solid #333;
+    border-radius: 8px;
+    padding: 14px;
+    background: rgba(0, 0, 0, 0.2);
+}
+
+.bkv-panel h4 {
+    margin: 0 0 10px;
+    color: #ddd;
+    font-size: 15px;
+}
+
+.bkv-panel-hint {
+    color: #888;
+    font-size: 13px;
+}
+
+.bkv-panel-buttons {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-top: 14px;
+}
+
+.bkv-wrap {
+    position: absolute;
+    transform-origin: 0 0;
+}
+
+.bkv-wrap svg {
+    position: absolute;
+    left: 0;
+    top: 0;
+    overflow: visible;
+    pointer-events: none;
+}
+
+.bkv-wrap svg .bkv-link {
+    fill: none;
+    stroke: rgba(186, 53, 215, 0.57);
+    stroke-width: 2;
+    stroke-linecap: round;
+}
+
+.bkv-label {
+    position: absolute;
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: #fbb7fb;
+    cursor: pointer;
+    padding: 2px 4px;
+    border-radius: 4px;
+    white-space: nowrap;
+}
+
+.bkv-label:hover {
+    background: rgba(155, 109, 255, 0.2);
+}
+
+.bkv-label.bkv-label--lower {
+    color: #e97fff;
+}
+
+.bkv-label.bkv-label--selected {
+    background: rgba(155, 109, 255, 0.35);
+    outline: 1px solid #9b6dff;
+}
+
+.bkv-card {
+    position: absolute;
+    display: flex;
+    flex-direction: column;
+    background: rgba(30, 14, 36, 0.92);
+    border: 1px solid #5f235f;
+    border-left: 3px solid #fbb7fb;
+    border-radius: 6px;
+    cursor: pointer;
+    overflow: hidden;
+}
+
+.bkv-card:hover {
+    border-color: #9b6dff;
+    box-shadow: 0 0 8px rgba(155, 109, 255, 0.4);
+}
+
+.bkv-card.bkv-card--lower {
+    border-left-color: #e97fff;
+}
+
+.bkv-card.bkv-card--selected {
+    border-color: #9b6dff;
+    box-shadow: 0 0 10px rgba(155, 109, 255, 0.6);
+}
+
+.bkv-card.bkv-card--live {
+    border-color: #ff5555;
+    box-shadow: 0 0 10px rgba(255, 60, 60, 0.4);
+}
+
+.bkv-card .bkv-head {
+    padding: 4px 8px;
+    text-align: center;
+    font-size: 10px;
+    font-weight: 800;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: #ffc9ec;
+    border-bottom: 1px solid #5f235f;
+}
+
+.bkv-card .bkv-team {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 0 8px;
+    flex: 1;
+    font-size: 12px;
+    font-weight: 600;
+    color: #eee;
+    white-space: nowrap;
+    min-height: 0;
+}
+
+.bkv-card .bkv-team + .bkv-team {
+    border-top: 1px solid rgba(186, 53, 215, 0.25);
+}
+
+.bkv-card .bkv-team img {
+    width: 16px;
+    height: 16px;
+    border-radius: 3px;
+    object-fit: cover;
+    flex: none;
+    background: rgba(0, 0, 0, 0.3);
+}
+
+.bkv-card .bkv-team .name {
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.bkv-card .bkv-team .score {
+    font-weight: 800;
+    color: #bbb;
+    font-variant-numeric: tabular-nums;
+}
+
+.bkv-card .bkv-team.bkv-team--win {
+    background: rgba(233, 127, 255, 0.25);
+}
+
+.bkv-card .bkv-team.bkv-team--win .score {
+    color: #5de500;
+}
+
+.bkv-card .bkv-team.bkv-team--lose {
+    color: rgba(255, 255, 255, 0.45);
+}
+
+.bkv-card .bkv-team.bkv-team--lose .score {
+    color: #f35f5f;
+}
+
+.bkv-card .bkv-live {
+    position: absolute;
+    right: 4px;
+    top: 4px;
+    font-size: 9px;
+    font-weight: bold;
+    letter-spacing: 0.12em;
+    color: #fff;
+    background: rgba(255, 60, 60, 0.9);
+    border-radius: 999px;
+    padding: 1px 6px;
+}
+
+.bkv-empty {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #777;
+    font-size: 13px;
+    padding: 24px;
+    text-align: center;
+}
+
+.bkv-toolbar {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin-top: 14px;
+}

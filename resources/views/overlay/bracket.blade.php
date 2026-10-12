@@ -1,7 +1,7 @@
 {{-- Vue overlay OBS du bracket de playoffs (1920x1080, fond transparent).
      Page autonome : pas de layout site, aucun chrome. Le header est rendu
-     côté serveur ; les cartes, étiquettes et connecteurs sont posés par
-     overlay_bracket.js (positionnement libre, câblage standard du bracket),
+     côté serveur ; les cartes, étiquettes et connecteurs sont calculés par
+     le moteur partagé bracket_layout.js et posés par overlay_bracket.js,
      à partir du JSON #bracket-data — scores déjà résolus (statut du match
      live, score de la série attachée le cas échéant). --}}
 <!DOCTYPE html>
@@ -30,6 +30,7 @@
 </div>
 
 <script type="application/json" id="bracket-data">{!! json_encode($data, JSON_HEX_TAG | JSON_UNESCAPED_UNICODE) !!}</script>
+<script src="{{ hlfr_asset('/_js/bracket_layout.js') }}" defer></script>
 <script src="{{ hlfr_asset('/_js/overlay_bracket.js') }}" defer
         data-token="{{ $token }}" data-version="{{ (int) $version }}"></script>
 </body>

@@ -245,7 +245,7 @@ class BracketOverlayTest extends TestCase
         $this->assertStringNotContainsString('class="qualified"', $html);
     }
 
-    public function test_la_page_editeur_admin_rend_le_formulaire_bracket(): void
+    public function test_la_page_editeur_admin_rend_l_editeur_visuel_bracket(): void
     {
         $this->seedBracket([
             'columns' => [
@@ -271,8 +271,13 @@ class BracketOverlayTest extends TestCase
         $response->assertOk();
 
         $html = (string) $response->getContent();
-        $this->assertStringContainsString('Colonnes du bracket', $html);
-        $this->assertStringContainsString('Demi-finales', $html);
+        // Éditeur visuel : le bracket est amorcé en JSON et rendu par
+        // admin_bracket_editor.js sur le moteur partagé bracket_layout.js.
+        $this->assertStringContainsString('"label":"Demi-finales"', $html);
+        $this->assertStringContainsString('admin_bracket_editor.js', $html);
+        $this->assertStringContainsString('bracket_layout.js', $html);
+        // Générateur de squelette et désignation du match « EN DIRECT ».
+        $this->assertStringContainsString('Générer le squelette', $html);
         $this->assertStringContainsString('EN DIRECT', $html);
         $this->assertStringContainsString('/bracket-overlay/'.self::TOKEN, $html);
     }
@@ -295,6 +300,42 @@ class BracketOverlayTest extends TestCase
         $this->assertStringContainsString('Lignes du classement', $html);
         $this->assertStringContainsString('DD14', $html);
         $this->assertStringContainsString('Top X surligné', $html);
+    }
+
+    public function test_l_enregistrement_depuis_l_editeur_visuel_conserve_le_schema_post(): void
+    {
+        $this->seedBracket(['columns' => [], 'live' => null]);
+
+        // Schéma sérialisé par l'éditeur visuel (admin_bracket_editor.js) :
+        // identique au formulaire historique, le contrôleur n'a pas changé.
+        $this->withSession(['steamid' => '76561198012345678', 'is_admin' => true])
+            ->post('/admin/overlay/bracket/'.self::TOKEN.'/update', [
+                'eyebrow' => 'ETF2L Highlander Saison 36',
+                'title' => 'Division 1',
+                'accent' => 'Playoffs',
+                'columns' => [
+                    [
+                        'id' => 'c1', 'label' => 'WB R1', 'lane' => 'upper',
+                        'matches' => [
+                            [
+                                'id' => 'm1',
+                                'team1_name' => 'DD14', 'team1_avatar' => '', 'team1_country' => 'France', 'team1_score' => '6',
+                                'team2_name' => 'AKATSUKI', 'team2_avatar' => '', 'team2_country' => '', 'team2_score' => '0',
+                                'series_token' => '', 'manual_scores' => '0',
+                            ],
+                        ],
+                    ],
+                ],
+                'live_match' => 'c1:m1',
+            ])
+            ->assertRedirect();
+
+        $bracket = (new BracketRepository)->find(self::TOKEN);
+        $this->assertSame('WB R1', $bracket['columns'][0]['label']);
+        $this->assertSame('upper', $bracket['columns'][0]['lane']);
+        $this->assertSame('DD14', $bracket['columns'][0]['matches'][0]['teams'][0]['name']);
+        $this->assertSame('6', $bracket['columns'][0]['matches'][0]['teams'][0]['score']);
+        $this->assertSame(['column' => 'c1', 'match' => 'm1'], $bracket['live']);
     }
 
     // ─── Amorçage ────────────────────────────────────────────────────────

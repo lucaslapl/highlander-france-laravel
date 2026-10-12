@@ -249,32 +249,40 @@ h1 em {
     margin-top: 8px;
 }
 
-/* ---------- Connecteurs ---------- */
+/* ---------- Conteneur mis à l'échelle (bracket_layout.js) ---------- */
 
-.hl, .vl {
+/* Le bracket est posé à sa taille naturelle dans ce conteneur, puis
+   translaté/mis à l'échelle d'un seul bloc : cartes, étiquettes et
+   connecteurs restent alignés au pixel, quelle que soit la forme. */
+.wrap {
     position: absolute;
-    border-radius: 2px;
-    background: linear-gradient(90deg, rgba(151, 124, 225, .3), var(--violet-line));
-    box-shadow: 0 0 8px rgba(135, 0, 227, .3);
+    transform-origin: 0 0;
 }
 
-.hl {
-    height: 3px;
-    transform: scaleX(0);
-    transform-origin: left center;
-    animation: growX .45s ease-out forwards;
+/* ---------- Connecteurs (chemins SVG) ---------- */
+
+svg.lines {
+    position: absolute;
+    left: 0;
+    top: 0;
+    overflow: visible;
+    pointer-events: none;
+}
+
+svg.lines .link {
+    fill: none;
+    stroke: var(--violet-line);
+    stroke-width: 3;
+    stroke-linecap: round;
+    /* pathLength=1 côté markup : le tracé part de dessiné et grandit
+       vers la case cible, quelle que soit la longueur du chemin. */
+    stroke-dasharray: 1;
+    stroke-dashoffset: 1;
+    filter: drop-shadow(0 0 8px rgba(135, 0, 227, .3));
+    animation: draw .45s ease-out forwards;
     animation-delay: var(--d, 0s);
 }
 
-.vl {
-    width: 3px;
-    transform: scaleY(0);
-    transform-origin: top center;
-    animation: growY .45s ease-out forwards;
-    animation-delay: var(--d, 0s);
+@keyframes draw {
+    to { stroke-dashoffset: 0; }
 }
-
-.vl.up { transform-origin: bottom center; }
-
-@keyframes growX { to { transform: scaleX(1); } }
-@keyframes growY { to { transform: scaleY(1); } }
