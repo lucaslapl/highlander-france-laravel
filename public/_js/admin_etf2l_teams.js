@@ -7,9 +7,7 @@
    .js-team-field-country d'un clic. Le champ caché optionnel
    .js-team-field-etf2l-id reçoit l'identifiant ETF2L de l'équipe
    choisie (liaison côté serveur pour l'alignement automatique des
-   couleurs de logs sur les rosters), et le champ optionnel
-   .js-team-field-players (séries) est rempli avec les SteamIDs du
-   roster via /admin/overlay/etf2l/roster?team_id=N. Les scripts qui
+   couleurs de logs sur les rosters). Les scripts qui
    clonent des blocs équipe (éditeur bracket) équipent les nouveaux
    blocs en appelant window.hlfrEtf2lFillTeamPickers(). */
 
@@ -123,39 +121,5 @@
         if (etf2lIdInput) {
             etf2lIdInput.value = team ? (team.id || '') : '';
         }
-
-        // Roster : uniquement pour les blocs qui exposent un champ de
-        // joueurs (séries) — les SteamIDs remplissent alors le champ,
-        // prêts à être corrigés à la main (mercs, saisons passées).
-        var playersField = block ? block.querySelector('.js-team-field-players') : null;
-        if (playersField) {
-            fillRosterPlayers(playersField, team ? team.id : 0);
-        }
     });
-
-    function fillRosterPlayers(textarea, teamId) {
-        if (!teamId) {
-            textarea.value = '';
-
-            return;
-        }
-        textarea.readOnly = true;
-        fetch('/admin/overlay/etf2l/roster?team_id=' + encodeURIComponent(teamId), {
-            headers: { 'Accept': 'application/json' },
-            credentials: 'same-origin'
-        })
-            .then(function (response) { return response.json(); })
-            .then(function (data) {
-                var roster = (data && data.roster) || null;
-                textarea.value = roster && roster.players ? roster.players.join('\n') : '';
-                textarea.placeholder = roster ? '' : 'Roster ETF2L indisponible : saisissez les SteamIDs à la main.';
-            })
-            .catch(function () {
-                textarea.value = '';
-                textarea.placeholder = 'Roster ETF2L indisponible : saisissez les SteamIDs à la main.';
-            })
-            .finally(function () {
-                textarea.readOnly = false;
-            });
-    }
 }());

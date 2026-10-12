@@ -12,8 +12,9 @@ use Tests\TestCase;
  * Matchs ETF2L (API v2) pour l'outil « Overlay Scores » : extraction de
  * l'identifiant depuis un lien etf2l.org/matches/{id}, normalisation d'un
  * match (équipes, compétition et format, maps), titre généré
- * (« Compétition — A vs B »), rosters des équipes connues, cache par URL
- * dans etf2l_api_cache et cache négatif sur indisponibilité.
+ * (« Compétition — A vs B »), format de série déduit du nombre de maps,
+ * cache par URL dans etf2l_api_cache et cache négatif sur
+ * indisponibilité.
  * Fetcher HTTP injecté : aucun réseau réel, seulement la base de test.
  */
 class Etf2lMatchServiceTest extends TestCase
@@ -166,54 +167,42 @@ class Etf2lMatchServiceTest extends TestCase
         $this->assertSame('Highlander Season 36: High Playoffs — Les Baguettes vs Escouade 6', $match['title']);
     }
 
-    // ─── Rosters ──────────────────────────────────────────────────────────
+    // ─── Format de série détecté du nombre de maps ───────────────────────
 
-    public function test_les_rosters_des_equipes_connues_sont_embarques(): void
+    public function test_deux_maps_donnent_le_format_classique(): void
     {
-        $service = $this->service([
-            '/matches/93233' => $this->matchPayload(),
-            '/team/21747' => [
-                'status' => ['code' => 200],
-                'team' => ['id' => 21747, 'name' => 'Les Baguettes', 'players' => [
-                    ['name' => 'Baguette One', 'steam' => ['id64' => '76561198000000001']],
-                    ['name' => 'Baguette Two', 'steam' => ['id64' => '76561198000000002']],
-                ]],
-            ],
-            '/team/21748' => [
-                'status' => ['code' => 200],
-                'team' => ['id' => 21748, 'name' => 'Escouade 6', 'players' => [
-                    ['name' => 'Escouade One', 'steam' => ['id64' => '76561198000000011']],
-                ]],
-            ],
-        ]);
+        $format = Etf2lMatchService::deriveFormat(2);
 
-        $match = $service->matchWithRosters(93233);
-
-        $this->assertNotNull($match);
-        $this->assertSame(['76561198000000001', '76561198000000002'], $match['teams'][0]['players']);
-        $this->assertSame('Baguette One', $match['teams'][0]['names']['76561198000000001']);
-        $this->assertSame(['76561198000000011'], $match['teams'][1]['players']);
+        $this->assertNotNull($format);
+        $this->assertSame('fixed', $format['format']);
+        $this->assertSame(0, $format['wins_needed']);
     }
 
-    public function test_un_roster_indisponible_ne_casse_pas_le_match(): void
+    public function test_trois_maps_donnent_un_bo3(): void
     {
-        // L'API de la deuxième équipe échoue : elle reste sans roster, la
-        // saisie manuelle de l'outil prend le relais.
-        $service = $this->service([
-            '/matches/93233' => $this->matchPayload(),
-            '/team/21747' => [
-                'status' => ['code' => 200],
-                'team' => ['id' => 21747, 'name' => 'Les Baguettes', 'players' => [
-                    ['name' => 'Baguette One', 'steam' => ['id64' => '76561198000000001']],
-                ]],
-            ],
-        ]);
+        $format = Etf2lMatchService::deriveFormat(3);
 
-        $match = $service->matchWithRosters(93233);
+        $this->assertNotNull($format);
+        $this->assertSame('bo3', $format['format']);
+        $this->assertSame(2, $format['wins_needed']);
+    }
 
-        $this->assertNotNull($match);
-        $this->assertSame(['76561198000000001'], $match['teams'][0]['players']);
-        $this->assertSame([], $match['teams'][1]['players']);
+    public function test_cinq_maps_donnent_un_bo5(): void
+    {
+        $format = Etf2lMatchService::deriveFormat(5);
+
+        $this->assertNotNull($format);
+        $this->assertSame('bo5', $format['format']);
+        $this->assertSame(3, $format['wins_needed']);
+    }
+
+    public function test_un_autre_compte_de_maps_ne_donne_pas_de_format(): void
+    {
+        // Maps partiellement révélées (pick / ban en cours), cas exotique :
+        // le choix du format reste manuel dans l'outil.
+        $this->assertNull(Etf2lMatchService::deriveFormat(0));
+        $this->assertNull(Etf2lMatchService::deriveFormat(1));
+        $this->assertNull(Etf2lMatchService::deriveFormat(4));
     }
 
     // ─── Indisponibilités et cache ────────────────────────────────────────
@@ -223,7 +212,6 @@ class Etf2lMatchServiceTest extends TestCase
         $service = $this->service(['/matches/93233' => null]);
 
         $this->assertNull($service->match(93233));
-        $this->assertNull($service->matchWithRosters(93233));
     }
 
     public function test_un_match_inconnu_renvoie_null(): void

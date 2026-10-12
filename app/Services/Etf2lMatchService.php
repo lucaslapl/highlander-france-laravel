@@ -9,8 +9,8 @@ use Illuminate\Support\Facades\DB;
 /**
  * Matchs ETF2L (API v2, endpoint /matches/{id}) pour l'outil « Overlay
  * Scores » : un lien de match (https://etf2l.org/matches/{id}/) suffit à
- * remplir une série — titre, noms d'équipes, avatars, rosters et maps
- * jouées si ETF2L les connaît.
+ * remplir une série — titre, noms d'équipes, avatars et maps jouées si
+ * ETF2L les connaît.
  *
  * Conso modèle Etf2lTeamService : réponses mises en cache dans la table
  * etf2l_api_cache (clé = URL), appels HTTP espacés par le Etf2lRateLimiter
@@ -60,9 +60,6 @@ final class Etf2lMatchService
     /** Espacement des appels HTTP réels, partagé entre tous les processus. */
     private Etf2lRateLimiter $limiter;
 
-    /** Rosters des équipes du match (service partagé avec le remplissage assisté). */
-    private Etf2lTeamService $teams;
-
     /**
      * @param  \Closure(string): (array<string, mixed>|null)|null  $fetcher  Récupération HTTP injectable (tests)
      * @param  float|null  $httpDelayS  Délai minimal entre deux appels HTTP réels (null = défaut, 0.0 = désactivé en tests)
@@ -70,7 +67,6 @@ final class Etf2lMatchService
     public function __construct(?\Closure $fetcher = null, ?float $httpDelayS = null)
     {
         $this->limiter = new Etf2lRateLimiter($httpDelayS);
-        $this->teams = new Etf2lTeamService($fetcher, $httpDelayS);
 
         $this->fetcher = $fetcher ?? static function (string $url): ?array {
             $meta = JsonClient::getWithMeta($url, self::HTTP_TIMEOUT_S, 'Highlander France Bot/1.0', ['Accept: application/json']);
@@ -165,39 +161,22 @@ final class Etf2lMatchService
     }
 
     /**
-     * Match normalisé enrichi des rosters de ses équipes connues : chaque
-     * équipe porte en plus « players » (SteamID64, pour le remplissage des
-     * rosters de la série) et « names » (pseudo ETF2L par SteamID64,
-     * informatif). Les équipes inconnues (TBD) ou dont le roster est
-     * indisponible restent sans roster — la saisie manuelle prend le relais.
+     * Format de série déduit du nombre de maps du match (page de match
+     * ETF2L) : deux maps → format classique (deux maps jouées), trois →
+     * BO3 (première à 2), cinq → BO5 (première à 3). Aucun format connu
+     * pour un autre compte (maps non encore révélées, cas exotique) :
+     * null, l'outil laisse le choix manuel.
      *
-     * @return array<string, mixed>|null
+     * @return array{format: string, wins_needed: int}|null
      */
-    public function matchWithRosters(int $matchId): ?array
+    public static function deriveFormat(int $mapCount): ?array
     {
-        $match = $this->match($matchId);
-        if ($match === null) {
-            return null;
-        }
-
-        foreach ($match['teams'] as $i => $team) {
-            if ($team === null) {
-                continue;
-            }
-
-            try {
-                $roster = $this->teams->roster((int) $team['id']);
-            } catch (\Throwable) {
-                $roster = null;
-            }
-
-            $match['teams'][$i] = array_merge($team, [
-                'players' => $roster['players'] ?? [],
-                'names' => $roster['names'] ?? [],
-            ]);
-        }
-
-        return $match;
+        return match ($mapCount) {
+            2 => ['format' => 'fixed', 'wins_needed' => 0],
+            3 => ['format' => 'bo3', 'wins_needed' => 2],
+            5 => ['format' => 'bo5', 'wins_needed' => 3],
+            default => null,
+        };
     }
 
     /**

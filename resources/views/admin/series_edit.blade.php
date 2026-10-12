@@ -54,18 +54,9 @@
     La couleur (A = côté gauche de l'overlay, B = côté droit) ne fixe que l'ordre d'affichage.
 </p>
 <p style="color:#aaa; font-size:13px;">
-    La liaison ETF2L issue du lien de match permet de rafraîchir les rosters des deux équipes d'un clic —
-    transferts entre saisons, joueur ajouté en cours de saison — sans ressaisir les SteamIDs à la main.
-    Sans liaison, les rosters saisis à la création restent valables tels quels.
+    La liaison ETF2L issue du lien de match permet de resynchroniser la série d'un clic : équipes TBD devenues
+    connues, maps révélées par le pick / ban, format détecté du nombre de maps — sans ressaisir quoi que ce soit.
 </p>
-<form method="POST" action="/admin/series/{{ $series['token'] }}/rosters" style="margin:0 0 14px;"
-      onsubmit="return confirm('Remplacer les rosters des deux équipes par leurs rosters ETF2L actuels ?');">
-    @csrf
-    <button type="submit" class="admin-btn"
-            title="Récupère les SteamIDs actuels des deux équipes depuis ETF2L (nécessite la liaison des équipes).">
-        <i class="fa-solid fa-arrows-rotate"></i> Rafraîchir les rosters depuis ETF2L
-    </button>
-</form>
 <form method="POST" action="/admin/series/{{ $series['token'] }}/teams" class="admin-form-stack admin-form-stack--wide">
     @csrf
     <div style="display:flex; gap:16px; flex-wrap:wrap;">
@@ -189,7 +180,7 @@
                             <span style="color:#777;">(première équipe à {{ (int) $map['winlimit'] }} points)</span>
                         @endif
                         @if ($map['golden_cap'])
-                            <span style="color:#d9a544;">golden cap en attente</span>
+                            <span style="color:#d9a544;">golden cap en attente — le prochain point la tranche</span>
                         @endif
                     </td>
                     <td>
@@ -222,6 +213,18 @@
                                 <input type="hidden" name="note" value="point manuel depuis l'admin">
                                 <button type="submit" class="admin-btn" style="color:#5885a2;">+1 {{ e($series['teams']['blue']['name']) }}</button>
                             </form>
+                            @if ($map['mode'] !== 'double' && (int) $map['winlimit'] === 5 && ! $map['golden_cap'])
+                                <form method="POST" action="/admin/series/{{ $series['token'] }}/end" style="display:inline; margin-top:6px;"
+                                      onsubmit="return confirm('Match terminé (timelimit 30 min atteint sans winlimit) ? Le meneur remporte la map, une égalité part en golden cap.');">
+                                    @csrf
+                                    <input type="hidden" name="map" value="{{ $map['name'] }}">
+                                    <input type="hidden" name="note" value="fin de map déclarée à la main (timelimit)">
+                                    <button type="submit" class="admin-btn"
+                                            title="Map 5cp à timelimit (30 min) sans winlimit atteint : le meneur l'emporte, une égalité part en golden cap.">
+                                        <i class="fa-solid fa-flag-checkered"></i> Match terminé
+                                    </button>
+                                </form>
+                            @endif
                         @endif
                     </td>
                     <td>
@@ -265,6 +268,8 @@
                             Log logs.tf #{{ (int) ($event['log_id'] ?? 0) }} (historique)
                         @elseif (($event['type'] ?? '') === 'manual')
                             Point manuel
+                        @elseif (($event['type'] ?? '') === 'end')
+                            Fin de map
                         @else
                             Annulation
                         @endif
@@ -278,6 +283,8 @@
                             @else
                                 → égalité
                             @endif
+                        @elseif (($event['type'] ?? '') === 'end')
+                            {{ e($event['map'] ?? '') }} : timelimit atteint
                         @elseif (($event['type'] ?? '') === 'manual')
                             +1 {{ e($series['teams'][$event['team']]['name'] ?? '') }} sur {{ e($event['map'] ?? '') }}
                         @else

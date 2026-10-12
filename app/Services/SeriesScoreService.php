@@ -20,6 +20,10 @@ namespace App\Services;
  *  - « manual » : un point marqué saisi à la main par un admin (scoring live
  *                 d'une map à points, contestation, rattrapage) — la seule
  *                 source de points depuis la refonte ;
+ *  - « end »    : fin de map déclarée à la main (« Match terminé ») sur une
+ *                 map à timelimit (5cp) dont le winlimit n'a pas été atteint :
+ *                 au timelimit, l'équipe en tête remporte la map ; à égalité,
+ *                 la map part en golden cap, que le point suivant tranche ;
  *  - « void »   : annulation d'un événement (cible « target ») — l'événement
  *                 annulé reste dans le journal pour l'audit mais ne compte plus.
  *
@@ -222,6 +226,25 @@ final class SeriesScoreService
                         $map['status'] = 'decided';
                         $map['winner'] = $team;
                     }
+                }
+            } elseif ($type === 'end') {
+                // Fin de map à timelimit déclarée à la main (5cp,
+                // mp_timelimit 30) : le winlimit n'a pas été atteint, mais
+                // le temps réglementaire est écoulé — l'équipe en tête
+                // l'emporte (règle ETF2L), une égalité part en golden cap
+                // (mp_winlimit 1) que le point suivant tranche. Réservé aux
+                // maps à log unique : une double attaque ne peut pas
+                // finir sans gagnant (2 rounds requis).
+                if ($map['mode'] !== self::MODE_SINGLE) {
+                    continue;
+                }
+
+                $scores = $map['scores'] ?? ['red' => 0, 'blue' => 0];
+                if ($scores['red'] === $scores['blue']) {
+                    $map['golden_cap'] = true;
+                } else {
+                    $map['status'] = 'decided';
+                    $map['winner'] = $scores['red'] > $scores['blue'] ? 'red' : 'blue';
                 }
             }
             unset($map);

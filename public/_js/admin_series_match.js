@@ -2,8 +2,9 @@
    (formulaire de création /admin/series) : le bouton « Charger le
    match » interroge /admin/series/etf2l-match?match_url=… puis
    remplit les blocs équipe (nom complet ETF2L, à raccourcir à la
-   main — l'API ne remonte pas d'acronyme ; avatar ; roster
-   SteamIDs) et la liste des maps connues d'ETF2L. Le pool de maps
+   main — l'API ne remonte pas d'acronyme ; avatar) et la liste des
+   maps connues d'ETF2L. Le format de la série est détecté du nombre
+   de maps (2 → classique, 3 → BO3, 5 → BO5). Le pool de maps
    (9v9 / 6v6) suit le format du match ; la liste .js-series-map-list
    garde une rangée par map (champ maps[] + bouton de retrait),
    alimentée aussi par le menu .js-series-map-select. Tout reste
@@ -127,6 +128,20 @@
         applyPool();
     }
 
+    /* Format de série détecté du nombre de maps du match (page de
+       match ETF2L) : deux → classique, trois → BO3, cinq → BO5.
+       Autre compte (maps non encore révélées par le pick / ban) :
+       le choix manuel actuel reste en place. */
+    function detectFormat(mapCount) {
+        if (formatSelect && mapCount === 2) {
+            formatSelect.value = 'fixed';
+        } else if (formatSelect && mapCount === 3) {
+            formatSelect.value = 'bo3';
+        } else if (formatSelect && mapCount === 5) {
+            formatSelect.value = 'bo5';
+        }
+    }
+
     /* ── Chargement du match ETF2L ──────────────────────────────────── */
 
     function fillTeamSide(side, team) {
@@ -136,30 +151,19 @@
         }
 
         var name = block.querySelector('.js-team-field-name');
-        var players = block.querySelector('.js-team-field-players');
         var avatar = block.querySelector('.js-team-field-avatar');
         var etf2lId = block.querySelector('.js-team-field-etf2l-id');
 
-        if (team === null) {
-            if (players) {
-                players.placeholder = 'Équipe encore inconnue (TBD) : saisissez les SteamIDs à la main.';
+        if (team !== null) {
+            if (name) {
+                name.value = team.name;
             }
-
-            return;
-        }
-
-        if (name) {
-            name.value = team.name;
-        }
-        if (players) {
-            players.value = (team.players || []).join('\n');
-            players.placeholder = '';
-        }
-        if (avatar && team.avatar) {
-            avatar.value = team.avatar;
-        }
-        if (etf2lId) {
-            etf2lId.value = team.id || '';
+            if (avatar && team.avatar) {
+                avatar.value = team.avatar;
+            }
+            if (etf2lId) {
+                etf2lId.value = team.id || '';
+            }
         }
     }
 
@@ -224,6 +228,7 @@
                     (match.maps || []).forEach(function (mapName) {
                         addMapRow(mapName, poolLabel(mapName));
                     });
+                    detectFormat((match.maps || []).length);
                     if (match.category) {
                         applyPool(match.category);
                     }

@@ -10,9 +10,7 @@ use App\Models\SeriesRepository;
 use App\Services\AdminLogger;
 use App\Services\Auth;
 use App\Services\Etf2lMatchService;
-use App\Services\Etf2lTeamService;
 use App\Services\SeriesScoreService;
-use App\Services\SteamId;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -27,14 +25,14 @@ use Illuminate\Support\Str;
  * La série est remplie depuis un lien de match ETF2L
  * (https://etf2l.org/matches/{id}/) : il génère le titre (« Compétition —
  * A vs B »), les noms d'équipes (nom complet ETF2L, à raccourcir à la
- * main — l'espace sur l'overlay est très réduit), leurs avatars et leurs
- * rosters, et les maps jouées si ETF2L les connaît — sinon elles sont
- * choisies dans le menu des maps du site, filtré par le format du match
- * (Highlander → 9v9, 6v6 → 6v6). Les équipes encore inconnues (TBD en
- * playoffs) ou une API indisponible laissent la saisie manuelle prendre
- * le relais, et une série existante peut être resynchronisée depuis
- * ETF2L à tout moment. Accessible aux admins et aux rôles caster / prod
- * (hub des overlays /admin/overlays-stream).
+ * main — l'espace sur l'overlay est très réduit), leurs avatars et les
+ * maps jouées si ETF2L les connaît — le format de la série est déduit de
+ * leur nombre (2 → classique, 3 → BO3, 5 → BO5), sinon il reste au
+ * choix manuel. Les équipes encore inconnues (TBD en playoffs) ou une
+ * API indisponible laissent la saisie manuelle prendre le relais, et
+ * une série existante peut être resynchronisée depuis ETF2L à tout
+ * moment. Accessible aux admins et aux rôles caster / prod (hub des
+ * overlays /admin/overlays-stream).
  */
 final class AdminSeriesController extends Controller
 {
@@ -44,13 +42,10 @@ final class AdminSeriesController extends Controller
 
     private Etf2lMatchService $etf2lMatches;
 
-    private Etf2lTeamService $etf2lTeams;
-
     public function __construct()
     {
         $this->series = new SeriesRepository;
         $this->etf2lMatches = new Etf2lMatchService;
-        $this->etf2lTeams = new Etf2lTeamService;
     }
 
     /**
@@ -85,10 +80,10 @@ final class AdminSeriesController extends Controller
 
     /**
      * GET /admin/series/etf2l-match?url=… — match ETF2L (équipes, avatars,
-     * rosters, maps, compétition) pour le préremplissage du formulaire de
-     * création, interrogé en JavaScript par admin_series_match.js. Match
-     * null (URL invalide, API indisponible) : message explicite côté
-     * client, la saisie manuelle reste possible.
+     * maps, compétition) pour le préremplissage du formulaire de création,
+     * interrogé en JavaScript par admin_series_match.js. Match null (URL
+     * invalide, API indisponible) : message explicite côté client, la
+     * saisie manuelle reste possible.
      */
     public function etf2lMatch(Request $request): JsonResponse
     {
@@ -107,7 +102,7 @@ final class AdminSeriesController extends Controller
 
         $match = null;
         try {
-            $match = $this->etf2lMatches->matchWithRosters($matchId);
+            $match = $this->etf2lMatches->match($matchId);
         } catch (\Throwable) {
             // API indisponible : match null, message explicite côté client.
         }
@@ -122,16 +117,14 @@ final class AdminSeriesController extends Controller
 
     /**
      * POST /admin/series/create — crée une série depuis un lien de match
-     * ETF2L (équipes, joueurs, maps).
+     * ETF2L (équipes, maps).
      *
      * Le lien génère le titre et, si l'API répond, lie chaque équipe à son
-     * identifiant ETF2L (rafraîchissement des rosters et resynchronisation
-     * possibles après création) ; les champs préremplis restent corrigibles
-     * avant envoi (mercs, TBD, API indisponible : saisie manuelle en repli).
-     * Les SteamIDs acceptés : SteamID64, « STEAM_1:X:Y » ou « [U:1:N] »,
-     * un par ligne ou séparés par des virgules. Les maps sont choisies dans
-     * le menu du site ; le mode (double attaque / log unique) est déduit du
-     * nom (pl_ et A/D connus en double attaque).
+     * identifiant ETF2L (resynchronisation possible après création) ; les
+     * champs préremplis restent corrigibles avant envoi (mercs, TBD, API
+     * indisponible : saisie manuelle en repli). Les maps sont choisies
+     * dans le menu du site ; le mode (double attaque / log unique) est
+     * déduit du nom (pl_ et A/D connus en double attaque).
      */
     public function create(Request $request): RedirectResponse
     {
@@ -142,8 +135,6 @@ final class AdminSeriesController extends Controller
             'format' => ['required', 'in:bo3,bo5,fixed'],
             'red_name' => ['required', 'string', 'max:'.self::MAX_NAME_LEN],
             'blue_name' => ['required', 'string', 'max:'.self::MAX_NAME_LEN],
-            'red_players' => ['required', 'string', 'max:5000'],
-            'blue_players' => ['required', 'string', 'max:5000'],
             'maps' => ['required', 'array', 'min:1'],
             'maps.*' => ['required', 'string', 'max:128', 'regex:/^[a-z0-9_]+$/'],
             'red_avatar_url' => ['nullable', 'url:http,https', 'max:500'],
@@ -155,18 +146,6 @@ final class AdminSeriesController extends Controller
         $matchId = Etf2lMatchService::matchIdFromUrl((string) $data['match_url']);
         if ($matchId === null) {
             return back()->with('error', 'Lien de match ETF2L invalide : il doit ressembler à https://etf2l.org/matches/93233/.');
-        }
-
-        $red = $this->parsePlayers((string) $data['red_players']);
-        $blue = $this->parsePlayers((string) $data['blue_players']);
-        if ($red['invalid'] !== []) {
-            return back()->with('error', 'SteamIDs rouges invalides : '.implode(', ', $red['invalid']));
-        }
-        if ($blue['invalid'] !== []) {
-            return back()->with('error', 'SteamIDs bleus invalides : '.implode(', ', $blue['invalid']));
-        }
-        if ($red['players'] === [] || $blue['players'] === []) {
-            return back()->with('error', 'Chaque équipe doit avoir au moins un joueur de roster.');
         }
 
         $maps = $this->parseMaps((array) $data['maps']);
@@ -190,7 +169,6 @@ final class AdminSeriesController extends Controller
         foreach (['red', 'blue'] as $team) {
             $teams[$team] = [
                 'name' => trim((string) $data[$team.'_name']),
-                'players' => $team === 'red' ? $red['players'] : $blue['players'],
                 'avatar_url' => $this->cleanUrl($data[$team.'_avatar_url'] ?? null),
                 'etf2l_id' => (int) ($data[$team.'_etf2l_id'] ?? 0) ?: null,
                 'etf2l_name' => $this->matchTeamName($match, (int) ($data[$team.'_etf2l_id'] ?? 0)),
@@ -294,8 +272,8 @@ final class AdminSeriesController extends Controller
     /**
      * POST /admin/series/{token}/teams — renomme les équipes après création
      * (correction d'un acronyme erroné), met à jour leur avatar par URL et
-     * leur liaison ETF2L : c'est cette liaison qui permet de rafraîchir les
-     * rosters et de resynchroniser la série depuis ETF2L.
+     * leur liaison ETF2L : c'est cette liaison qui permet de resynchroniser
+     * la série depuis ETF2L.
      */
     public function teams(Request $request, string $token): RedirectResponse
     {
@@ -337,82 +315,13 @@ final class AdminSeriesController extends Controller
     }
 
     /**
-     * POST /admin/series/{token}/rosters — remplace le roster de chaque
-     * équipe par son roster ETF2L courant (transferts entre saisons, joueur
-     * ajouté en cours de saison, mercs officialisés). Nécessite la liaison
-     * ETF2L de l'équipe (préremplissage depuis le match ou remplissage
-     * assisté).
-     */
-    public function rosters(string $token): RedirectResponse
-    {
-        Auth::requireOverlayTools();
-
-        $series = $this->series->find($token);
-        if ($series === null) {
-            abort(404);
-        }
-
-        $updated = [];
-        $missing = [];
-        $failed = [];
-
-        foreach (['red', 'blue'] as $team) {
-            $etf2lId = (int) ($series['teams'][$team]['etf2l_id'] ?? 0);
-            $name = (string) $series['teams'][$team]['name'];
-
-            if ($etf2lId <= 0) {
-                $missing[] = $name;
-
-                continue;
-            }
-
-            try {
-                $roster = $this->etf2lTeams->roster($etf2lId);
-            } catch (\Throwable) {
-                $roster = null;
-            }
-
-            if ($roster === null) {
-                $failed[] = $name;
-
-                continue;
-            }
-
-            $series['teams'][$team]['players'] = $roster['players'];
-            $updated[] = $name.' ('.count($roster['players']).' joueurs)';
-        }
-
-        if ($updated === []) {
-            $reason = $missing !== [] && $failed === []
-                ? 'équipe(s) non liée(s) à ETF2L : '.implode(', ', $missing)
-                : 'API ETF2L indisponible';
-
-            return back()->with('error', 'Impossible de rafraîchir les rosters ('.$reason.').');
-        }
-
-        $this->series->save($series);
-
-        $message = 'Rosters ETF2L mis à jour : '.implode(', ', $updated).'.';
-        if ($failed !== []) {
-            $message .= ' Roster indisponible pour '.implode(', ', $failed).', réessayez plus tard.';
-        }
-        if ($missing !== []) {
-            $message .= ' Équipe(s) non liée(s) à ETF2L : '.implode(', ', $missing).'.';
-        }
-
-        AdminLogger::log('admin_series_rosters', null, 'SUCCESS (série '.$token.' : '.$message.')');
-
-        return back()->with('success', $message);
-    }
-
-    /**
      * POST /admin/series/{token}/resync — resynchronise la série depuis
-     * son match ETF2L (équipes TBD devenues connues, rosters, maps
-     * révélées par le pick / ban, titre). Les noms affichés (nom complet
-     * ETF2L, à raccourcir à la main si besoin), avatars et rosters sont
-     * remplacés par les données ETF2L actuelles ; les maps sont
-     * uniquement ajoutées, jamais retirées — le score acquis sur une map
-     * existante ne bouge pas.
+     * son match ETF2L (équipes TBD devenues connues, maps révélées par
+     * le pick / ban, titre, format détecté du nombre de maps). Les noms
+     * affichés (nom complet ETF2L, à raccourcir à la main si besoin) et
+     * les avatars sont remplacés par les données ETF2L actuelles ; les
+     * maps sont uniquement ajoutées, jamais retirées — le score acquis
+     * sur une map existante ne bouge pas.
      */
     public function resync(string $token): RedirectResponse
     {
@@ -430,7 +339,7 @@ final class AdminSeriesController extends Controller
 
         $match = null;
         try {
-            $match = $this->etf2lMatches->matchWithRosters($matchId);
+            $match = $this->etf2lMatches->match($matchId);
         } catch (\Throwable) {
             $match = null;
         }
@@ -451,10 +360,6 @@ final class AdminSeriesController extends Controller
             if ((string) ($etf2lTeam['avatar'] ?? '') !== '') {
                 $series['teams'][$team]['avatar_url'] = (string) $etf2lTeam['avatar'];
             }
-
-            if (($etf2lTeam['players'] ?? []) !== []) {
-                $series['teams'][$team]['players'] = $etf2lTeam['players'];
-            }
         }
 
         // Maps : seules les maps encore inconnues de la série sont
@@ -468,6 +373,16 @@ final class AdminSeriesController extends Controller
             }
         }
 
+        // Format de série : le compte de maps révélées par le match
+        // (pick / ban terminé) désigne le format — deux maps → classique,
+        // trois → BO3, cinq → BO5. Un autre compte laisse le format
+        // courant en place (choix manuel, maps partiellement révélées).
+        $formatDetected = Etf2lMatchService::deriveFormat(count($match['maps']));
+        if ($formatDetected !== null) {
+            $series['format'] = $formatDetected['format'];
+            $series['wins_needed'] = $formatDetected['wins_needed'] > 0 ? $formatDetected['wins_needed'] : null;
+        }
+
         if (($series['category'] ?? null) === null && ($match['category'] ?? null) !== null) {
             $series['category'] = $match['category'];
         }
@@ -475,7 +390,9 @@ final class AdminSeriesController extends Controller
         $series['title'] = (string) $match['title'];
         $this->series->save($series);
 
-        $summary = 'équipes et rosters ETF2L à jour'.($addedMaps !== [] ? ', maps ajoutées : '.implode(', ', $addedMaps) : '');
+        $summary = 'équipes ETF2L à jour'
+            .($addedMaps !== [] ? ', maps ajoutées : '.implode(', ', $addedMaps) : '')
+            .($formatDetected !== null ? ', format détecté : '.strtoupper($formatDetected['format'] === 'fixed' ? 'classique' : $formatDetected['format']) : '');
         AdminLogger::log('admin_series_resync', null, 'SUCCESS (série '.$token.' : '.$summary.')');
 
         return back()->with('success', 'Série resynchronisée depuis ETF2L : '.$summary.'.');
@@ -527,6 +444,72 @@ final class AdminSeriesController extends Controller
         AdminLogger::log('admin_series_point', null, 'SUCCESS (série '.$token.' : +1 '.$data['team'].' sur '.$data['map'].')');
 
         return back()->with('success', 'Point de map ajouté.');
+    }
+
+    /**
+     * POST /admin/series/{token}/end — « Match terminé » sur une map à
+     * timelimit (5cp, mp_timelimit 30) dont aucune équipe n'a atteint le
+     * winlimit : au timelimit, l'équipe en tête remporte la map ; à
+     * égalité, la map part en golden cap — le prochain point manuel la
+     * départage (config ETF2L mp_winlimit 1). C'est un événement du
+     * journal comme les autres, visible et annulable.
+     */
+    public function end(Request $request, string $token): RedirectResponse
+    {
+        Auth::requireOverlayTools();
+
+        $series = $this->series->find($token);
+        if ($series === null) {
+            abort(404);
+        }
+
+        $data = $request->validate([
+            'map' => ['required', 'string', 'max:128'],
+            'note' => ['nullable', 'string', 'max:255'],
+        ]);
+
+        $target = null;
+        foreach (is_array($series['maps'] ?? null) ? $series['maps'] : [] as $map) {
+            if (($map['name'] ?? '') === $data['map']) {
+                $target = $map;
+                break;
+            }
+        }
+        if ($target === null) {
+            return back()->with('error', 'Map inconnue dans cette série.');
+        }
+
+        $mode = (string) ($target['mode'] ?? '');
+        if ($mode !== SeriesScoreService::MODE_DOUBLE && $mode !== SeriesScoreService::MODE_SINGLE) {
+            $mode = SeriesScoreService::deriveMode((string) $target['name']);
+        }
+        if ($mode !== SeriesScoreService::MODE_SINGLE || SeriesScoreService::deriveWinlimit((string) $target['name']) !== 5) {
+            return back()->with('error', '« Match terminé » ne concerne que les maps à timelimit (5cp) : une map à winlimit ne peut pas finir sans gagnant.');
+        }
+
+        $state = (new SeriesScoreService)->compute($series);
+        foreach ($state['maps'] as $mapState) {
+            if ($mapState['name'] === (string) $data['map']) {
+                if ($mapState['status'] === 'decided') {
+                    return back()->with('error', 'Cette map est déjà décidée.');
+                }
+                if ($mapState['golden_cap']) {
+                    return back()->with('error', 'Cette map est déjà en golden cap : le prochain point la départage.');
+                }
+                break;
+            }
+        }
+
+        $this->series->appendEvent($token, [
+            'type' => 'end',
+            'source' => 'manual',
+            'map' => (string) $data['map'],
+            'note' => trim((string) ($data['note'] ?? '')),
+        ]);
+
+        AdminLogger::log('admin_series_end', null, 'SUCCESS (série '.$token.' : fin de map '.$data['map'].')');
+
+        return back()->with('success', 'Map terminée : l\'équipe en tête l\'emporte, ou golden cap en cas d\'égalité.');
     }
 
     /**
@@ -687,50 +670,6 @@ final class AdminSeriesController extends Controller
         }
 
         return null;
-    }
-
-    /**
-     * Analyse une saisie de roster : éléments séparés par lignes, virgules ou
-     * espaces, en SteamID64, STEAM_1:X:Y ou [U:1:N]. Retourne les SteamID64
-     * uniques et les éléments invalides pour affichage.
-     *
-     * @return array{players: array<int, string>, invalid: array<int, string>}
-     */
-    private function parsePlayers(string $input): array
-    {
-        $players = [];
-        $invalid = [];
-
-        foreach (preg_split('/[\s,]+/', trim($input)) ?: [] as $item) {
-            if ($item === '') {
-                continue;
-            }
-
-            $steamid64 = $this->normalizeSteamId($item);
-            if ($steamid64 === null) {
-                $invalid[] = $item;
-            } else {
-                $players[$steamid64] = $steamid64;
-            }
-        }
-
-        return ['players' => array_values($players), 'invalid' => $invalid];
-    }
-
-    private function normalizeSteamId(string $item): ?string
-    {
-        $item = trim($item);
-
-        if (preg_match('/^\d{17}$/', $item)) {
-            return $item;
-        }
-
-        $steam2 = SteamId::fromSteam2($item);
-        if ($steam2 !== null) {
-            return $steam2;
-        }
-
-        return SteamId::toSteamId64($item);
     }
 
     /**

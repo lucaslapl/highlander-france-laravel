@@ -75,8 +75,6 @@ class SeriesAdminTest extends TestCase
             'format' => 'bo3',
             'red_name' => 'LB',
             'blue_name' => 'E6',
-            'red_players' => "76561198000000001\nSTEAM_1:1:12345",
-            'blue_players' => "76561198000000011\n[U:1:98765]",
             'maps' => ['pl_upward_f10', 'cp_steel_f12'],
         ];
     }
@@ -90,9 +88,9 @@ class SeriesAdminTest extends TestCase
         $this->post('/admin/series/create', $this->createInput())->assertForbidden();
         $this->get('/admin/series/'.self::TOKEN)->assertForbidden();
         $this->post('/admin/series/'.self::TOKEN.'/teams', ['red_name' => 'LB', 'blue_name' => 'E6'])->assertForbidden();
-        $this->post('/admin/series/'.self::TOKEN.'/rosters')->assertForbidden();
         $this->post('/admin/series/'.self::TOKEN.'/resync')->assertForbidden();
         $this->post('/admin/series/'.self::TOKEN.'/point', ['map' => 'pl_upward_f10', 'team' => 'red'])->assertForbidden();
+        $this->post('/admin/series/'.self::TOKEN.'/end', ['map' => 'cp_granary_pro_rc4'])->assertForbidden();
         $this->post('/admin/series/'.self::TOKEN.'/map', ['map' => 'koth_product_final'])->assertForbidden();
         $this->post('/admin/series/'.self::TOKEN.'/map/delete', ['map' => 'pl_upward_f10'])->assertForbidden();
         $this->post('/admin/series/'.self::TOKEN.'/void', ['event' => 'e1'])->assertForbidden();
@@ -109,8 +107,6 @@ class SeriesAdminTest extends TestCase
     public function test_l_endpoint_etf2l_match_sert_le_match_pour_le_prelissage(): void
     {
         $this->seedEtf2lMatchCache();
-        $this->seedEtf2lTeamRosterCache(21747, ['76561198000000001', '76561198000000002']);
-        $this->seedEtf2lTeamRosterCache(21748, ['76561198000000011']);
 
         $response = $this->withSession($this->adminSession())
             ->get('/admin/series/etf2l-match?match_url='.urlencode('https://etf2l.org/matches/'.self::MATCH_ID.'/'))
@@ -122,8 +118,7 @@ class SeriesAdminTest extends TestCase
         $this->assertSame(self::MATCH_ID, $match['id']);
         $this->assertSame('9v9', $match['category']);
         $this->assertSame('Les Baguettes', $match['teams'][0]['name']);
-        $this->assertSame(['76561198000000001', '76561198000000002'], $match['teams'][0]['players']);
-        $this->assertSame(['76561198000000011'], $match['teams'][1]['players']);
+        $this->assertSame(['pl_upward_f10', 'koth_product_final'], $match['maps']);
         $this->assertSame('Highlander Season 36: High Playoffs — Les Baguettes vs Escouade 6', $match['title']);
     }
 
@@ -177,8 +172,8 @@ class SeriesAdminTest extends TestCase
         $this->assertSame('9v9', $series['category']);
         $this->assertSame(2, $series['wins_needed']);
 
-        $this->assertSame(['name' => 'LB', 'players' => ['76561198000000001', '76561197960290419'], 'avatar_url' => null, 'etf2l_id' => null, 'etf2l_name' => null], $series['teams']['red']);
-        $this->assertSame(['name' => 'E6', 'players' => ['76561198000000011', '76561197960364493'], 'avatar_url' => null, 'etf2l_id' => null, 'etf2l_name' => null], $series['teams']['blue']);
+        $this->assertSame(['name' => 'LB', 'avatar_url' => null, 'etf2l_id' => null, 'etf2l_name' => null], $series['teams']['red']);
+        $this->assertSame(['name' => 'E6', 'avatar_url' => null, 'etf2l_id' => null, 'etf2l_name' => null], $series['teams']['blue']);
 
         // pl_upward : double attaque ; steel : double attaque (A/D connu).
         $this->assertSame('double', $series['maps'][0]['mode']);
@@ -236,19 +231,6 @@ class SeriesAdminTest extends TestCase
         $series = (new SeriesRepository)->find((string) $seriesList[0]['token']);
         $this->assertSame('Match ETF2L #'.self::MATCH_ID, $series['title']);
         $this->assertNull($series['category']);
-    }
-
-    public function test_creation_rejette_un_steamid_invalide(): void
-    {
-        $this->seedEtf2lMatchCache();
-        $input = $this->createInput();
-        $input['red_players'] = "76561198000000001\npas-un-steamid";
-
-        $this->withSession($this->adminSession())
-            ->post('/admin/series/create', $input)
-            ->assertRedirect();
-
-        $this->assertSame([], (new SeriesRepository)->all());
     }
 
     public function test_creation_rejette_une_liste_de_maps_vide(): void
@@ -312,7 +294,6 @@ class SeriesAdminTest extends TestCase
         $this->assertSame('LB', $series['teams']['red']['name']);
         $this->assertSame('E6', $series['teams']['blue']['name']);
         // Le reste de la série est intact.
-        $this->assertSame(['76561198000000001', '76561198000000002'], $series['teams']['red']['players']);
         $this->assertSame('bo3', $series['format']);
         $this->assertSame([], $series['journal']);
     }
@@ -351,73 +332,150 @@ class SeriesAdminTest extends TestCase
         $this->assertSame('Escouade 6', $series['teams']['blue']['name']);
     }
 
-    // ─── Liaison ETF2L et rafraîchissement des rosters ────────────────────
+    // ─── Fin de map à timelimit (« Match terminé ») ────────────────────────
 
-    public function test_le_rafraichissement_remplace_les_rosters_depuis_etf2l(): void
+    public function test_la_fin_de_map_donne_la_map_a_l_equipe_en_tete(): void
     {
-        $this->seedSeries();
-        $this->withSession($this->adminSession())
-            ->post('/admin/series/'.self::TOKEN.'/teams', [
-                'red_name' => 'LB',
-                'blue_name' => 'E6',
-                'red_etf2l_id' => '21747',
-                'blue_etf2l_id' => '21748',
-            ])
-            ->assertRedirect();
-
-        // Rosters ETF2L servis depuis le cache (aucun réseau réel) : les
-        // transferts de l'intersaison sont rattrapés d'un clic.
-        $this->seedEtf2lTeamRosterCache(21747, ['76561198000000001', '76561198000000009', '76561198000000010']);
-        $this->seedEtf2lTeamRosterCache(21748, ['76561198000000011', '76561198000000019']);
+        // 5cp (winlimit 5, timelimit 30) : 3-2 au timelimit, le meneur l'emporte.
+        $this->seedSeries(['cp_granary_pro_rc4']);
+        $this->point('cp_granary_pro_rc4', 'red');
+        $this->point('cp_granary_pro_rc4', 'red');
+        $this->point('cp_granary_pro_rc4', 'red');
+        $this->point('cp_granary_pro_rc4', 'blue');
+        $this->point('cp_granary_pro_rc4', 'blue');
 
         $this->withSession($this->adminSession())
-            ->post('/admin/series/'.self::TOKEN.'/rosters')
+            ->post('/admin/series/'.self::TOKEN.'/end', ['map' => 'cp_granary_pro_rc4'])
             ->assertRedirect()
             ->assertSessionHas('success');
 
-        $series = (new SeriesRepository)->find(self::TOKEN);
-        $this->assertSame(['76561198000000001', '76561198000000009', '76561198000000010'], $series['teams']['red']['players']);
-        $this->assertSame(['76561198000000011', '76561198000000019'], $series['teams']['blue']['players']);
+        $state = (new SeriesScoreService)->compute((new SeriesRepository)->find(self::TOKEN));
+        $this->assertSame('decided', $state['maps'][0]['status']);
+        $this->assertSame('red', $state['maps'][0]['winner']);
+        $this->assertFalse($state['maps'][0]['golden_cap']);
+        $this->assertSame(1, $state['score']['red']);
     }
 
-    public function test_le_rafraichissement_des_rosters_refuse_sans_liaison_etf2l(): void
+    public function test_la_fin_de_map_a_egalite_declenche_une_golden_cap(): void
     {
-        $this->seedSeries();
+        // 2-2 au timelimit : golden cap, que le point suivant tranche.
+        $this->seedSeries(['cp_granary_pro_rc4']);
+        $this->point('cp_granary_pro_rc4', 'red');
+        $this->point('cp_granary_pro_rc4', 'red');
+        $this->point('cp_granary_pro_rc4', 'blue');
+        $this->point('cp_granary_pro_rc4', 'blue');
 
         $this->withSession($this->adminSession())
-            ->post('/admin/series/'.self::TOKEN.'/rosters')
+            ->post('/admin/series/'.self::TOKEN.'/end', ['map' => 'cp_granary_pro_rc4'])
+            ->assertRedirect()
+            ->assertSessionHas('success');
+
+        $ongoing = (new SeriesScoreService)->compute((new SeriesRepository)->find(self::TOKEN));
+        $this->assertSame('pending', $ongoing['maps'][0]['status']);
+        $this->assertTrue($ongoing['maps'][0]['golden_cap']);
+
+        // Le point de golden cap décide la map.
+        $this->point('cp_granary_pro_rc4', 'blue');
+
+        $state = (new SeriesScoreService)->compute((new SeriesRepository)->find(self::TOKEN));
+        $this->assertSame('decided', $state['maps'][0]['status']);
+        $this->assertSame('blue', $state['maps'][0]['winner']);
+    }
+
+    public function test_la_fin_de_map_est_refusee_sur_une_map_a_winlimit(): void
+    {
+        // KOTH (winlimit 3, sans timelimit) : la map ne peut pas finir
+        // sans gagnant, le bouton ne la concerne pas.
+        $this->seedSeries(['koth_product_final']);
+
+        $this->withSession($this->adminSession())
+            ->post('/admin/series/'.self::TOKEN.'/end', ['map' => 'koth_product_final'])
             ->assertRedirect()
             ->assertSessionHas('error');
 
         $series = (new SeriesRepository)->find(self::TOKEN);
-        $this->assertSame(['76561198000000001', '76561198000000002'], $series['teams']['red']['players']);
-        $this->assertSame(['76561198000000011', '76561198000000012'], $series['teams']['blue']['players']);
+        $this->assertSame([], $series['journal']);
     }
 
-    public function test_le_rafraichissement_epargne_les_equipes_sans_liaison(): void
+    public function test_la_fin_de_map_est_refusee_sur_une_map_double_attaque(): void
     {
-        $this->seedSeries();
-        $repository = new SeriesRepository;
-        $series = $repository->find(self::TOKEN);
-        $series['teams']['red']['etf2l_id'] = 21747;
-        $repository->save($series);
-
-        $this->seedEtf2lTeamRosterCache(21747, ['76561198000000077']);
+        $this->seedSeries(['pl_upward_f10']);
 
         $this->withSession($this->adminSession())
-            ->post('/admin/series/'.self::TOKEN.'/rosters')
+            ->post('/admin/series/'.self::TOKEN.'/end', ['map' => 'pl_upward_f10'])
             ->assertRedirect()
-            ->assertSessionHas('success');
+            ->assertSessionHas('error');
 
-        // Seule l'équipe liée est mise à jour, l'autre garde son roster.
-        $series = $repository->find(self::TOKEN);
-        $this->assertSame(['76561198000000077'], $series['teams']['red']['players']);
-        $this->assertSame(['76561198000000011', '76561198000000012'], $series['teams']['blue']['players']);
+        $series = (new SeriesRepository)->find(self::TOKEN);
+        $this->assertSame([], $series['journal']);
+    }
+
+    public function test_la_fin_de_map_est_refusee_sur_une_map_deja_decidee(): void
+    {
+        $this->seedSeries(['cp_granary_pro_rc4']);
+        $this->point('cp_granary_pro_rc4', 'red');
+        $this->end('cp_granary_pro_rc4');
+
+        // Une deuxième fin de map ne double pas l'événement.
+        $this->withSession($this->adminSession())
+            ->post('/admin/series/'.self::TOKEN.'/end', ['map' => 'cp_granary_pro_rc4'])
+            ->assertRedirect()
+            ->assertSessionHas('error');
+    }
+
+    public function test_la_fin_de_map_est_refusee_quand_la_golden_cap_est_en_attente(): void
+    {
+        $this->seedSeries(['cp_granary_pro_rc4']);
+        $this->point('cp_granary_pro_rc4', 'red');
+        $this->point('cp_granary_pro_rc4', 'blue');
+        $this->end('cp_granary_pro_rc4');
+
+        $this->withSession($this->adminSession())
+            ->post('/admin/series/'.self::TOKEN.'/end', ['map' => 'cp_granary_pro_rc4'])
+            ->assertRedirect()
+            ->assertSessionHas('error');
+    }
+
+    public function test_annuler_une_fin_de_map_retire_son_effet(): void
+    {
+        $this->seedSeries(['cp_granary_pro_rc4']);
+        $this->point('cp_granary_pro_rc4', 'red');
+        $this->point('cp_granary_pro_rc4', 'blue');
+        $this->end('cp_granary_pro_rc4');
+
+        // La fin de map est l'événement e3 : l'annuler rouvre la map.
+        $this->withSession($this->adminSession())
+            ->post('/admin/series/'.self::TOKEN.'/void', ['event' => 'e3'])
+            ->assertRedirect();
+
+        $state = (new SeriesScoreService)->compute((new SeriesRepository)->find(self::TOKEN));
+        $this->assertSame('pending', $state['maps'][0]['status']);
+        $this->assertFalse($state['maps'][0]['golden_cap']);
+    }
+
+    /**
+     * Enregistre un point manuel pour une équipe sur une map de la série.
+     */
+    private function point(string $map, string $team): void
+    {
+        $this->withSession($this->adminSession())
+            ->post('/admin/series/'.self::TOKEN.'/point', ['map' => $map, 'team' => $team])
+            ->assertRedirect();
+    }
+
+    /**
+     * Déclare la fin d'une map (« Match terminé »).
+     */
+    private function end(string $map): void
+    {
+        $this->withSession($this->adminSession())
+            ->post('/admin/series/'.self::TOKEN.'/end', ['map' => $map])
+            ->assertRedirect();
     }
 
     // ─── Resynchronisation depuis le match ETF2L ───────────────────────────
 
-    public function test_la_resynchronisation_maj_equipes_rosters_et_maps(): void
+    public function test_la_resynchronisation_maj_equipes_maps_et_format(): void
     {
         $this->seedSeries();
         $repository = new SeriesRepository;
@@ -426,8 +484,6 @@ class SeriesAdminTest extends TestCase
         $repository->save($series);
 
         $this->seedEtf2lMatchCache();
-        $this->seedEtf2lTeamRosterCache(21747, ['76561198000000001', '76561198000000009']);
-        $this->seedEtf2lTeamRosterCache(21748, ['76561198000000011', '76561198000000019']);
 
         $this->withSession($this->adminSession())
             ->post('/admin/series/'.self::TOKEN.'/resync')
@@ -443,7 +499,6 @@ class SeriesAdminTest extends TestCase
         $this->assertSame('Les Baguettes', $series['teams']['red']['etf2l_name']);
         $this->assertSame(21747, $series['teams']['red']['etf2l_id']);
         $this->assertSame('https://example.com/lb.png', $series['teams']['red']['avatar_url']);
-        $this->assertSame(['76561198000000001', '76561198000000009'], $series['teams']['red']['players']);
 
         // Maps : seules les inconnues sont ajoutées, jamais de retrait —
         // cp_steel_f12 (déclaré à la main) reste, le score acquis tient.
@@ -451,6 +506,30 @@ class SeriesAdminTest extends TestCase
         $this->assertContains('pl_upward_f10', $names);
         $this->assertContains('koth_product_final', $names);
         $this->assertContains('cp_steel_f12', $names);
+
+        // Format détecté du nombre de maps du match : deux maps → classique.
+        $this->assertSame('fixed', $series['format']);
+        $this->assertNull($series['wins_needed']);
+    }
+
+    public function test_la_resynchronisation_detecte_un_bo3_depuis_trois_maps(): void
+    {
+        $this->seedSeries();
+        $repository = new SeriesRepository;
+        $series = $repository->find(self::TOKEN);
+        $series['etf2l_match_id'] = 93234;
+        $repository->save($series);
+
+        $this->seedEtf2lMatchCache(93234, ['pl_upward_f10', 'koth_product_final', 'cp_granary_pro_rc4']);
+
+        $this->withSession($this->adminSession())
+            ->post('/admin/series/'.self::TOKEN.'/resync')
+            ->assertRedirect()
+            ->assertSessionHas('success');
+
+        $series = (new SeriesRepository)->find(self::TOKEN);
+        $this->assertSame('bo3', $series['format']);
+        $this->assertSame(2, $series['wins_needed']);
     }
 
     public function test_la_resynchronisation_refuse_sans_liaison_de_match(): void
@@ -680,8 +759,7 @@ class SeriesAdminTest extends TestCase
     // ─── Fixtures ─────────────────────────────────────────────────────────
 
     /**
-     * Série « à venir » prête à être pilotée, avec deux rosters et un point
-     * de départ en SteamID64 cohérent avec createInput().
+     * Série « à venir » prête à être pilotée.
      *
      * @param  array<int, string>|null  $maps
      */
@@ -699,8 +777,8 @@ class SeriesAdminTest extends TestCase
             'wins_needed' => 2,
             'created_at' => time() - 60,
             'teams' => [
-                'red' => ['name' => 'Les Baguettes', 'players' => ['76561198000000001', '76561198000000002']],
-                'blue' => ['name' => 'Escouade 6', 'players' => ['76561198000000011', '76561198000000012']],
+                'red' => ['name' => 'Les Baguettes'],
+                'blue' => ['name' => 'Escouade 6'],
             ],
             'maps' => $declared,
             'journal' => [],
@@ -710,15 +788,17 @@ class SeriesAdminTest extends TestCase
     /**
      * Amorce le cache ETF2L d'un match (endpoint /matches/{id}, lu par le
      * préremplissage et la resynchronisation) : aucun appel HTTP en test.
+     *
+     * @param  array<int, string>|null  $maps
      */
-    private function seedEtf2lMatchCache(): void
+    private function seedEtf2lMatchCache(int $matchId = self::MATCH_ID, ?array $maps = null): void
     {
         DB::table('etf2l_api_cache')->insert([
-            'url' => 'https://api-v2.etf2l.org/matches/'.self::MATCH_ID,
+            'url' => 'https://api-v2.etf2l.org/matches/'.$matchId,
             'payload' => json_encode([
                 'status' => ['code' => 200],
                 'match' => [
-                    'id' => self::MATCH_ID,
+                    'id' => $matchId,
                     'clan1' => [
                         'id' => 21747,
                         'name' => 'Les Baguettes',
@@ -732,7 +812,7 @@ class SeriesAdminTest extends TestCase
                         'steam' => ['avatar' => 'https://example.com/e6.png'],
                     ],
                     'competition' => ['id' => 1060, 'name' => 'Highlander Season 36: High Playoffs', 'type' => 'Highlander'],
-                    'maps' => ['pl_upward_f10', 'koth_product_final'],
+                    'maps' => $maps ?? ['pl_upward_f10', 'koth_product_final'],
                 ],
             ], JSON_THROW_ON_ERROR),
             'fetched_at' => time(),
@@ -748,32 +828,6 @@ class SeriesAdminTest extends TestCase
         DB::table('etf2l_api_cache')->insert([
             'url' => 'https://api-v2.etf2l.org/matches/'.self::MATCH_ID,
             'payload' => json_encode(['error' => 'hlfr_etf2l_indisponible'], JSON_THROW_ON_ERROR),
-            'fetched_at' => time(),
-        ]);
-    }
-
-    /**
-     * Amorce le cache ETF2L du roster d'une équipe (endpoint /team/{id},
-     * lu par le rafraîchissement des rosters et le préremplissage) : le
-     * service n'a alors aucun appel HTTP à faire.
-     *
-     * @param  array<int, string>  $steamids64
-     */
-    private function seedEtf2lTeamRosterCache(int $teamId, array $steamids64): void
-    {
-        DB::table('etf2l_api_cache')->insert([
-            'url' => 'https://api-v2.etf2l.org/team/'.$teamId,
-            'payload' => json_encode([
-                'status' => ['code' => 200],
-                'team' => [
-                    'id' => $teamId,
-                    'name' => 'Équipe ETF2L '.$teamId,
-                    'players' => array_map(
-                        static fn (string $id64): array => ['name' => 'joueur', 'steam' => ['id64' => $id64]],
-                        $steamids64
-                    ),
-                ],
-            ], JSON_THROW_ON_ERROR),
             'fetched_at' => time(),
         ]);
     }

@@ -11,7 +11,8 @@ use Tests\TestCase;
  * Machine à états du score d'une série (SeriesScoreService) : agrégation des
  * événements du journal par map — double attaque (pl_/A/D : 2 rounds par map,
  * golden cap sur 1-1), log unique (KOTH à 3 points, 5cp à 5 : points manuels
- * en score live, golden cap sur égalité au timelimit), annulations et
+ * en score live, golden cap sur égalité au timelimit), fin de map déclarée à
+ * la main (« Match terminé », timelimit des 5cp), annulations et
  * achèvement de la série (BO3/BO5/maps fixes).
  */
 class SeriesScoreServiceTest extends TestCase
@@ -259,6 +260,82 @@ class SeriesScoreServiceTest extends TestCase
         $this->assertSame(1, $state['score']['red']);
     }
 
+    // ─── Fin de map à timelimit (« Match terminé ») ────────────────────────
+
+    public function test_la_fin_de_map_5cp_donne_la_map_au_meneur(): void
+    {
+        // 5cp, mp_timelimit 30 : 3-2 au timelimit sans winlimit atteint —
+        // l'équipe en tête remporte la map (règle ETF2L).
+        $series = $this->series(['cp_process_f7'], 'bo3', 2, [
+            $this->manualEvent('e1', 'cp_process_f7', 'red'),
+            $this->manualEvent('e2', 'cp_process_f7', 'red'),
+            $this->manualEvent('e3', 'cp_process_f7', 'red'),
+            $this->manualEvent('e4', 'cp_process_f7', 'blue'),
+            $this->manualEvent('e5', 'cp_process_f7', 'blue'),
+            $this->endEvent('e6', 'cp_process_f7'),
+        ]);
+
+        $state = (new SeriesScoreService)->compute($series);
+
+        $this->assertSame('decided', $state['maps'][0]['status']);
+        $this->assertSame('red', $state['maps'][0]['winner']);
+        $this->assertFalse($state['maps'][0]['golden_cap']);
+        $this->assertSame(3, $state['maps'][0]['scores']['red']);
+        $this->assertSame(2, $state['maps'][0]['scores']['blue']);
+        $this->assertSame(1, $state['score']['red']);
+    }
+
+    public function test_la_fin_de_map_5cp_a_egalite_declenche_la_golden_cap(): void
+    {
+        // 2-2 au timelimit : golden cap, le point suivant tranche.
+        $series = $this->series(['cp_process_f7'], 'bo3', 2, [
+            $this->manualEvent('e1', 'cp_process_f7', 'red'),
+            $this->manualEvent('e2', 'cp_process_f7', 'red'),
+            $this->manualEvent('e3', 'cp_process_f7', 'blue'),
+            $this->manualEvent('e4', 'cp_process_f7', 'blue'),
+            $this->endEvent('e5', 'cp_process_f7'),
+        ]);
+
+        $pending = (new SeriesScoreService)->compute($series);
+        $this->assertSame('pending', $pending['maps'][0]['status']);
+        $this->assertTrue($pending['maps'][0]['golden_cap']);
+        $this->assertSame(['red' => 0, 'blue' => 0], $pending['score']);
+
+        $series['journal'][] = $this->manualEvent('e6', 'cp_process_f7', 'blue');
+        $decided = (new SeriesScoreService)->compute($series);
+        $this->assertSame('decided', $decided['maps'][0]['status']);
+        $this->assertSame('blue', $decided['maps'][0]['winner']);
+        $this->assertSame(3, $decided['maps'][0]['scores']['blue']);
+    }
+
+    public function test_la_fin_de_map_5cp_a_zero_zero_part_en_golden_cap(): void
+    {
+        // Aucun point saisi au timelimit : l'égalité 0-0 part en golden cap.
+        $series = $this->series(['cp_process_f7'], 'bo3', 2, [
+            $this->endEvent('e1', 'cp_process_f7'),
+        ]);
+
+        $state = (new SeriesScoreService)->compute($series);
+
+        $this->assertSame('pending', $state['maps'][0]['status']);
+        $this->assertTrue($state['maps'][0]['golden_cap']);
+    }
+
+    public function test_la_fin_de_map_est_ignoree_en_double_attaque(): void
+    {
+        // Une double attaque ne peut pas finir sans gagnant : l'événement
+        // de fin de map ne la concerne pas (contrôle serveur en amont,
+        // le calcul reste défensif).
+        $series = $this->series(['pl_upward'], 'bo3', 2, [
+            $this->endEvent('e1', 'pl_upward'),
+        ]);
+
+        $state = (new SeriesScoreService)->compute($series);
+
+        $this->assertSame('pending', $state['maps'][0]['status']);
+        $this->assertFalse($state['maps'][0]['golden_cap']);
+    }
+
     // ─── Achèvement de la série ───────────────────────────────────────────
 
     public function test_bo3_terminee_a_deux_maps_gagnees(): void
@@ -368,6 +445,21 @@ class SeriesScoreServiceTest extends TestCase
             'map' => $map,
             'team' => $team,
             'note' => '',
+            'at' => time(),
+        ];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function endEvent(string $id, string $map): array
+    {
+        return [
+            'id' => $id,
+            'type' => 'end',
+            'source' => 'manual',
+            'map' => $map,
+            'note' => 'fin de map déclarée à la main (timelimit)',
             'at' => time(),
         ];
     }

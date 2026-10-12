@@ -104,12 +104,16 @@ du formulaire. Les casters et la prod n'ont accès à rien d'autre du `/admin/*`
 
 L'overlay de série (`/admin/series`, outil « Overlay Scores ») se remplit
 depuis un **lien de match ETF2L** : le titre, les équipes (nom complet ETF2L,
-à raccourcir à la main, avatars, rosters) et les maps connues sont préremplis
-via `Etf2lMatchService` (`api-v2.etf2l.org/matches/{id}`, même cache), et une
-série existante peut être resynchronisée (équipes TBD devenues connues,
-rosters, maps du pick / ban). Les points de maps restent manuels : un point
-par map gagnée depuis le détail de la série, chaque événement visible et
-annulable dans le journal.
+à raccourcir à la main, avatars) et les maps connues sont préremplis
+via `Etf2lMatchService` (`api-v2.etf2l.org/matches/{id}`, même cache) ; le
+format de la série (classique / BO3 / BO5) est détecté du nombre de maps du
+match, et une série existante peut être resynchronisée (équipes TBD devenues
+connues, maps du pick / ban, format détecté). Les points de maps restent
+manuels : un point par map gagnée depuis le détail de la série, chaque
+événement visible et annulable dans le journal. Sur une map 5cp (timelimit
+30 min), le bouton « Match terminé » départage la map sans winlimit atteint :
+le meneur l'emporte, une égalité part en golden cap que le point suivant
+tranche.
 
 ## Streams Twitch (badge « EN DIRECT »)
 

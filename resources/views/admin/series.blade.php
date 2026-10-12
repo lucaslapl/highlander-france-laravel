@@ -8,7 +8,7 @@
 
 <div class="admin-header" style="--accent:#4cc46a;">
     <h2><i class="fa-solid fa-trophy"></i> Overlay Scores</h2>
-    <p>Overlay de score de série (playoffs) rempli depuis un lien de match ETF2L : collez le lien de la page du match (ex : https://etf2l.org/matches/93233/), chargez-le, et le titre, les équipes (acronymes, avatars, rosters) et les maps connues se remplissent tout seuls. Les points de maps se saisissent à la main dans le détail de la série, un par map gagnée — chaque point est visible et annulable dans le journal.</p>
+    <p>Overlay de score de série (playoffs) rempli depuis un lien de match ETF2L : collez le lien de la page du match (ex : https://etf2l.org/matches/93233/), chargez-le, et le titre, les équipes (acronymes, avatars) et les maps connues se remplissent tout seuls — le format de la série est détecté selon leur nombre (2 maps → classique, 3 → BO3, 5 → BO5). Les points de maps se saisissent à la main dans le détail de la série, un par map gagnée — chaque point est visible et annulable dans le journal.</p>
 </div>
 
 <h3 class="admin-section-title"><i class="fa-solid fa-plus"></i> Créer une série</h3>
@@ -25,7 +25,7 @@
             </button>
         </div>
         <p style="color:#777; font-size:12px; margin:6px 0 0;">
-            Le lien génère le titre du suivi (« Compétition — A vs B ») et préremplit équipes, avatars et rosters —
+            Le lien génère le titre du suivi (« Compétition — A vs B ») et préremplit équipes et avatars —
             tout reste corrigible avant de créer (mercs, équipe TBD en playoffs, API indisponible : la saisie manuelle prend le relais).
         </p>
         <p id="series-match-status" style="margin:10px 0 0; font-size:13px; color:#888;"></p>
@@ -48,13 +48,6 @@
                     Prérempli avec le nom complet ETF2L de l'équipe : raccourcissez-le (acronyme, ex : Inglorious
                     Gamblers → IG), l'espace disponible sur l'overlay est très réduit — il reste modifiable à tout moment.
                 </p>
-                <label class="admin-form-label" style="margin-top:10px;" for="series-{{ $team }}-players">Roster (SteamIDs)</label>
-                <textarea id="series-{{ $team }}-players" name="{{ $team }}_players" class="form-control js-team-field-players" rows="3"
-                          placeholder="76561198012345678&#10;STEAM_1:0:12345" required></textarea>
-                <p style="color:#777; font-size:12px; margin:6px 0 0;">
-                    Prérempli depuis ETF2L au chargement du match (corrigible à la main — mercs, saison passée…).
-                    Formats acceptés : SteamID64, STEAM_1:X:Y ou [U:1:N], un par ligne ou séparés par des virgules.
-                </p>
                 <label class="admin-form-label" style="margin-top:10px;" for="series-{{ $team }}-avatar-url">Avatar par URL externe (optionnel)</label>
                 <input type="url" id="series-{{ $team }}-avatar-url" name="{{ $team }}_avatar_url" class="form-control js-team-field-avatar"
                        placeholder="https://…/logo.png">
@@ -65,11 +58,15 @@
     <div class="admin-form-row" style="display:flex; gap:24px; flex-wrap:wrap;">
         <div style="min-width:180px;">
             <label class="admin-form-label" for="series-format">Format de la série</label>
-            <select id="series-format" name="format" class="form-control">
+            <select id="series-format" name="format" class="form-control js-series-format">
                 <option value="bo3">BO3 (première à 2 maps)</option>
                 <option value="bo5">BO5 (première à 3 maps)</option>
                 <option value="fixed">Classique (deux maps)</option>
             </select>
+            <p style="color:#777; font-size:12px; margin:6px 0 0;">
+                Détecté automatiquement au chargement du match (2 maps → classique, 3 → BO3, 5 → BO5) ;
+                corrigez-le à la main si ETF2L ne connaît pas encore toutes les maps.
+            </p>
         </div>
         <div style="flex:1; min-width:320px;">
             <label class="admin-form-label" for="series-map-pool">Pool de maps</label>
