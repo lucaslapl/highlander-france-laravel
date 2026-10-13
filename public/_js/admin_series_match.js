@@ -28,6 +28,7 @@
     var mapList = document.querySelector('.js-series-map-list');
     var mapEmptyLine = document.querySelector('.js-series-map-empty');
     var poolSelect = document.querySelector('.js-series-map-pool');
+    var formatSelect = document.querySelector('.js-series-format');
 
     /* Noms de maps ETF2L : caractères sûrs pour un sélecteur
        d'attribut (la validation serveur impose le même motif). */
