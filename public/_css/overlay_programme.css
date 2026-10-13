@@ -74,7 +74,7 @@ html, body {
     flex-direction: column;
     gap: 14px;
     padding: 8px 0 8px 34px;
-    margin-top: 125px;
+    margin-top: 95px;
     border-left: 3px solid var(--violet-line);
     box-shadow: inset 6px 0 22px -14px rgba(186, 53, 215, 0.7);
 }
