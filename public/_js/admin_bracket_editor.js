@@ -3,9 +3,10 @@
    OBS (bracket_layout.js). Trois briques :
 
    - générateur de squelette : le nombre d'équipes et le format (simple /
-     double élimination) posent d'un coup toutes les colonnes des voies
-     haute / basse et la grande finale, labels inclus — plus de cases à
-     créer une par une ;
+     double élimination, ou système suisse au nombre d'équipes saisissable)
+     posent d'un coup toutes les colonnes des voies haute / basse et la
+     grande finale — ou des rounds à plat sans connecteurs —, labels
+     inclus : plus de cases à créer une par une ;
    - canvas interactif : chaque case et chaque étiquette de round se
      cliquent ; l'édition se fait dans le panneau latéral (équipes, scores,
      série suivie, match « EN DIRECT », déplacements) et le rendu suit en
@@ -658,8 +659,29 @@
         return labels[count] || ('Tour ' + count);
     }
 
-    function makeColumn(lane, label, matchCount) {
-        var column = { id: newId('c'), label: label, lane: lane, matches: [] };
+    /* Le nombre d'équipes du système suisse se saisit à la main (2 à 64) :
+       l'entrée dédiée remplace le menu 4 / 8 / 16 des éliminations. */
+    var genType = document.getElementById('bkv-gen-type');
+    var genTeamsWrap = document.getElementById('bkv-gen-teams-wrap');
+    var genSwissWrap = document.getElementById('bkv-gen-swiss-teams-wrap');
+
+    function syncGenInputs() {
+        var swiss = genType.value === 'swiss';
+        genTeamsWrap.hidden = swiss;
+        genSwissWrap.hidden = !swiss;
+    }
+
+    genType.addEventListener('change', syncGenInputs);
+    syncGenInputs();
+
+    /* Rounds d'un système suisse : ceil(log2(N)) rounds standard, un
+       match par paire d'équipes (une équipe exempt si N est impair). */
+    function swissRounds(teams) {
+        return Math.max(1, Math.ceil(Math.log(teams) / Math.log(2)));
+    }
+
+    function makeColumn(lane, label, matchCount, flat) {
+        var column = { id: newId('c'), label: label, lane: lane, flat: !!flat, matches: [] };
         for (var i = 0; i < matchCount; i++) {
             column.matches.push(newMatch());
         }
@@ -676,7 +698,18 @@
 
         var columns = [];
 
-        if (type === 'single') {
+        if (type === 'swiss') {
+            /* Système suisse : rounds indépendants — chaque round porte
+               floor(N/2) cases (une équipe exempte si N est impair), en
+               colonnes « à plat » sans connecteurs ; les équipes se
+               remplissent case par case après chaque tirage. */
+            var teams = Math.max(2, Math.min(64, parseInt(document.getElementById('bkv-gen-swiss-teams').value, 10) || 8));
+            var perRound = Math.floor(teams / 2);
+            var rounds = swissRounds(teams);
+            for (var round = 1; round <= rounds; round++) {
+                columns.push(makeColumn('upper', 'Round ' + round, perRound, true));
+            }
+        } else if (type === 'single') {
             var counts = (SHAPES.single[teams] || SHAPES.single[8]);
             counts.forEach(function (count, index) {
                 var isFinal = index === counts.length - 1;
@@ -720,6 +753,7 @@
             add(base + '[id]', column.id || '');
             add(base + '[label]', column.label || '');
             add(base + '[lane]', column.lane || 'upper');
+            add(base + '[flat]', column.flat ? '1' : '0');
 
             (column.matches || []).forEach(function (match, mi) {
                 var prefix = base + '[matches][' + mi + ']';

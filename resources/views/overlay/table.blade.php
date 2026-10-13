@@ -1,6 +1,7 @@
 {{-- Vue overlay OBS du tableau de classement « poule » (1920x1080, fond
      transparent). Page autonome : pas de layout site, aucun chrome. Le
-     tableau est rendu côté serveur (rang, avatar, surlignage du top X) ;
+     tableau est rendu côté serveur (rang, avatar ; le top 3 porte les
+     couleurs médaille via le CSS) ;
      l'auto-rafraîchissement est porté par overlay_bracket.js (polling de
      version commun aux deux formats). --}}
 <!DOCTYPE html>
@@ -43,7 +44,7 @@
             </thead>
             <tbody>
                 @foreach ($data['rows'] as $row)
-                    <tr class="{{ $row['qualified'] ? 'qualified' : '' }}">
+                    <tr>
                         <td class="rank">{{ (int) $row['rank'] }}</td>
                         <td class="team-col">
                             <span class="team-cell">

@@ -1,8 +1,7 @@
 /* Overlay classement (/bracket-overlay/{token}, type table) — page
    1920x1080 entièrement transparente pour OBS : tableau de classement
    « poule » avec avatars. Le top 3 porte les couleurs médaille (or,
-   argent, bronze) ; un éventuel top X au-delà de 3 garde l'aplat vert
-   de qualification. Tous les fonds sont en aplat (pas de dégradé). */
+   argent, bronze). Tous les fonds sont en aplat (pas de dégradé). */
 
 * { margin: 0; padding: 0; box-sizing: border-box; }
 
@@ -15,8 +14,6 @@
     --violet-bright: #e97fff;
     --violet-line: rgba(186, 53, 215, 0.57);
     --dim: rgba(255, 255, 255, 0.6);
-    --playoff-won-bg: rgba(42, 74, 42, 0.55);
-    --playoff-won: #8c8;
     --row-alt: rgba(122, 62, 138, 0.22);
     --medal-gold: #f6c453;
     --medal-gold-bg: rgba(246, 196, 83, 0.16);
@@ -220,16 +217,4 @@ h1 em {
 .standings tbody tr:nth-child(3) td.rank {
     color: var(--medal-bronze);
     box-shadow: inset 4px 0 0 var(--medal-bronze);
-}
-
-/* Lignes qualifiées au-delà du top 3 (top X > 3) : aplat vert de
-   victoire, liseré vert côté rang — même code couleur que les cases
-   gagnantes du bracket. */
-.standings tbody tr.qualified:nth-child(n+4) td {
-    background: var(--playoff-won-bg);
-}
-
-.standings tbody tr.qualified:nth-child(n+4) td.rank {
-    color: var(--playoff-won);
-    box-shadow: inset 4px 0 0 var(--playoff-won);
 }

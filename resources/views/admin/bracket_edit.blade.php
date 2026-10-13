@@ -81,14 +81,15 @@
             droite, chaque clic sur une étiquette de round ouvre l'édition de la colonne. Voies : « Haute » et « Basse »
             sont les voies gagnante / perdante d'une <strong>double élimination</strong> (WB / LB) ; pour une élimination
             <strong>simple</strong>, laissez toutes les colonnes en voie « Haute » — les connecteurs suivront tout seuls.
-            « Finale » place la grande carte à droite, alimentée automatiquement.
+            « Finale » place la grande carte à droite, alimentée automatiquement. Le <strong>système suisse</strong>
+            génère ceil(log2(N)) rounds indépendants (sans connecteurs) du nombre d'équipes saisi.
         </p>
         <noscript>
             <p style="color:#ff8080;">L'éditeur visuel nécessite JavaScript : sans lui, les cases du bracket ne seraient pas enregistrées.</p>
         </noscript>
 
         <div class="bkv-generator">
-            <div>
+            <div id="bkv-gen-teams-wrap">
                 <label class="admin-form-label" for="bkv-gen-teams">Équipes</label>
                 <select id="bkv-gen-teams" class="form-control">
                     <option value="4">4</option>
@@ -96,11 +97,16 @@
                     <option value="16">16</option>
                 </select>
             </div>
+            <div id="bkv-gen-swiss-teams-wrap" hidden>
+                <label class="admin-form-label" for="bkv-gen-swiss-teams">Nombre d'équipes (saisie manuelle)</label>
+                <input type="number" id="bkv-gen-swiss-teams" class="form-control" min="2" max="64" value="8">
+            </div>
             <div>
                 <label class="admin-form-label" for="bkv-gen-type">Format</label>
                 <select id="bkv-gen-type" class="form-control">
                     <option value="double" selected>Double élimination (WB / LB / grande finale)</option>
                     <option value="single">Simple élimination</option>
+                    <option value="swiss">Système suisse (rounds indépendants)</option>
                 </select>
             </div>
             <button type="button" class="admin-btn" id="bkv-gen-run">
@@ -225,7 +231,7 @@
         <p style="color:#777; font-size:13px; margin:0 0 12px;">
             L'ordre des lignes fait le classement (le rang est calculé à l'affichage) : cliquez sur une ligne pour
             la remplir, la déplacer ou la supprimer. L'aperçu reprend l'habillage de l'overlay — médailles pour
-            le top 3, surlignage vert des qualifiés au-delà (top X), colonne « Pén » si une pénalité existe.
+            le top 3, colonne « Pén » si une pénalité existe.
         </p>
         <noscript>
             <p style="color:#ff8080;">L'éditeur visuel nécessite JavaScript : sans lui, les lignes du classement ne seraient pas enregistrées.</p>
@@ -293,19 +299,13 @@
         </div>
 
         <div class="bkv-toolbar">
-            <div style="width:170px;">
-                <label class="admin-form-label">Top X surligné</label>
-                <input type="number" id="bkt-top-x" class="form-control" min="0" max="20"
-                       value="{{ (int) ($bracket['top_x'] ?? 0) }}">
-            </div>
             <button type="button" class="admin-btn" id="bkt-add-row"><i class="fa-solid fa-plus"></i> Ajouter une ligne</button>
         </div>
 
-        {{-- État de l'éditeur : lignes du classement et top X, sérialisés
-             en POST au moment d'enregistrer (admin_table_editor.js). --}}
+        {{-- État de l'éditeur : lignes du classement, sérialisées en
+             POST au moment d'enregistrer (admin_table_editor.js). --}}
         <script type="application/json" id="bkt-data">{!! json_encode([
             'rows' => $bracket['rows'] ?? [],
-            'top_x' => (int) ($bracket['top_x'] ?? 0),
         ], JSON_HEX_TAG | JSON_UNESCAPED_UNICODE) !!}</script>
         <div id="bkt-serialized" aria-hidden="true"></div>
 

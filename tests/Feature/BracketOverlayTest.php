@@ -207,7 +207,7 @@ class BracketOverlayTest extends TestCase
         $this->assertGreaterThan(time(), (int) $response->json('version'));
     }
 
-    public function test_le_classement_affiche_rangs_et_top_x_sans_drapeaux(): void
+    public function test_le_classement_affiche_rangs_et_medailles_sans_top_x(): void
     {
         $this->seedBracket([
             'kind' => 'table',
@@ -216,7 +216,6 @@ class BracketOverlayTest extends TestCase
                 ['name' => 'AKATSUKI', 'avatar' => '', 'country' => 'DominicanRepublic', 'played' => 10, 'won' => 7, 'lost' => 3, 'score' => 21, 'penalty' => 2],
                 ['name' => 'RUINATION', 'avatar' => '', 'country' => 'Europe', 'played' => 10, 'won' => 5, 'lost' => 5, 'score' => 15, 'penalty' => 0],
             ],
-            'top_x' => 2,
         ]);
 
         $response = $this->get('/bracket-overlay/'.self::TOKEN);
@@ -226,7 +225,9 @@ class BracketOverlayTest extends TestCase
         $this->assertStringContainsString('DD14', $html);
         $this->assertStringContainsString('AKATSUKI', $html);
         $this->assertStringContainsString('Pén', $html);
-        $this->assertStringContainsString('class="qualified"', $html);
+        // Plus de surlignage « top X » : seul le top 3 médaille (CSS)
+        // distingue les lignes.
+        $this->assertStringNotContainsString('qualified', $html);
         $this->assertStringNotContainsString('flags/', $html);
         $this->assertStringNotContainsString('class="flag"', $html);
     }
@@ -238,12 +239,11 @@ class BracketOverlayTest extends TestCase
             'rows' => [
                 ['name' => 'DD14', 'avatar' => '', 'country' => 'France', 'played' => 10, 'won' => 9, 'lost' => 1, 'score' => 27, 'penalty' => 0],
             ],
-            'top_x' => 0,
         ]);
 
         $html = (string) $this->get('/bracket-overlay/'.self::TOKEN)->getContent();
         $this->assertStringNotContainsString('Pén', $html);
-        $this->assertStringNotContainsString('class="qualified"', $html);
+        $this->assertStringNotContainsString('qualified', $html);
     }
 
     public function test_la_page_editeur_admin_rend_l_editeur_visuel_bracket(): void
@@ -279,6 +279,7 @@ class BracketOverlayTest extends TestCase
         $this->assertStringContainsString('bracket_layout.js', $html);
         // Générateur de squelette et désignation du match « EN DIRECT ».
         $this->assertStringContainsString('Générer le squelette', $html);
+        $this->assertStringContainsString('Système suisse', $html);
         $this->assertStringContainsString('EN DIRECT', $html);
         $this->assertStringContainsString('/bracket-overlay/'.self::TOKEN, $html);
     }
@@ -290,7 +291,6 @@ class BracketOverlayTest extends TestCase
             'rows' => [
                 ['name' => 'DD14', 'avatar' => '', 'country' => 'France', 'played' => 10, 'won' => 9, 'lost' => 1, 'score' => 27, 'penalty' => 0],
             ],
-            'top_x' => 1,
         ]);
 
         $response = $this->withSession(['steamid' => '76561198012345678', 'is_admin' => true])
@@ -302,14 +302,13 @@ class BracketOverlayTest extends TestCase
         // rendu par admin_table_editor.js.
         $this->assertStringContainsString('"name":"DD14"', $html);
         $this->assertStringContainsString('admin_table_editor.js', $html);
-        $this->assertStringContainsString('Top X surligné', $html);
         $this->assertStringContainsString('Ajouter une ligne', $html);
         $this->assertStringContainsString('/bracket-overlay/'.self::TOKEN, $html);
     }
 
     public function test_l_enregistrement_depuis_l_editeur_visuel_conserve_le_schema_post_classement(): void
     {
-        $this->seedBracket(['kind' => 'table', 'rows' => [], 'top_x' => 0]);
+        $this->seedBracket(['kind' => 'table', 'rows' => []]);
 
         // Schéma sérialisé par l'éditeur visuel (admin_table_editor.js) :
         // identique au formulaire historique, le contrôleur n'a pas changé.
@@ -318,7 +317,6 @@ class BracketOverlayTest extends TestCase
                 'eyebrow' => 'ETF2L Highlander Saison 36',
                 'title' => 'Division 2',
                 'accent' => 'Poule',
-                'top_x' => 2,
                 'rows' => [
                     [
                         'name' => 'DD14', 'avatar' => '', 'country' => 'France',
@@ -334,7 +332,7 @@ class BracketOverlayTest extends TestCase
 
         $bracket = (new BracketRepository)->find(self::TOKEN);
         $this->assertSame('table', $bracket['kind']);
-        $this->assertSame(2, $bracket['top_x']);
+        $this->assertArrayNotHasKey('top_x', $bracket);
         $this->assertSame('DD14', $bracket['rows'][0]['name']);
         $this->assertSame(27, $bracket['rows'][0]['score']);
         $this->assertSame(2, $bracket['rows'][1]['penalty']);
@@ -366,7 +364,7 @@ class BracketOverlayTest extends TestCase
                         ],
                     ],
                     [
-                        'id' => 'c2', 'label' => 'Grand Final', 'lane' => 'final',
+                        'id' => 'c2', 'label' => 'Grand Final', 'lane' => 'final', 'flat' => '0',
                         'matches' => [
                             [
                                 'id' => 'm2',
@@ -390,6 +388,7 @@ class BracketOverlayTest extends TestCase
         $bracket = (new BracketRepository)->find(self::TOKEN);
         $this->assertSame('WB R1', $bracket['columns'][0]['label']);
         $this->assertSame('upper', $bracket['columns'][0]['lane']);
+        $this->assertFalse($bracket['columns'][0]['flat']);
         $this->assertSame('DD14', $bracket['columns'][0]['matches'][0]['teams'][0]['name']);
         $this->assertSame('6', $bracket['columns'][0]['matches'][0]['teams'][0]['score']);
         $this->assertSame(['column' => 'c1', 'match' => 'm1'], $bracket['live']);
@@ -461,6 +460,61 @@ class BracketOverlayTest extends TestCase
         $this->assertStringContainsString('ZeroKen', $html);
     }
 
+    public function test_le_format_suisse_rend_des_rounds_plats_sans_connecteurs(): void
+    {
+        // Squelette « système suisse » : 6 équipes → ceil(log2(6)) = 3
+        // rounds de 3 cases, colonnes « à plat » (flat) — le moteur de
+        // layout (bracket_layout.js) ne câble alors aucun connecteur
+        // entre les rounds, les paires étant indépendantes.
+        $teams = ['DD14', 'AKATSUKI', 'RUINATION', 'ZeroKen', 'TR9s', 'Distemper'];
+        $this->seedBracket([
+            'columns' => [
+                $this->swissRound('r1', 'Round 1', $teams),
+                $this->swissRound('r2', 'Round 2', $teams),
+            ],
+            'live' => null,
+        ]);
+
+        $html = (string) $this->get('/bracket-overlay/'.self::TOKEN)->getContent();
+        $this->assertStringContainsString('"flat":true', $html);
+        $this->assertStringContainsString('Round 1', $html);
+        $this->assertStringContainsString('Round 2', $html);
+        $this->assertStringContainsString('AKATSUKI', $html);
+    }
+
+    public function test_l_enregistrement_depuis_l_editeur_visuel_persiste_les_colonnes_plates(): void
+    {
+        $this->seedBracket(['columns' => [], 'live' => null]);
+
+        // Schéma sérialisé par l'éditeur visuel (admin_bracket_editor.js)
+        // pour un squelette suisse : flat = 1 sur chaque colonne de round.
+        $this->withSession(['steamid' => '76561198012345678', 'is_admin' => true])
+            ->post('/admin/overlay/bracket/'.self::TOKEN.'/update', [
+                'eyebrow' => 'Swiss Round Robin',
+                'title' => 'Division 1',
+                'accent' => 'Swiss',
+                'columns' => [
+                    [
+                        'id' => 'r1', 'label' => 'Round 1', 'lane' => 'upper', 'flat' => '1',
+                        'matches' => [
+                            [
+                                'id' => 'm1',
+                                'team1_name' => 'DD14', 'team1_avatar' => '', 'team1_country' => '', 'team1_score' => '',
+                                'team2_name' => 'AKATSUKI', 'team2_avatar' => '', 'team2_country' => '', 'team2_score' => '',
+                                'series_token' => '', 'manual_scores' => '0', 'label' => '',
+                            ],
+                        ],
+                    ],
+                ],
+                'live_match' => '',
+            ])
+            ->assertRedirect();
+
+        $bracket = (new BracketRepository)->find(self::TOKEN);
+        $this->assertTrue($bracket['columns'][0]['flat']);
+        $this->assertSame('Round 1', $bracket['columns'][0]['label']);
+    }
+
     // ─── Amorçage ────────────────────────────────────────────────────────
 
     /**
@@ -478,6 +532,35 @@ class BracketOverlayTest extends TestCase
             'live' => null,
             'created_at' => time() - 100,
         ], $overrides));
+    }
+
+    /**
+     * Colonne de round suisse : cases à plat, deux équipes nommées par
+     * case, pas de série suivie.
+     *
+     * @param  array<int, string>  $teamNames
+     * @return array<string, mixed>
+     */
+    private function swissRound(string $id, string $label, array $teamNames): array
+    {
+        $matches = [];
+        foreach (array_chunk($teamNames, 2) as $index => $pair) {
+            $matches[] = [
+                'id' => $id.'m'.($index + 1),
+                'teams' => [
+                    ['name' => $pair[0], 'avatar' => '', 'country' => '', 'score' => ''],
+                    ['name' => $pair[1] ?? '', 'avatar' => '', 'country' => '', 'score' => ''],
+                ],
+                'label' => '',
+                'series_token' => null,
+                'manual_scores' => false,
+            ];
+        }
+
+        return [
+            'id' => $id, 'label' => $label, 'lane' => 'upper', 'flat' => true,
+            'matches' => $matches,
+        ];
     }
 
     private function seedSeries(): void

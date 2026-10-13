@@ -422,15 +422,6 @@
     box-shadow: inset 4px 0 0 #cd8a4e;
 }
 
-.bkt-standings tbody tr.qualified:nth-child(n+4) td {
-    background: rgba(42, 74, 42, 0.55);
-}
-
-.bkt-standings tbody tr.qualified:nth-child(n+4) td.rank {
-    color: #8c8;
-    box-shadow: inset 4px 0 0 #8c8;
-}
-
 .bkt-standings tbody tr:hover td {
     background: rgba(155, 109, 255, 0.14);
 }

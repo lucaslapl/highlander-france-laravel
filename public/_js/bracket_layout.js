@@ -10,6 +10,10 @@
      alimentantes (câblage standard floor(i/2), rattrapé sur la dernière
      case disponible si la colonne suivante en compte moins — pré-remplissage,
      BYE) ;
+   - les colonnes marquées « à plat » (flat, ex : rounds d'un système
+     suisse) ne s'alimentent pas entre elles : espacement régulier et
+     aucun connecteur, les paires d'un round étant indépendantes des
+     précédentes ;
    - les voies haute et basse sont empilées, la grande finale se place à
      droite des voies, centrée sur l'ensemble, avec ses cases compactes
      additionnelles empilées dessous (ex : match de 3è place) ;
@@ -48,21 +52,28 @@
     /* Centres verticaux des cases d'une voie, colonne par colonne :
        moyenne des alimentantes pour chaque case, repli sur l'espacement
        régulier si elle n'en a pas, puis anti-chevauchement (formes
-       manuelles où les compteurs ne suivent pas les puissances de deux). */
-    function laneCenters(counts, strideY) {
+       manuelles où les compteurs ne suivent pas les puissances de deux).
+       Une colonne « à plat » (flat) ou précédée d'une telle colonne ne
+       reçoit aucun câblage : centres réguliers purs. */
+    function laneCenters(columns, strideY) {
         var centers = [];
-        counts.forEach(function (n, depth) {
+        columns.forEach(function (column, depth) {
             centers.push([]);
-            for (var j = 0; j < n; j++) {
-                centers[depth].push(depth === 0 ? (j + 0.5) * strideY : 0);
+            for (var j = 0; j < (column.matches || []).length; j++) {
+                centers[depth].push((j + 0.5) * strideY);
             }
         });
 
-        for (var depth = 1; depth < counts.length; depth++) {
+        for (var depth = 1; depth < columns.length; depth++) {
             var previous = centers[depth - 1];
             var current = centers[depth];
+            var linked = !columns[depth - 1].flat && !columns[depth].flat;
 
             for (var j = 0; j < current.length; j++) {
+                if (!linked) {
+                    continue;
+                }
+
                 var sum = 0;
                 var feeders = 0;
                 for (var i = 0; i < previous.length; i++) {
@@ -106,8 +117,8 @@
         });
 
         var centers = {
-            upper: laneCenters(lanes.upper.map(function (c) { return (c.matches || []).length; }), strideY),
-            lower: laneCenters(lanes.lower.map(function (c) { return (c.matches || []).length; }), strideY)
+            upper: laneCenters(lanes.upper, strideY),
+            lower: laneCenters(lanes.lower, strideY)
         };
 
         /* Hauteur de chaque voie (étendue réelle des cases posées). */
@@ -267,6 +278,12 @@
 
         ['upper', 'lower'].forEach(function (lane) {
             for (var depth = 1; depth < lanes[lane].length; depth++) {
+                /* Colonnes à plat : pas de connecteur entre les rounds
+                   (système suisse — paires indépendantes). */
+                if (lanes[lane][depth - 1].flat || lanes[lane][depth].flat) {
+                    continue;
+                }
+
                 var sources = placed[lane].filter(function (card) { return card.depth === depth - 1; });
                 var targets = placed[lane].filter(function (card) { return card.depth === depth; });
                 sources.forEach(function (source) {

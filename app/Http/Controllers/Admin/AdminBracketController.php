@@ -102,7 +102,6 @@ final class AdminBracketController extends Controller
             $bracket['live'] = null;
         } else {
             $bracket['rows'] = [];
-            $bracket['top_x'] = 0;
         }
 
         $this->brackets->save($bracket);
@@ -150,7 +149,7 @@ final class AdminBracketController extends Controller
      * POST /admin/overlay/bracket/{token}/update — enregistre le
      * formulaire d'édition : titres, colonnes (labels, voies, cases,
      * équipes, avatars, scores), attachement de série et score manuel du
-     * match live, ou lignes du classement et top X.
+     * match live, ou lignes du classement.
      */
     public function update(Request $request, string $token): RedirectResponse
     {
@@ -174,8 +173,9 @@ final class AdminBracketController extends Controller
             $bracket['live'] = $this->liveFromRequest($request, $bracket['columns']);
         } else {
             $bracket['rows'] = $this->rowsFromRequest($request);
-            $topX = (int) $request->input('top_x', 0);
-            $bracket['top_x'] = max(0, min(20, $topX));
+            // Les anciens payloads portaient un « top X » de surlignage :
+            // option retirée (seul le top 3 médaille reste), on la nettoie.
+            unset($bracket['top_x']);
         }
 
         $this->brackets->save($bracket);
@@ -264,6 +264,9 @@ final class AdminBracketController extends Controller
                 'id' => $this->clip((string) ($columnInput['id'] ?? ''), 16) ?: $this->newId('c'),
                 'label' => $this->clip((string) ($columnInput['label'] ?? ''), self::MAX_LABEL_LEN),
                 'lane' => in_array($columnInput['lane'] ?? '', ['upper', 'lower', 'final'], true) ? (string) $columnInput['lane'] : 'upper',
+                // Colonne « à plat » : rounds indépendants (système suisse),
+                // sans connecteurs ni câblage vers la colonne suivante.
+                'flat' => ($columnInput['flat'] ?? '') === '1',
                 'matches' => $matches,
             ];
         }

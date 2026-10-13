@@ -130,11 +130,12 @@ final class BracketOverlayController extends Controller
 
     /**
      * Prépare les données de rendu du bracket : colonnes en voie
-     * upper/lower/final, label éventuel de chaque case (titre de carte
-     * dans la voie finale — grande finale, match de 3è place…), statuts
-     * win/lose/pending déduits des scores, et score du match live
-     * remplacé par celui de sa série attachée (sauf score manuel forcé,
-     * pour rattraper une erreur de saisie).
+     * upper/lower/final (les colonnes « à plat » du système suisse
+     * restent en voie upper, sans connecteurs), label éventuel de chaque
+     * case (titre de carte dans la voie finale — grande finale, match de
+     * 3è place…), statuts win/lose/pending déduits des scores, et score
+     * du match live remplacé par celui de sa série attachée (sauf score
+     * manuel forcé, pour rattraper une erreur de saisie).
      *
      * @param  array<string, mixed>  $bracket
      * @return array<string, mixed>
@@ -191,6 +192,7 @@ final class BracketOverlayController extends Controller
                 'id' => (string) ($column['id'] ?? ''),
                 'label' => (string) ($column['label'] ?? ''),
                 'lane' => (string) ($column['lane'] ?? 'upper'),
+                'flat' => ! empty($column['flat']),
                 'matches' => $matches,
             ];
         }
@@ -205,15 +207,14 @@ final class BracketOverlayController extends Controller
 
     /**
      * Prépare les données de rendu de la table de classement : rang,
-     * drapeau, surlignage du top X.
+     * drapeau. Le top 3 médaille (or / argent / bronze) est affiché par
+     * le CSS selon l'ordre des lignes.
      *
      * @param  array<string, mixed>  $bracket
      * @return array<string, mixed>
      */
     private function tableData(array $bracket): array
     {
-        $topX = (int) ($bracket['top_x'] ?? 0);
-
         $rows = [];
         $rank = 0;
         foreach ($bracket['rows'] ?? [] as $row) {
@@ -231,7 +232,6 @@ final class BracketOverlayController extends Controller
                 'lost' => (int) ($row['lost'] ?? 0),
                 'score' => (int) ($row['score'] ?? 0),
                 'penalty' => (int) ($row['penalty'] ?? 0),
-                'qualified' => $topX > 0 && $rank <= $topX,
             ];
         }
 

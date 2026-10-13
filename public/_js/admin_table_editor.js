@@ -1,13 +1,13 @@
 /* Éditeur visuel « Overlay Classement » (/admin/overlay/bracket/{token},
    type table) : l'aperçu reprend l'habillage de l'overlay OBS
    (overlay_table.css — médailles or / argent / bronze pour le top 3,
-   alternance violette, surlignage vert des qualifiés au-delà du top 3,
-   colonne « Pén » dès qu'une pénalité existe) et se met à jour à chaque
-   saisie. Chaque ligne se clique : l'édition se fait dans le panneau
-   latéral (équipe, statistiques, points, pénalité), les déplacements et
-   la suppression aussi. Comme l'éditeur bracket, l'état est sérialisé au
-   POST dans le schéma historique (rows[i][…] + top_x) : le contrôleur et
-   le format de stockage ne changent pas.
+   alternance violette, colonne « Pén » dès qu'une pénalité existe) et
+   se met à jour à chaque saisie. Chaque ligne se clique : l'édition se
+   fait dans le panneau latéral (équipe, statistiques, points,
+   pénalité), les déplacements et la suppression aussi. Comme l'éditeur
+   bracket, l'état est sérialisé au POST dans le schéma historique
+   (rows[i][…]) : le contrôleur et le format de stockage ne changent
+   pas.
 
    Le remplissage assisté ETF2L (admin_etf2l_teams.js) équipe le bloc
    .js-etf2l-team du panneau : les valeurs du menu remontent dans l'état
@@ -25,7 +25,6 @@
 
     var state = JSON.parse(dataEl.textContent || '{}');
     state.rows = Array.isArray(state.rows) ? state.rows : [];
-    state.top_x = parseInt(state.top_x, 10) || 0;
 
     var selected = null; /* index de la ligne sélectionnée */
     var canvas = document.getElementById('bkt-canvas');
@@ -90,8 +89,7 @@
         state.rows.forEach(function (row, index) {
             var rank = index + 1;
             var tr = document.createElement('tr');
-            tr.className = (state.top_x > 0 && rank <= state.top_x ? 'qualified' : '')
-                + (selected === index ? ' bkt-row--selected' : '');
+            tr.className = selected === index ? 'bkt-row--selected' : '';
             tr.title = 'Cliquer pour éditer cette ligne';
 
             var cells = [
@@ -204,12 +202,6 @@
     bindRow('bkt-score', function (row, input) { row.score = int(input.value); });
     bindRow('bkt-penalty', function (row, input) { row.penalty = int(input.value); });
 
-    var topXInput = document.getElementById('bkt-top-x');
-    topXInput.addEventListener('input', function () {
-        state.top_x = Math.max(0, Math.min(20, parseInt(this.value, 10) || 0));
-        render();
-    });
-
     /* Remplissage assisté ETF2L : le script partagé remplit nom / avatar /
        pays sans émettre d'événement sur les champs ; son listener 'change'
        étant enregistré avant le nôtre, les valeurs sont à jour quand on les
@@ -289,8 +281,6 @@
             add(prefix + '[score]', int(row.score));
             add(prefix + '[penalty]', int(row.penalty));
         });
-
-        add('top_x', state.top_x);
     });
 
     syncPanel();
