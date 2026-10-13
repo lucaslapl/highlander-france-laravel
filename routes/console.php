@@ -21,8 +21,9 @@ Schedule::command('app:update-index-stats')->everyThreeHours()->withoutOverlappi
 // Caches JSON du classement (leaderboard) (filet de sécurité).
 Schedule::command('app:generate-json')->everyThreeHours()->withoutOverlapping(30);
 
-// Agenda des matchs ETF2L français.
-Schedule::command('app:sync-etf2l')->everyThirtyMinutes()->withoutOverlapping(120);
+// Agenda des matchs ETF2L français (toutes les 2 h : le cache interne
+// lisse déjà les variations, inutile de marteler l'API toutes les 30 min).
+Schedule::command('app:sync-etf2l')->everyTwoHours()->withoutOverlapping(120);
 
 // Niveaux réels des joueurs inscrits (division moyenne ETF2L par mode).
 Schedule::command('app:compute-player-levels')->weeklyOn(0, '5:00')->withoutOverlapping(60);
