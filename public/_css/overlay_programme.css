@@ -209,6 +209,7 @@ html, body {
     height: 34px;
     width: 1000px;
     max-width: 64vw;
+    padding-top: 10px;
 }
 
 .slideshow-msg {
