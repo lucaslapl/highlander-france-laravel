@@ -184,8 +184,13 @@ html, body {
     gap: 24px;
     text-align: center;
     box-sizing: content-box;
-    border-left: 1px solid linear-gradient(180deg, var(--violet-line), rgba(186, 53, 215, 0.15));
-    border-bottom: 1px solid linear-gradient(90deg, var(--violet-line), rgba(186, 53, 215, 0.15));
+    /* Bordures gauche et basse en dégradé : linear-gradient() n'est pas
+       une couleur, donc pas utilisable dans border-color. On peint à la
+       place deux dégradés en arrière-plan, calés sur chaque bord — un
+       vertical pour la gauche, un horizontal pour le bas. */
+    background:
+        linear-gradient(180deg, var(--violet-line), rgba(186, 53, 215, 0.15)) left / 1px 100% no-repeat,
+        linear-gradient(90deg, var(--violet-line), rgba(186, 53, 215, 0.15)) bottom / 100% 1px no-repeat;
 }
 
 .welcome {
