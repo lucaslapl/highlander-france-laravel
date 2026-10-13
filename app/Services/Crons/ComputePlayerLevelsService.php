@@ -46,8 +46,11 @@ final class ComputePlayerLevelsService
     /** Timeout cURL par appel (connexion plafonnée à 5 s côté JsonClient). */
     private const HTTP_TIMEOUT_S = 15;
 
-    /** Durée de vie (s) du cache des historiques de résultats joueurs. */
-    private const CACHE_TTL_RESULTS = 7 * 86400;
+    /** Durée de vie (s) du cache des historiques de résultats joueurs :
+     * 6 jours, juste sous la cadence hebdomadaire — le run suivant (dimanche
+     * pour les niveaux, mardi pour le palmarès) trouve un cache encore chaud
+     * et ne re-télécharge pas tout à chaque fois. */
+    private const CACHE_TTL_RESULTS = 6 * 86400;
 
     private const RESULTS_PER_PAGE = 50;
 

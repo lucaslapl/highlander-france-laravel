@@ -11,7 +11,9 @@ namespace App\Services;
 final class ApiStatus
 {
     private const CACHE_FILE = 'api_status_cache.json';
+
     private const CACHE_TTL = 60;
+
     private const SLOW_MS = 2000;
 
     /**
@@ -56,12 +58,21 @@ final class ApiStatus
         (new Etf2lRateLimiter)->wait();
 
         $r = $this->curl('https://api-v2.etf2l.org/matches?scheduled=1');
+
+        // Le check participe au budget : on remonte le quota restant annoncé
+        // par l'API (x-ratelimit-*) au limiteur global et au dashboard.
+        (new Etf2lRateLimiter)->reportFromHeaders($r['headers']);
+
         $data = json_decode((string) $r['body'], true);
         $valid = $r['http_code'] === 200 && is_array($data['results']['data'] ?? null);
 
         // Un 429 signifie que l'IP du site a épuisé le quota de la minute :
         // la quasi-totalité vient de nos propres scripts (crons, overlays).
         $message = $this->message($valid, $r);
+        if ($valid && isset($r['headers']['x-ratelimit-remaining'])) {
+            $limit = $r['headers']['x-ratelimit-limit'] ?? '?';
+            $message .= ' — budget minute : '.$r['headers']['x-ratelimit-remaining'].'/'.$limit.' requêtes restantes';
+        }
         if ((int) $r['http_code'] === 429) {
             $message = 'HTTP 429 : quota ETF2L de la minute épuisé (rafales de scripts du site ?) — réessayer dans ~1 min.';
         }
@@ -103,7 +114,7 @@ final class ApiStatus
                 'script' => 'app:sync-steam',
             ];
         } else {
-            $r = $this->curl('https://api.steampowered.com/ISteamUser/GetPlayerSummaries/v0002/?key=' . $key . '&steamids=76561197960265729');
+            $r = $this->curl('https://api.steampowered.com/ISteamUser/GetPlayerSummaries/v0002/?key='.$key.'&steamids=76561197960265729');
             $data = json_decode((string) $r['body'], true);
             $resp = $data['response'] ?? null;
             $valid = $r['http_code'] === 200 && is_array($resp) && empty($resp['error'] ?? null);
@@ -124,18 +135,30 @@ final class ApiStatus
     }
 
     /**
-     * @return array{body: string, http_code: int, latency_ms: int, error: string}
+     * @return array{body: string, http_code: int, latency_ms: int, error: string, headers: array<string, string>}
      */
     private function curl(string $url, int $timeout = 5): array
     {
+        // Collecte des en-têtes de réponse (noms normalisés en minuscules) :
+        // le check ETF2L y lit le budget restant de la minute.
+        $responseHeaders = [];
+
         $ch = curl_init($url);
         curl_setopt_array($ch, [
             CURLOPT_RETURNTRANSFER => true,
             CURLOPT_FOLLOWLOCATION => true,
-            CURLOPT_TIMEOUT        => $timeout,
+            CURLOPT_TIMEOUT => $timeout,
             CURLOPT_SSL_VERIFYPEER => config('hlfr.curl_verify_ssl'),
-            CURLOPT_USERAGENT      => 'Highlander France Bot/1.0',
-            CURLOPT_HTTPHEADER     => ['Accept: application/json'],
+            CURLOPT_USERAGENT => 'Highlander France Bot/1.0',
+            CURLOPT_HTTPHEADER => ['Accept: application/json'],
+            CURLOPT_HEADERFUNCTION => static function ($ch, string $line) use (&$responseHeaders): int {
+                $pos = strpos($line, ':');
+                if ($pos !== false) {
+                    $responseHeaders[strtolower(trim(substr($line, 0, $pos)))] = trim(substr($line, $pos + 1));
+                }
+
+                return strlen($line);
+            },
         ]);
         $body = curl_exec($ch);
         $info = curl_getinfo($ch);
@@ -147,12 +170,13 @@ final class ApiStatus
             'http_code' => (int) ($info['http_code'] ?? 0),
             'latency_ms' => (int) round(($info['total_time'] ?? 0) * 1000),
             'error' => (string) $error,
+            'headers' => $responseHeaders,
         ];
     }
 
     private function evalStatus(int $httpCode, bool $valid, int $latencyMs): string
     {
-        if (!$valid || $httpCode <= 0) {
+        if (! $valid || $httpCode <= 0) {
             return 'down';
         }
         if ($latencyMs > self::SLOW_MS) {
@@ -167,11 +191,11 @@ final class ApiStatus
         if ($valid) {
             return 'API opérationnelle';
         }
-        if (!empty($r['error'])) {
-            return 'Erreur cURL : ' . $r['error'];
+        if (! empty($r['error'])) {
+            return 'Erreur cURL : '.$r['error'];
         }
         if ($r['http_code'] > 0) {
-            return 'Réponse invalide (HTTP ' . $r['http_code'] . ')';
+            return 'Réponse invalide (HTTP '.$r['http_code'].')';
         }
 
         return 'Connexion impossible';

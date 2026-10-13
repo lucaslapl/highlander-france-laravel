@@ -32,8 +32,10 @@ final class ComputePlayerPalmaresService
 
     private const HTTP_TIMEOUT_S = 15;
 
-    /** TTL du cache des résultats de joueurs (1 semaine). */
-    private const CACHE_TTL_RESULTS = 7 * 86400;
+    /** TTL du cache des résultats de joueurs : 6 jours, juste sous la
+     * cadence hebdomadaire (run des niveaux dimanche, palmarès mardi) pour
+     * que chaque run trouve un cache encore chaud. */
+    private const CACHE_TTL_RESULTS = 6 * 86400;
 
     /** TTL du cache des tables de compétition (30 jours, immuables une fois la saison finie). */
     private const CACHE_TTL_TABLES = 30 * 86400;

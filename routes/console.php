@@ -27,8 +27,11 @@ Schedule::command('app:sync-etf2l')->everyThirtyMinutes()->withoutOverlapping(12
 // Niveaux réels des joueurs inscrits (division moyenne ETF2L par mode).
 Schedule::command('app:compute-player-levels')->weeklyOn(0, '5:00')->withoutOverlapping(60);
 
-// Palmarès ETF2L des joueurs (classements finaux + playoffs).
-Schedule::command('app:compute-player-palmares')->weeklyOn(0, '5:30')->withoutOverlapping(180);
+// Palmarès ETF2L des joueurs (classements finaux + playoffs). Décalé au
+// mardi : le cache des résultats joueurs (TTL 6 j) est encore chaud depuis
+// le run des niveaux de dimanche, et les deux crons lourds ne se
+// partagent plus le même budget ETF2L le même matin.
+Schedule::command('app:compute-player-palmares')->weeklyOn(2, '5:30')->withoutOverlapping(180);
 
 // Chaînes Twitch en direct (badge "EN DIRECT" sur les matchs streamés).
 Schedule::command('app:sync-twitch')->everyMinute()->withoutOverlapping(10);

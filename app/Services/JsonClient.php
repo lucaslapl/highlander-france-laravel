@@ -56,6 +56,13 @@ final class JsonClient
         $httpCode = (int) curl_getinfo($ch, CURLINFO_RESPONSE_CODE);
         curl_close($ch);
 
+        // Remontée du budget ETF2L au limiteur global : chaque réponse de
+        // l'API annonce les requêtes restantes de la minute (x-ratelimit-*),
+        // les prochains appels adapteront leur pause au quota réel.
+        if ($responseHeaders !== [] && str_contains($url, 'api-v2.etf2l.org')) {
+            (new Etf2lRateLimiter)->reportFromHeaders($responseHeaders);
+        }
+
         $data = json_decode((string) $response, true);
 
         return [
