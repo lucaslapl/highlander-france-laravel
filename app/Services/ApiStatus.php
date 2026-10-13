@@ -155,7 +155,7 @@ final class ApiStatus
         $responseHeaders = [];
 
         $ch = curl_init($url);
-        curl_setopt_array($ch, [
+        $options = [
             CURLOPT_RETURNTRANSFER => true,
             CURLOPT_FOLLOWLOCATION => true,
             CURLOPT_TIMEOUT => $timeout,
@@ -170,7 +170,15 @@ final class ApiStatus
 
                 return strlen($line);
             },
-        ]);
+        ];
+
+        // Le check ETF2L doit mesurer le budget de la même sortie que les
+        // appels réels du site : proxy dédié si configuré (voir JsonClient).
+        if (str_contains($url, 'api-v2.etf2l.org')) {
+            $options += JsonClient::etf2lProxyOptions();
+        }
+
+        curl_setopt_array($ch, $options);
         $body = curl_exec($ch);
         $info = curl_getinfo($ch);
         $error = curl_error($ch);

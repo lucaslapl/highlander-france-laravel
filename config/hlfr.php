@@ -55,6 +55,16 @@ return [
     // env() ne retourne plus rien depuis le code applicatif.
     'steam_api_key' => env('STEAM_API_KEY', ''),
 
+    // Proxy dédiacé pour les seuls appels à l'API ETF2L v2 : sur un hébergement
+    // mutualisé, l'IP sortante — et donc le throttle de 60 req/min, compté
+    // par IP — est partagée avec d'autres clients de l'hébergeur. Un proxy à
+    // IP fixe affine le site à son propre budget. Vide = sortie directe
+    // (comportement inchangé). Format : http://hote:port ou socks5://hote:port.
+    'etf2l_proxy' => env('ETF2L_PROXY', ''),
+
+    // Authentification du proxy ETF2L éventuelle, format user:password.
+    'etf2l_proxy_auth' => env('ETF2L_PROXY_AUTH', ''),
+
     // Clé API tf2esports (https://tf2esports.com) — analyses & classements TF2.
     // Lecture seule, rate-limit 60 req/min. Envoyée en header X-API-Key.
     'tf2esports_api_key' => env('TF2ESPORTS_API_KEY', ''),

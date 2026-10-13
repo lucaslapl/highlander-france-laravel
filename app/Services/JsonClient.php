@@ -31,6 +31,12 @@ final class JsonClient
             $options[CURLOPT_HTTPHEADER] = $headers;
         }
 
+        // Sortie par proxy dédié pour l'API ETF2L (throttle compté par IP
+        // sortante, partagée sur hébergement mutualisé — voir config/hlfr.php).
+        if (str_contains($url, 'api-v2.etf2l.org')) {
+            $options += self::etf2lProxyOptions();
+        }
+
         // Collecte des en-têtes de réponse (noms normalisés en minuscules).
         $responseHeaders = [];
         $options[CURLOPT_HEADERFUNCTION] = static function ($ch, string $line) use (&$responseHeaders): int {
@@ -71,6 +77,33 @@ final class JsonClient
             'curl_error' => '',
             'headers' => $responseHeaders,
         ];
+    }
+
+    /**
+     * Options cURL de sortie par proxy dédié pour l'API ETF2L v2 : sur un
+     * hébergement mutualisé, l'IP sortante (et donc le throttle de 60 req/min,
+     * compté par IP) est partagée avec d'autres clients de l'hébergeur — un
+     * proxy à IP fixe affine le site à son propre budget. Vide si aucun
+     * proxy n'est configuré (comportement inchangé).
+     *
+     * @return array<int, string>
+     */
+    public static function etf2lProxyOptions(): array
+    {
+        $proxy = (string) config('hlfr.etf2l_proxy', '');
+
+        if ($proxy === '') {
+            return [];
+        }
+
+        $options = [CURLOPT_PROXY => $proxy];
+
+        $auth = (string) config('hlfr.etf2l_proxy_auth', '');
+        if ($auth !== '') {
+            $options[CURLOPT_PROXYUSERPWD] = $auth;
+        }
+
+        return $options;
     }
 
     /**
