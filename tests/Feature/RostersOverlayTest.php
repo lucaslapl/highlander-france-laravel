@@ -11,15 +11,18 @@ use Tests\TestCase;
 /**
  * Overlay OBS des rosters d'équipes : pages publiques par token (source
  * navigateur OBS, fond transparent) et endpoint de version interrogé par
- * la page pour se rafraîchir. Une seule équipe est affichée à la fois,
- * pilotée côté admin (bouton « Switcher le roster affiché ») : le switch
- * bump la version avec le drapeau replay_enter pour rejouer l'animation
- * d'apparition, les autres enregistrements restent des rafraîchissements
- * statiques. L'outil admin (création / édition) impose le format choisi à
- * la création (Highlander = neuf classes, 6v6 = six classes) : les
- * affectations suivent cet ordre, chaque joueur peut être marqué merc
- * pour le badge rose de l'overlay. Aucune donnée sensible : noms
- * d'équipes et pseudos publics des joueurs inscrits.
+ * la page pour se rafraîchir. Une seule équipe est affichée à la fois en
+ * Highlander, pilotée côté admin (bouton « Switcher le roster
+ * affiché ») : le switch bump la version avec le drapeau replay_enter
+ * pour rejouer l'animation d'apparition, les autres enregistrements
+ * restent des rafraîchissements statiques. En 6v6, les deux équipes
+ * s'affichent face à face sur la même page, rosters en miroir (les
+ * Medics au centre), sans switch. L'outil admin (création / édition)
+ * impose le format choisi à la création (Highlander = neuf classes,
+ * 6v6 = six classes) : les affectations suivent cet ordre, chaque
+ * joueur peut être marqué merc pour le badge rose de l'overlay.
+ * Aucune donnée sensible : noms d'équipes et pseudos publics des
+ * joueurs inscrits.
  */
 class RostersOverlayTest extends TestCase
 {
@@ -127,7 +130,8 @@ class RostersOverlayTest extends TestCase
             ->assertSee('Équipe B')
             ->assertSee('Scout')
             ->assertSee('Spy')
-            ->assertSee('Remplissage assisté');
+            ->assertSee('Remplissage assisté')
+            ->assertSee('Switcher le roster affiché');
     }
 
     public function test_l_editeur_6v6_numerote_les_classes_dupliquees(): void
@@ -140,7 +144,11 @@ class RostersOverlayTest extends TestCase
             ->assertSee('Scout 1')
             ->assertSee('Scout 2')
             ->assertSee('Soldier 2')
-            ->assertSee('Demoman');
+            ->assertSee('Demoman')
+            // Les deux équipes sont affichées face à face : pas de
+            // bouton de switch pour ce format.
+            ->assertSee('face à face')
+            ->assertDontSee('Switcher le roster affiché');
     }
 
     public function test_la_mise_a_jour_enregistre_pseudos_mercs_et_equipes(): void
@@ -293,18 +301,37 @@ class RostersOverlayTest extends TestCase
         $this->assertFalse((bool) $overlay['replay_enter']);
     }
 
-    public function test_l_overlay_6v6_affiche_six_classes(): void
+    public function test_l_overlay_6v6_affiche_les_deux_equipes_face_a_face(): void
     {
-        $this->seedRosters(['format' => '6v6']);
+        $classes = ['scout', 'scout', 'soldier', 'soldier', 'demoman', 'medic'];
+        $this->seedRosters([
+            'format' => '6v6',
+            'teams' => [
+                'a' => $this->namedTeam('DD14', $classes),
+                'b' => $this->namedTeam('AKATSUKI', $classes),
+            ],
+        ]);
 
         $response = $this->get('/roster-overlay/'.self::TOKEN);
 
-        $response->assertOk();
+        $response->assertOk()
+            ->assertSee('DD14')
+            ->assertSee('AKATSUKI');
 
         $content = (string) $response->getContent();
         $this->assertSame(1, substr_count($content, 'roster-scene--6v6'));
-        // Une seule équipe rendue : six cartes de classe.
-        $this->assertSame(6, substr_count($content, '<li class="roster-class'));
+        // Les deux équipes rendues : douze cartes de classe.
+        $this->assertSame(12, substr_count($content, '<li class="roster-class'));
+
+        // Roster de l'équipe B en miroir : l'ordre des classes est
+        // inversé pour que les Medics se retrouvent au centre de la
+        // page, les Scouts aux extrémités.
+        preg_match_all('~classes_portraits/([a-z]+)\.png~', $content, $matches);
+        $this->assertSame(
+            ['scout', 'scout', 'soldier', 'soldier', 'demoman', 'medic',
+                'medic', 'demoman', 'soldier', 'soldier', 'scout', 'scout'],
+            $matches[1]
+        );
     }
 
     public function test_l_endpoint_de_version_renvoie_la_version_courante(): void
@@ -378,6 +405,20 @@ class RostersOverlayTest extends TestCase
                 $classes
             ),
         ];
+    }
+
+    /**
+     * Équipe nommée avec des slots vides pour les classes données.
+     *
+     * @param  array<int, string>  $classes
+     * @return array{name: string, avatar: string, etf2l_id: null, players: array<int, array{class: string, name: string, merc: bool}>}
+     */
+    private function namedTeam(string $name, array $classes): array
+    {
+        $team = $this->team($classes);
+        $team['name'] = $name;
+
+        return $team;
     }
 
     /**

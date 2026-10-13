@@ -15,11 +15,13 @@ use Illuminate\Http\Request;
 
 /**
  * Outil « Overlay Rosters » : présentation des rosters des deux équipes
- * d'un match pour les broadcasts OBS — une équipe affichée à la fois,
- * bascule par bouton sur l'overlay — en Highlander (grille 3x3 des neuf
- * classes) comme en 6v6 (six classes alignées sur toute la largeur).
- * Accessible aux admins et aux rôles caster / prod, aux côtés des autres
- * outils overlay (middleware overlay-tools).
+ * d'un match pour les broadcasts OBS — en Highlander, une équipe
+ * affichée à la fois (bascule par bouton sur l'overlay, grille 3x3
+ * des neuf classes) ; en 6v6, les deux équipes face à face sur la
+ * même page, rosters en miroir (les Medics au centre), six classes
+ * par équipe — le bouton de switch est alors masqué, il ne servirait
+ * à rien. Accessible aux admins et aux rôles caster / prod, aux côtés
+ * des autres outils overlay (middleware overlay-tools).
  *
  * Le remplissage est assisté : noms et avatars des équipes piochés dans
  * une compétition ETF2L du format du match (même conso modèle que les
@@ -30,12 +32,15 @@ use Illuminate\Http\Request;
  * création : il fixe la disposition de l'overlay (3x3 ou six classes en
  * ligne), le changer reviendrait à vider les affectations de classes.
  *
- * L'overlay n'affiche qu'une équipe à la fois (les spectateurs ne voient
- * pas les interactions du caster) : le bouton « Switcher le roster
- * affiché » bascule l'équipe rendue par l'overlay — le switch bump la
- * version avec un drapeau pour que l'animation d'apparition se rejoue
- * pour l'équipe qui arrive, les autres enregistrements restent des
- * rafraîchissements statiques (voir RostersOverlayController).
+ * L'overlay n'affiche qu'une équipe à la fois en Highlander (les
+ * spectateurs ne voient pas les interactions du caster) : le bouton
+ * « Switcher le roster affiché » bascule l'équipe rendue par l'overlay —
+ * le switch bump la version avec un drapeau pour que l'animation
+ * d'apparition se rejoue pour l'équipe qui arrive, les autres
+ * enregistrements restent des rafraîchissements statiques (voir
+ * RostersOverlayController). En 6v6, les deux équipes sont déjà
+ * affichées face à face : le panneau de switch est masqué côté éditeur
+ * et le bouton n'a plus d'effet visible.
  */
 final class AdminRostersController extends Controller
 {

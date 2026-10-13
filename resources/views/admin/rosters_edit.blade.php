@@ -33,27 +33,39 @@
 </p>
 
 @php
+    $is6v6 = ($overlay['format'] ?? '') === '6v6';
     $displayed = ($overlay['displayed'] ?? 'a') === 'b' ? 'b' : 'a';
     $displayedName = (string) ($overlay['teams'][$displayed]['name'] ?? '');
     $hidden = $displayed === 'a' ? 'b' : 'a';
     $hiddenName = (string) ($overlay['teams'][$hidden]['name'] ?? '');
 @endphp
-<div style="border:2px solid #e97fff; border-radius:10px; padding:16px; margin-bottom:16px; background:rgba(233,127,255,0.08);">
-    <h4 style="margin:0 0 8px;"><i class="fa-solid fa-right-left"></i> Roster affiché</h4>
-    <p style="margin:0 0 12px; font-size:14px; line-height:1.5;">
-        L'overlay n'affiche qu'une équipe à la fois : actuellement
-        <strong>l'équipe {{ strtoupper($displayed) }}{{ $displayedName !== '' ? ' ('.$displayedName.')' : '' }}</strong>.
-        Ce bouton bascule l'affichage vers l'équipe {{ strtoupper($hidden) }}{{ $hiddenName !== '' ? ' ('.$hiddenName.')' : '' }} —
-        l'overlay se rafraîchit tout seul et rejoue l'animation d'apparition. La bascule se joue ici, côté réglages :
-        les spectateurs ne voient jamais l'interaction, seulement le résultat.
-    </p>
-    <form method="POST" action="/admin/overlay/rosters/{{ $overlay['token'] }}/switch">
-        @csrf
-        <button type="submit" class="admin-btn admin-btn--primary">
-            <i class="fa-solid fa-right-left"></i> Switcher le roster affiché
-        </button>
-    </form>
-</div>
+@if ($is6v6)
+    <div style="border:2px solid #e97fff; border-radius:10px; padding:16px; margin-bottom:16px; background:rgba(233,127,255,0.08);">
+        <h4 style="margin:0 0 8px;"><i class="fa-solid fa-users"></i> Équipes affichées</h4>
+        <p style="margin:0; font-size:14px; line-height:1.5;">
+            Le format 6v6 affiche <strong>les deux équipes face à face</strong> sur la même page d'overlay
+            (rosters en miroir, les Medics au centre) : aucun switch n'est nécessaire, la page se rafraîchit
+            toute seule à chaque enregistrement.
+        </p>
+    </div>
+@else
+    <div style="border:2px solid #e97fff; border-radius:10px; padding:16px; margin-bottom:16px; background:rgba(233,127,255,0.08);">
+        <h4 style="margin:0 0 8px;"><i class="fa-solid fa-right-left"></i> Roster affiché</h4>
+        <p style="margin:0 0 12px; font-size:14px; line-height:1.5;">
+            L'overlay n'affiche qu'une équipe à la fois : actuellement
+            <strong>l'équipe {{ strtoupper($displayed) }}{{ $displayedName !== '' ? ' ('.$displayedName.')' : '' }}</strong>.
+            Ce bouton bascule l'affichage vers l'équipe {{ strtoupper($hidden) }}{{ $hiddenName !== '' ? ' ('.$hiddenName.')' : '' }} —
+            l'overlay se rafraîchit tout seul et rejoue l'animation d'apparition. La bascule se joue ici, côté réglages :
+            les spectateurs ne voient jamais l'interaction, seulement le résultat.
+        </p>
+        <form method="POST" action="/admin/overlay/rosters/{{ $overlay['token'] }}/switch">
+            @csrf
+            <button type="submit" class="admin-btn admin-btn--primary">
+                <i class="fa-solid fa-right-left"></i> Switcher le roster affiché
+            </button>
+        </form>
+    </div>
+@endif
 
 <h3 class="admin-section-title"><i class="fa-solid fa-user-group"></i> Équipes et classes</h3>
 @include('admin.partials.etf2l_teams', ['competitions' => $competitions, 'prefix' => 'rosters'])

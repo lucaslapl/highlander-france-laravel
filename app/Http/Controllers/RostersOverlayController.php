@@ -19,14 +19,15 @@ use Illuminate\Http\Response;
  * La page est entièrement transparente (1920x1080) et se rafraîchit
  * automatiquement via le polling de /roster-overlay/{token}/version :
  * chaque enregistrement côté admin bump la version. Rendu 100 % côté
- * serveur, aucune donnée n'est chargée en JavaScript. Une seule équipe
- * est affichée à la fois — l'équipe affichée est pilotée côté admin
- * (bouton « Switcher le roster affiché », les spectateurs ne voient pas
- * l'interaction) : le switch bump la version avec le drapeau replay_enter
- * pour que l'animation d'apparition se rejoue, les autres enregistrements
- * restent des rafraîchissements statiques. La disposition dépend du
- * format : Highlander = grille 3x3 des neuf classes, 6v6 = six classes
- * alignées sur toute la largeur.
+ * serveur, aucune donnée n'est chargée en JavaScript. La disposition
+ * dépend du format : Highlander = une seule équipe à la fois, celle
+ * pilotée côté admin (bouton « Switcher le roster affiché ») en grille
+ * 3x3 des neuf classes ; 6v6 = les deux équipes face à face sur la
+ * même page, rosters en miroir (les Medics au centre, les Scouts aux
+ * extrémités), six classes par équipe. Le switch bump la version avec
+ * le drapeau replay_enter pour que l'animation d'apparition se rejoue
+ * (Highlander uniquement, le 6v6 affiche déjà les deux équipes), les
+ * autres enregistrements restent des rafraîchissements statiques.
  */
 final class RostersOverlayController extends Controller
 {
@@ -81,18 +82,52 @@ final class RostersOverlayController extends Controller
     }
 
     /**
-     * Prépare les données de rendu : titres et l'équipe affichée (nom,
-     * avatar, joueurs par classe avec pseudo, drapeau merc et portrait).
-     * Le portrait vient de la copie locale des bustes du wiki TF2
-     * (public/_img/classes_portraits), avec repli sur les icônes de
-     * classes du site si un portrait manque.
+     * Prépare les données de rendu : titres et les équipes à afficher
+     * (nom, avatar, joueurs par classe avec pseudo, drapeau merc et
+     * portrait). En Highlander, seule l'équipe pilotée côté admin est
+     * rendue ; en 6v6, les deux équipes sont rendues face à face —
+     * celle de l'équipe B en ordre miroir pour que les Medics se
+     * retrouvent au centre de la page. Le portrait vient de la copie
+     * locale des bustes du wiki TF2 (public/_img/classes_portraits),
+     * avec repli sur les icônes de classes du site si un portrait
+     * manque.
      *
      * @param  array<string, mixed>  $overlay
      * @return array<string, mixed>
      */
     private function viewData(array $overlay, string $displayed): array
     {
-        $team = is_array($overlay['teams'][$displayed] ?? null) ? $overlay['teams'][$displayed] : [];
+        $format = (string) ($overlay['format'] ?? 'hl');
+
+        $teams = [];
+        if ($format === '6v6') {
+            foreach (['a', 'b'] as $side) {
+                $teams[] = $this->teamData($overlay, $side, $side === 'b');
+            }
+        } else {
+            $teams[] = $this->teamData($overlay, $displayed, false);
+        }
+
+        return [
+            'format' => $format,
+            'eyebrow' => (string) ($overlay['eyebrow'] ?? ''),
+            'title' => (string) ($overlay['title'] ?? ''),
+            'displayed' => $displayed,
+            'teams' => $teams,
+        ];
+    }
+
+    /**
+     * Données de rendu d'une équipe : nom, avatar et joueurs par classe
+     * (pseudo, drapeau merc, portrait). En 6v6, l'équipe B est rendue
+     * en miroir (voir viewData).
+     *
+     * @param  array<string, mixed>  $overlay
+     * @return array{side: string, name: string, avatar: string, players: array<int, array{class: string, name: string, merc: bool, portrait: string}>}
+     */
+    private function teamData(array $overlay, string $side, bool $mirror): array
+    {
+        $team = is_array($overlay['teams'][$side] ?? null) ? $overlay['teams'][$side] : [];
 
         $players = [];
         foreach (is_array($team['players'] ?? null) ? $team['players'] : [] as $player) {
@@ -109,15 +144,10 @@ final class RostersOverlayController extends Controller
         }
 
         return [
-            'format' => (string) ($overlay['format'] ?? 'hl'),
-            'eyebrow' => (string) ($overlay['eyebrow'] ?? ''),
-            'title' => (string) ($overlay['title'] ?? ''),
-            'displayed' => $displayed,
-            'team' => [
-                'name' => (string) ($team['name'] ?? ''),
-                'avatar' => (string) ($team['avatar'] ?? ''),
-                'players' => $players,
-            ],
+            'side' => $side,
+            'name' => (string) ($team['name'] ?? ''),
+            'avatar' => (string) ($team['avatar'] ?? ''),
+            'players' => $mirror ? array_reverse($players) : $players,
         ];
     }
 

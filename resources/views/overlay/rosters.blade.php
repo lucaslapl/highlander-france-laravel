@@ -4,14 +4,16 @@
      interroge /roster-overlay/{token}/version toutes les 5 s — chaque
      enregistrement côté admin bump la version et la page se recharge
      entièrement, comme les autres overlays.
-     Une seule équipe est affichée : celle choisie côté admin (bouton
-     « Switcher le roster affiché » du panneau de paramétrage — les
-     spectateurs ne voient pas l'interaction). Un switch rejoue
-     l'animation d'apparition de l'équipe qui arrive ($replay_enter) ;
-     tout autre enregistrement reste un rafraîchissement statique (drapeau
-     rosters-no-enter). Disposition selon le format : Highlander = grille
-     3x3 des neuf classes, 6v6 = six classes alignées sur toute la
-     largeur. --}}
+     Nombre d'équipes affichées selon le format : Highlander = une
+     seule, celle choisie côté admin (bouton « Switcher le roster
+     affiché » du panneau de paramétrage — les spectateurs ne voient
+     pas l'interaction) ; 6v6 = les deux équipes face à face sur la
+     même page, rosters en miroir (les Medics au centre). Un switch
+     rejoue l'animation d'apparition de l'équipe qui arrive
+     ($replay_enter) ; tout autre enregistrement reste un
+     rafraîchissement statique (drapeau rosters-no-enter). Disposition
+     selon le format : Highlander = grille 3x3 des neuf classes,
+     6v6 = deux blocs de six classes face à face. --}}
 <!DOCTYPE html>
 <html lang="fr">
 <head>
@@ -51,31 +53,35 @@
     </header>
 
     <div class="roster-teams">
-        <section class="roster-team anim" style="--d:0.9s;">
-            <div class="roster-team__head">
-                <img class="roster-team__avatar"
-                     src="{{ trim($data['team']['avatar']) !== '' ? e($data['team']['avatar']) : hlfr_asset('/_img/av_default.png') }}"
-                     alt="" loading="eager"
-                     onerror="this.onerror=null; this.src='{{ hlfr_asset('/_img/av_default.png') }}';">
-                <span class="roster-team__name">{{ e($data['team']['name']) }}</span>
-            </div>
-            {{-- Les cartes entrent en cascade : le panneau d'abord, puis
-                 chaque classe décalée, rejoué à chaque switch de roster. --}}
-            <ul class="roster-team__classes">
-                @foreach ($data['team']['players'] as $i => $player)
-                    <li class="roster-class{{ $player['merc'] ? ' roster-class--merc' : '' }} anim" style="--d:{{ 1.2 + $i * 0.08 }}s;">
-                        @if ($player['portrait'] !== '')
-                            <img class="roster-class__portrait" src="{{ e($player['portrait']) }}"
-                                 alt="{{ e(ucfirst($player['class'])) }}" loading="eager">
-                        @endif
-                        @if ($player['merc'])
-                            <span class="roster-class__merc">MERC</span>
-                        @endif
-                        <span class="roster-class__name">{{ e($player['name']) }}</span>
-                    </li>
-                @endforeach
-            </ul>
-        </section>
+        {{-- Un panneau par équipe rendue : un seul en Highlander (l'équipe
+             pilotée côté admin), deux en 6v6 (face à face). Les panneaux
+             entrent en cascade, puis chaque carte de classe décalée,
+             rejoué à chaque switch de roster. --}}
+        @foreach ($data['teams'] as $t => $team)
+            <section class="roster-team anim" style="--d:{{ 0.9 + $t * 0.2 }}s;">
+                <div class="roster-team__head">
+                    <img class="roster-team__avatar"
+                         src="{{ trim($team['avatar']) !== '' ? e($team['avatar']) : hlfr_asset('/_img/av_default.png') }}"
+                         alt="" loading="eager"
+                         onerror="this.onerror=null; this.src='{{ hlfr_asset('/_img/av_default.png') }}';">
+                    <span class="roster-team__name">{{ e($team['name']) }}</span>
+                </div>
+                <ul class="roster-team__classes">
+                    @foreach ($team['players'] as $i => $player)
+                        <li class="roster-class{{ $player['merc'] ? ' roster-class--merc' : '' }} anim" style="--d:{{ 1.2 + $t * 0.2 + $i * 0.08 }}s;">
+                            @if ($player['portrait'] !== '')
+                                <img class="roster-class__portrait" src="{{ e($player['portrait']) }}"
+                                     alt="{{ e(ucfirst($player['class'])) }}" loading="eager">
+                            @endif
+                            @if ($player['merc'])
+                                <span class="roster-class__merc">MERC</span>
+                            @endif
+                            <span class="roster-class__name">{{ e($player['name']) }}</span>
+                        </li>
+                    @endforeach
+                </ul>
+            </section>
+        @endforeach
     </div>
 
 </div>

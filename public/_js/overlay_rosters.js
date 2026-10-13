@@ -4,9 +4,11 @@
    chaque enregistrement côté admin (affectation d'une classe, merc,
    renommage d'équipe, switch du roster affiché) bump la version et la
    page se recharge entièrement — OBS n'a jamais besoin d'être touché en
-   direct. Le roster affiché est piloté côté admin (bouton « Switcher le
-   roster affiché » du panneau de paramétrage) : les spectateurs ne
-   voient jamais l'interaction, seulement le résultat.
+   direct. Le roster affiché est piloté côté admin en Highlander
+   (bouton « Switcher le roster affiché » du panneau de paramétrage) :
+   les spectateurs ne voient jamais l'interaction, seulement le
+   résultat ; en 6v6, les deux équipes s'affichent face à face et le
+   switch n'est plus proposé.
 
    Le drapeau posé juste avant le reload coupe l'animation d'entrée au
    rendu suivant pour un rafraîchissement statique ; la vue laisse la

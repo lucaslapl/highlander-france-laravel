@@ -8,7 +8,7 @@
 
 <div class="admin-header" style="--accent:#e97fff;">
     <h2><i class="fa-solid fa-users"></i> Overlay Rosters (OBS)</h2>
-    <p>Overlays de présentation des rosters des deux équipes pour les broadcasts OBS : créez l'overlay, choisissez le format (Highlander ou 6v6), remplissez les équipes puis affectez chaque joueur à sa classe, et pointez l'URL d'overlay dans OBS Studio (source navigateur web, 1920x1080, fond transparent). L'overlay n'affiche qu'une équipe à la fois ; le bouton « Switcher le roster affiché » de la page de réglages bascule vers l'autre — les spectateurs ne voient jamais l'interaction.</p>
+    <p>Overlays de présentation des rosters des deux équipes pour les broadcasts OBS : créez l'overlay, choisissez le format (Highlander ou 6v6), remplissez les équipes puis affectez chaque joueur à sa classe, et pointez l'URL d'overlay dans OBS Studio (source navigateur web, 1920x1080, fond transparent). L'overlay n'affiche qu'une équipe à la fois en Highlander (le bouton « Switcher le roster affiché » de la page de réglages bascule vers l'autre, les spectateurs ne voient jamais l'interaction) ; en 6v6, les deux équipes s'affichent face à face sur la même page.</p>
 </div>
 
 <h3 class="admin-section-title"><i class="fa-solid fa-wand-magic-sparkles"></i> Créer un overlay</h3>
