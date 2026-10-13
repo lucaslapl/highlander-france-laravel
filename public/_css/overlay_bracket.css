@@ -284,13 +284,32 @@ h1 em {
 }
 
 /* Dans une case « à plat » (round de système suisse) : le badge se pose
-   à droite de la case, centré verticalement — les rounds sont serrés,
-   le badge sous la case empiéterait sur la suivante. */
+   à droite de la case, centré verticalement. Le centrage passe par
+   top/bottom + margin auto (pas de transform) : l'animation d'entrée
+   .anim finit en translateY(0) et écraserait un transform de centrage. */
 .card.flat:not(.gf) .live {
     left: 100%;
-    top: 50%;
-    transform: translate(0, -50%);
-    margin: 0 0 0 10px;
+    top: 0;
+    bottom: 0;
+    transform: none;
+    margin: auto 0 auto 10px;
+}
+
+/* Case de la sous-colonne gauche d'un round scindé en double colonne :
+   le badge passe à gauche de la case — à droite, il recouvrirait la
+   sous-colonne voisine. */
+.card.flat.split-left:not(.gf) .live {
+    left: auto;
+    right: 100%;
+    margin: auto 10px auto 0;
+}
+
+/* Case du match diffusé en direct : liseré rouge et halo discret, en
+   écho au badge — le match en cours saute aux yeux sur le bracket. */
+.card.is-live {
+    border: 1px solid var(--live);
+    border-left: 4px solid var(--live);
+    box-shadow: 0 12px 34px rgba(0, 0, 0, .45), 0 0 24px rgba(255, 60, 60, .4);
 }
 
 /* ---------- Conteneur mis à l'échelle (bracket_layout.js) ---------- */

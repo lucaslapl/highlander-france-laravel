@@ -145,7 +145,9 @@
             + (card.gf ? ' gf' : '')
             + (card.small ? ' gf-small' : '')
             + (card.lane === 'lower' ? ' lower' : '')
-            + (card.flat ? ' flat' : '');
+            + (card.flat ? ' flat' : '')
+            + (card.splitLeft ? ' split-left' : '')
+            + (match.live ? ' is-live' : '');
         el.style.left = card.x + 'px';
         el.style.top = card.y + 'px';
         el.style.width = card.w + 'px';

@@ -252,6 +252,10 @@
                         index: index,
                         gf: false,
                         flat: !!column.flat,
+                        /* Case de la sous-colonne gauche d'une colonne à
+                           plat scindée : le badge « EN DIRECT » se pose
+                           alors à gauche de la case (overlay). */
+                        splitLeft: half > 0 && index < half,
                         x: offsets[lane][depth] + (half > 0 && index >= half ? opts.cardW + opts.subGapX : 0),
                         y: y,
                         w: opts.cardW,
