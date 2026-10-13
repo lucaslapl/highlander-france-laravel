@@ -37,7 +37,7 @@ All UI strings, comments, and docblocks are in **French**. Read `README.md`, `bo
 ## Required verification
 
 Run before finishing any change:
-1. `composer test` — PHPUnit suites (SQLite `:memory:`, `FROM_UNIXTIME` shimmed in)
+1. `composer test` — PHPUnit suites (SQLite `:memory:`, `FROM_UNIXTIME` shimmed in). When using Docker, only run the test files/suites actually affected by the change (`docker compose run --rm test vendor/bin/phpunit --filter=...` or by path), not the whole suite
 2. `vendor/bin/pint` — Laravel Pint code style
 3. `npm run build` — only if resources changed
 
