@@ -189,7 +189,7 @@ html, body {
        place deux dégradés en arrière-plan, calés sur chaque bord — un
        vertical pour la gauche, un horizontal pour le bas. */
     background:
-        linear-gradient(180deg, var(--violet-line), rgba(186, 53, 215, 0.15)) left / 1px 100% no-repeat,
+        linear-gradient(var(--violet-line), rgba(186, 53, 215, 0.15)) left / 1px 100% no-repeat,
         linear-gradient(90deg, var(--violet-line), rgba(186, 53, 215, 0.15)) bottom / 100% 1px no-repeat;
 }
 
