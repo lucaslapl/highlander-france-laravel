@@ -126,7 +126,7 @@ html, body {
 }
 
 .cd-value {
-    font-size: 74px;
+    font-size: 64px;
     font-weight: 900;
     letter-spacing: .1em;
     line-height: 1;
@@ -191,8 +191,7 @@ html, body {
 }
 
 .welcome {
-    padding: 18px 54px;
-    border-radius: 999px;
+    padding: 5px 80px;
     font-size: 44px;
     font-weight: 900;
     letter-spacing: .02em;
