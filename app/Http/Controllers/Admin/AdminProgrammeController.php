@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\Etf2lRepository;
 use App\Models\ProgrammeRepository;
 use App\Services\AdminLogger;
 use App\Services\Auth;
@@ -37,6 +38,26 @@ final class AdminProgrammeController extends Controller
     private const MAX_SMALL_LEN = 48;
 
     private const MAX_TEAM_LEN = 64;
+
+    private const MAX_URL_LEN = 500;
+
+    /** Prochains matchs ETF2L proposés à l'import, au plus. */
+    private const MAX_UPCOMING = 12;
+
+    /** Jours de la semaine en français (formatage du programme). */
+    private const FR_DAYS = [
+        'Monday' => 'Lundi', 'Tuesday' => 'Mardi', 'Wednesday' => 'Mercredi',
+        'Thursday' => 'Jeudi', 'Friday' => 'Vendredi', 'Saturday' => 'Samedi',
+        'Sunday' => 'Dimanche',
+    ];
+
+    /** Mois de l'année en français (formatage du programme). */
+    private const FR_MONTHS = [
+        'January' => 'Janvier', 'February' => 'Février', 'March' => 'Mars',
+        'April' => 'Avril', 'May' => 'Mai', 'June' => 'Juin',
+        'July' => 'Juillet', 'August' => 'Août', 'September' => 'Septembre',
+        'October' => 'Octobre', 'November' => 'Novembre', 'December' => 'Décembre',
+    ];
 
     private const MAX_MESSAGES = 30;
 
@@ -86,6 +107,8 @@ final class AdminProgrammeController extends Controller
             'welcome' => 'Bienvenue sur Highlander France !',
             'team_a' => '',
             'team_b' => '',
+            'team_a_avatar' => '',
+            'team_b_avatar' => '',
             'messages' => ['Tous nos matchs sont disponibles en rediffusion sur notre chaîne YouTube'],
             'slideshow' => ['display_s' => 8, 'fade_s' => 1],
             'countdown' => [
@@ -141,6 +164,8 @@ final class AdminProgrammeController extends Controller
             'welcome' => ['required', 'string', 'max:'.self::MAX_TEXT_LEN],
             'team_a' => ['nullable', 'string', 'max:'.self::MAX_TEAM_LEN],
             'team_b' => ['nullable', 'string', 'max:'.self::MAX_TEAM_LEN],
+            'team_a_avatar' => ['nullable', 'string', 'max:'.self::MAX_URL_LEN],
+            'team_b_avatar' => ['nullable', 'string', 'max:'.self::MAX_URL_LEN],
             'countdown_mode' => ['required', 'in:datetime,duration'],
             'countdown_label' => ['nullable', 'string', 'max:'.self::MAX_SMALL_LEN],
             'countdown_date' => ['nullable', 'date_format:Y-m-d'],
@@ -189,6 +214,8 @@ final class AdminProgrammeController extends Controller
         $overlay['welcome'] = trim((string) $data['welcome']);
         $overlay['team_a'] = $this->clip((string) ($data['team_a'] ?? ''), self::MAX_TEAM_LEN);
         $overlay['team_b'] = $this->clip((string) ($data['team_b'] ?? ''), self::MAX_TEAM_LEN);
+        $overlay['team_a_avatar'] = $this->cleanUrl($data['team_a_avatar'] ?? null);
+        $overlay['team_b_avatar'] = $this->cleanUrl($data['team_b_avatar'] ?? null);
         $overlay['messages'] = $this->messagesFromRequest((string) ($data['messages'] ?? ''));
         $overlay['slideshow'] = [
             'display_s' => (int) $data['slideshow_display_s'],
@@ -284,6 +311,69 @@ final class AdminProgrammeController extends Controller
     }
 
     /**
+     * GET /admin/overlay/programme/upcoming — prochains matchs des
+     * équipes françaises (table etf2l_matches synchronisée par le cron
+     * app:update-stats depuis l'API ETF2L, jamais d'appel HTTP ici),
+     * normalisés en entrées prêtes pour le programme de la semaine :
+     * date et heure en français, compétition en libellé, noms des deux
+     * équipes. Interrogé en JavaScript par admin_programme.js ; tout
+     * reste corrigeable à la main une fois l'entrée ajoutée.
+     */
+    public function upcoming(): JsonResponse
+    {
+        Auth::requireOverlayTools();
+
+        $out = [];
+        foreach ((new Etf2lRepository)->upcomingMatches(self::MAX_UPCOMING) as $match) {
+            $out[] = [
+                'day' => $this->frenchDay((int) ($match['match_date'] ?? 0)),
+                'time' => $this->frenchHour((int) ($match['match_date'] ?? 0)),
+                'label' => trim((string) ($match['competition_name'] ?? '')) !== ''
+                    ? trim((string) $match['competition_name'])
+                    : 'ETF2L',
+                'team_a' => trim((string) ($match['team1_name'] ?? '')) !== '' ? trim((string) $match['team1_name']) : 'TBD',
+                'team_b' => trim((string) ($match['team2_name'] ?? '')) !== '' ? trim((string) $match['team2_name']) : 'TBD',
+                'match_url' => 'https://etf2l.org/matches/'.(int) ($match['match_id'] ?? 0).'/',
+            ];
+        }
+
+        return response()
+            ->json(['matches' => $out])
+            ->header('Cache-Control', 'no-store, no-cache, must-revalidate');
+    }
+
+    /**
+     * Date française « Dimanche 11 Octobre » depuis un timestamp (heure
+     * Europe/Paris), sans dépendre d'une locale système installée.
+     */
+    private function frenchDay(int $timestamp): string
+    {
+        if ($timestamp <= 0) {
+            return '';
+        }
+
+        $date = (new \DateTimeImmutable('@'.$timestamp))->setTimezone(new \DateTimeZone('Europe/Paris'));
+        $day = self::FR_DAYS[$date->format('l')] ?? $date->format('l');
+        $month = self::FR_MONTHS[$date->format('F')] ?? $date->format('F');
+
+        return $day.' '.$date->format('j').' '.$month;
+    }
+
+    /**
+     * Heure française « 21h05 » depuis un timestamp (Europe/Paris).
+     */
+    private function frenchHour(int $timestamp): string
+    {
+        if ($timestamp <= 0) {
+            return '';
+        }
+
+        $date = (new \DateTimeImmutable('@'.$timestamp))->setTimezone(new \DateTimeZone('Europe/Paris'));
+
+        return $date->format('G').'h'.$date->format('i');
+    }
+
+    /**
      * @return array<string, mixed>
      */
     private function requireOverlay(string $token): array
@@ -366,5 +456,18 @@ final class AdminProgrammeController extends Controller
         }
 
         return $value;
+    }
+
+    /**
+     * Garde une URL http(s) raisonnable, sinon vide.
+     */
+    private function cleanUrl(mixed $url): string
+    {
+        $url = trim((string) (is_string($url) ? $url : ''));
+        if ($url === '' || strlen($url) > self::MAX_URL_LEN || ! preg_match('~^https?://[\w.-]+~i', $url)) {
+            return '';
+        }
+
+        return $url;
     }
 }

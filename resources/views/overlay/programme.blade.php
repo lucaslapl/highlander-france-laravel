@@ -22,45 +22,48 @@
 <body>
 <div id="scene">
 
-    {{-- ── Haut gauche : horloge, note de musique, décompte, équipes ── --}}
+    {{-- ── Haut gauche : horloge / musique / décompte, puis équipes du
+         jour à droite dans leur propre colonne, séparées par une
+         bordure verticale rose/violet. --}}
     <div class="top-left">
-        <div class="tl-row anim" style="--d:.2s;">
-            <span class="clock" id="clock">--:--</span>
-            <span class="tl-sep"></span>
-            <span class="music-slot" title="Emplacement du plugin musique OBS">
-                <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-                    <path d="M9 3v10.55A4 4 0 1 0 11 17V7h4a2 2 0 1 0 0-4H9z"/>
-                </svg>
-            </span>
-        </div>
+        <div class="tl-main">
+            <div class="tl-row anim" style="--d:.2s;">
+                <span class="clock" id="clock">--:--</span>
+                <span class="tl-sep"></span>
+                <span class="music-slot" title="Emplacement du plugin musique OBS">
+                    <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                        <path d="M9 3v10.55A4 4 0 1 0 11 17V7h4a2 2 0 1 0 0-4H9z"/>
+                    </svg>
+                </span>
+            </div>
 
-        <div class="countdown anim" style="--d:.5s;"
-             data-mode="{{ $data['countdown_mode'] }}"
-             data-target-ts="{{ $data['countdown_target_ts'] }}"
-             data-started-at="{{ $data['countdown_started_at'] }}"
-             data-duration-s="{{ $data['countdown_duration_s'] }}"
-             data-adjust-s="{{ $data['countdown_adjust_s'] }}"
-             data-zero-text="{{ e($data['countdown_zero_text']) }}">
-            @if (trim($data['countdown_label']) !== '')
-                <span class="cd-label">{{ e($data['countdown_label']) }}</span>
-            @endif
-            <span class="cd-value" id="countdown-value">--:--</span>
+            <div class="countdown anim" style="--d:.5s;"
+                 data-mode="{{ $data['countdown_mode'] }}"
+                 data-target-ts="{{ $data['countdown_target_ts'] }}"
+                 data-started-at="{{ $data['countdown_started_at'] }}"
+                 data-duration-s="{{ $data['countdown_duration_s'] }}"
+                 data-adjust-s="{{ $data['countdown_adjust_s'] }}"
+                 data-zero-text="{{ e($data['countdown_zero_text']) }}">
+                @if (trim($data['countdown_label']) !== '')
+                    <span class="cd-label">{{ e($data['countdown_label']) }}</span>
+                @endif
+                <span class="cd-value" id="countdown-value">--:--</span>
+            </div>
         </div>
 
         @if (trim($data['team_a']) !== '' || trim($data['team_b']) !== '')
-            <div class="teams anim" style="--d:.8s;">
-                @if (trim($data['team_a']) !== '')
-                    <div class="team-row">
-                        <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8zm0 2c-3.3 0-8 1.7-8 5v3h16v-3c0-3.3-4.7-5-8-5z"/></svg>
-                        <span class="team-name">{{ e($data['team_a']) }}</span>
-                    </div>
-                @endif
-                @if (trim($data['team_b']) !== '')
-                    <div class="team-row">
-                        <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8zm0 2c-3.3 0-8 1.7-8 5v3h16v-3c0-3.3-4.7-5-8-5z"/></svg>
-                        <span class="team-name">{{ e($data['team_b']) }}</span>
-                    </div>
-                @endif
+            <div class="tl-teams anim" style="--d:.8s;">
+                @foreach ([['name' => $data['team_a'], 'avatar' => $data['team_a_avatar']], ['name' => $data['team_b'], 'avatar' => $data['team_b_avatar']]] as $team)
+                    @if (trim($team['name']) !== '')
+                        <div class="team-row">
+                            <img class="team-avatar"
+                                 src="{{ trim($team['avatar']) !== '' ? e($team['avatar']) : hlfr_asset('/_img/av_default.png') }}"
+                                 alt="" loading="eager"
+                                 onerror="this.onerror=null; this.src='{{ hlfr_asset('/_img/av_default.png') }}';">
+                            <span class="team-name">{{ e($team['name']) }}</span>
+                        </div>
+                    @endif
+                @endforeach
             </div>
         @endif
     </div>

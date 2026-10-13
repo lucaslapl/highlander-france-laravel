@@ -127,6 +127,14 @@ final class ProgrammeOverlayController extends Controller
             'countdown_zero_text' => mb_strcut(trim((string) ($countdown['zero_text'] ?? '')), 0, 48, 'UTF-8'),
             'team_a' => mb_strcut(trim((string) ($overlay['team_a'] ?? '')), 0, 64, 'UTF-8'),
             'team_b' => mb_strcut(trim((string) ($overlay['team_b'] ?? '')), 0, 64, 'UTF-8'),
+            'team_a_avatar' => trim((string) ($overlay['team_a_avatar'] ?? '')) !== ''
+                && preg_match('~^https?://[\w.-]+~i', (string) $overlay['team_a_avatar']) === 1
+                ? (string) $overlay['team_a_avatar']
+                : '',
+            'team_b_avatar' => trim((string) ($overlay['team_b_avatar'] ?? '')) !== ''
+                && preg_match('~^https?://[\w.-]+~i', (string) $overlay['team_b_avatar']) === 1
+                ? (string) $overlay['team_b_avatar']
+                : '',
             'slideshow_display_s' => max(2, min(120, (int) ($slideshow['display_s'] ?? 8))),
             'slideshow_fade_s' => max(0, min(10, (int) ($slideshow['fade_s'] ?? 1))),
             'schedule' => $schedule,

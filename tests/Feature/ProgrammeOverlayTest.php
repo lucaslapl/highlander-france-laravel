@@ -117,6 +117,8 @@ class ProgrammeOverlayTest extends TestCase
                 'welcome' => 'Bienvenue sur Highlander France !',
                 'team_a' => 'TWICE',
                 'team_b' => 'ChudsX6',
+                'team_a_avatar' => 'https://example.com/twice.png',
+                'team_b_avatar' => 'https://example.com/chuds.png',
                 'countdown_mode' => 'duration',
                 'countdown_label' => 'Début dans',
                 'countdown_duration_min' => 45,
@@ -134,6 +136,8 @@ class ProgrammeOverlayTest extends TestCase
         $overlay = $this->findOverlay();
         $this->assertSame('TWICE', $overlay['team_a']);
         $this->assertSame('ChudsX6', $overlay['team_b']);
+        $this->assertSame('https://example.com/twice.png', $overlay['team_a_avatar']);
+        $this->assertSame('https://example.com/chuds.png', $overlay['team_b_avatar']);
         $this->assertSame(45 * 60, $overlay['countdown']['duration_s']);
         // Les lignes vides du textarea sont filtrées.
         $this->assertSame(['Message un', 'Message deux'], $overlay['messages']);
@@ -143,6 +147,60 @@ class ProgrammeOverlayTest extends TestCase
         $this->assertCount(1, $overlay['schedule']);
         $this->assertSame('Dimanche 11 Octobre', $overlay['schedule'][0]['day']);
         $this->assertSame('Finale Loser Bracket - Prem', $overlay['schedule'][0]['label']);
+    }
+
+    public function test_un_avatar_d_equipe_invalide_est_rejete(): void
+    {
+        $this->seedProgramme();
+
+        $this->withSession(['steamid' => '76561198012345678', 'is_caster' => true])
+            ->post('/admin/overlay/programme/'.self::TOKEN.'/update', [
+                'name' => 'Programme du dimanche',
+                'welcome' => 'Bienvenue sur Highlander France !',
+                'countdown_mode' => 'duration',
+                'countdown_duration_min' => 60,
+                'team_a' => 'TWICE',
+                'team_a_avatar' => 'javascript:alert(1)',
+                'messages' => '',
+                'slideshow_display_s' => 8,
+                'slideshow_fade_s' => 1,
+            ])
+            ->assertSessionHas('success');
+
+        // Seule une URL http(s) est conservée.
+        $this->assertSame('', $this->findOverlay()['team_a_avatar']);
+    }
+
+    public function test_un_echec_d_enregistrement_preserve_les_entrees_du_programme(): void
+    {
+        $this->seedProgramme();
+
+        // Date/heure absentes en mode date/heure : l'enregistrement
+        // échoue, mais les entrées saisies doivent revenir dans le
+        // formulaire (old()), pas disparaître.
+        $this->withSession(['steamid' => '76561198012345678', 'is_caster' => true])
+            ->post('/admin/overlay/programme/'.self::TOKEN.'/update', [
+                'name' => 'Programme du dimanche',
+                'welcome' => 'Bienvenue sur Highlander France !',
+                'countdown_mode' => 'datetime',
+                'messages' => '',
+                'slideshow_display_s' => 8,
+                'slideshow_fade_s' => 1,
+                'schedule' => [
+                    ['day' => 'Dimanche 11 Octobre', 'time' => '21h', 'label' => 'Finale Loser Bracket - Prem', 'team_a' => 'TWICE', 'team_b' => 'ChudsX6'],
+                ],
+            ])
+            ->assertSessionHas('error');
+
+        // Rien n'a été enregistré côté payload…
+        $this->assertSame([], $this->findOverlay()['schedule']);
+
+        // … mais l'éditeur ré-affiche l'entrée saisie.
+        $this->withSession(['steamid' => '76561198012345678', 'is_caster' => true])
+            ->get('/admin/overlay/programme/'.self::TOKEN)
+            ->assertOk()
+            ->assertSee('Dimanche 11 Octobre')
+            ->assertSee('Finale Loser Bracket - Prem');
     }
 
     public function test_la_mise_a_jour_convertit_la_date_heure_de_paris_en_timestamp(): void
@@ -198,6 +256,8 @@ class ProgrammeOverlayTest extends TestCase
             'welcome' => 'Bienvenue sur Highlander France !',
             'team_a' => 'TWICE',
             'team_b' => 'ChudsX6',
+            'team_a_avatar' => 'https://example.com/twice.png',
+            'team_b_avatar' => 'https://example.com/chuds.png',
             'messages' => [
                 'Tous nos matchs sont disponibles en rediffusion sur notre chaîne YouTube',
                 'Le stream commence à 21h',
@@ -224,6 +284,9 @@ class ProgrammeOverlayTest extends TestCase
             ->assertSee('Début dans')
             ->assertSee('TWICE')
             ->assertSee('ChudsX6')
+            // Avatars des équipes du jour (URL importées depuis ETF2L).
+            ->assertSee('https://example.com/twice.png')
+            ->assertSee('https://example.com/chuds.png')
             ->assertSee('rediffusion sur notre chaîne YouTube')
             ->assertSee('Le stream commence à 21h')
             ->assertSee('Programmation de la semaine')
@@ -307,7 +370,48 @@ class ProgrammeOverlayTest extends TestCase
             ->assertOk()
             ->assertJsonPath('match.id', 93233)
             ->assertJsonPath('match.teams.0.name', 'Les Baguettes')
+            ->assertJsonPath('match.teams.0.avatar', 'https://example.com/lb.png')
             ->assertJsonPath('match.teams.1.name', 'Escouade 6');
+    }
+
+    public function test_les_prochains_matchs_de_la_base_arrivent_en_entrees_pretes(): void
+    {
+        // Dimanche suivant à 21h05, heure de Paris : toujours à venir.
+        $sunday = new \DateTimeImmutable('next sunday 21:05', new \DateTimeZone('Europe/Paris'));
+
+        DB::table('etf2l_matches')->insert([
+            'match_id' => 95001,
+            'team1_name' => 'Les Baguettes',
+            'team2_name' => 'Escouade 6',
+            'match_date' => $sunday->getTimestamp(),
+            'competition_name' => 'ETF2L Highlander Season 40 - Division 1',
+        ]);
+
+        $response = $this->withSession(['steamid' => '76561198012345678', 'is_caster' => true])
+            ->get('/admin/overlay/programme/upcoming');
+
+        $response->assertOk();
+
+        $match = $response->json('matches.0');
+        $this->assertSame('Dimanche', substr((string) $match['day'], 0, 8));
+        $this->assertSame('21h05', $match['time']);
+        $this->assertSame('ETF2L Highlander Season 40 - Division 1', $match['label']);
+        $this->assertSame('Les Baguettes', $match['team_a']);
+        $this->assertSame('Escouade 6', $match['team_b']);
+        $this->assertSame('https://etf2l.org/matches/95001/', $match['match_url']);
+    }
+
+    public function test_les_prochains_matchs_sans_table_peuplee_repondent_vide(): void
+    {
+        $this->withSession(['steamid' => '76561198012345678', 'is_caster' => true])
+            ->get('/admin/overlay/programme/upcoming')
+            ->assertOk()
+            ->assertJson(['matches' => []]);
+    }
+
+    public function test_les_prochains_matchs_sont_interdits_aux_visiteurs(): void
+    {
+        $this->get('/admin/overlay/programme/upcoming')->assertForbidden();
     }
 
     public function test_l_import_etf2l_refuse_une_url_invalide(): void

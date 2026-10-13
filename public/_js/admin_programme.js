@@ -2,11 +2,14 @@
    - bascule du mode de décompte (date/heure cible ou durée) ;
    - remplissage assisté ETF2L : le bouton « Charger le match »
      interroge /admin/overlay/programme/etf2l-match?match_url=… puis
-     propose de renseigner les équipes du jour ou d'ajouter une entrée
-     au programme de la semaine (compétition en libellé, noms
-     complets ETF2L à raccourcir à la main). Match introuvable ou API
-     indisponible : message explicite, la saisie manuelle reste
-     possible ;
+     propose de renseigner les équipes du jour (noms + avatars, à
+     raccourcir à la main — l'API ne remonte pas d'acronyme) ou
+     d'ajouter une entrée au programme de la semaine (compétition en
+     libellé). Match introuvable ou API indisponible : message
+     explicite, la saisie manuelle reste possible ;
+   - import des prochains matchs ETF2L depuis la table synchronisée
+     du site (/admin/overlay/programme/upcoming) : chaque match proposé
+     s'ajoute en une entrée pré-remplie du programme ;
    - entrées du programme de la semaine ajoutées / retirées à la
      volée (le gabarit <template> de la page fournit le rendu).
 
@@ -121,6 +124,11 @@
         return (team && team.name) ? team.name : 'TBD';
     }
 
+    function teamAvatar(index) {
+        var team = loadedMatch && loadedMatch.teams && loadedMatch.teams[index];
+        return (team && team.avatar) ? team.avatar : '';
+    }
+
     loadButton.addEventListener('click', function () {
         var url = matchUrlInput.value.trim();
         if (url === '') {
@@ -170,8 +178,12 @@
 
             var teamA = document.getElementById('editor-team-a');
             var teamB = document.getElementById('editor-team-b');
+            var avatarA = document.querySelector('.js-programme-team-a-avatar');
+            var avatarB = document.querySelector('.js-programme-team-b-avatar');
             if (teamA) { teamA.value = teamName(0); }
             if (teamB) { teamB.value = teamName(1); }
+            if (avatarA) { avatarA.value = teamAvatar(0); }
+            if (avatarB) { avatarB.value = teamAvatar(1); }
         });
     }
 
@@ -189,6 +201,67 @@
                 team_a: teamName(0),
                 team_b: teamName(1)
             });
+        });
+    }
+
+    /* ── Prochains matchs ETF2L (table synchronisée) ────────────── */
+
+    var upcomingLoad = document.getElementById('programme-upcoming-load');
+    var upcomingStatus = document.getElementById('programme-upcoming-status');
+    var upcomingList = document.getElementById('programme-upcoming-list');
+
+    if (upcomingLoad && upcomingList) {
+        upcomingLoad.addEventListener('click', function () {
+            upcomingStatus.textContent = 'Chargement…';
+            upcomingList.textContent = '';
+
+            fetch('/admin/overlay/programme/upcoming', { cache: 'no-store' })
+                .then(function (response) {
+                    return response.ok ? response.json() : null;
+                })
+                .then(function (data) {
+                    if (!data || !data.matches) {
+                        upcomingStatus.textContent = 'Chargement impossible, réessayez plus tard.';
+                        return;
+                    }
+
+                    if (data.matches.length === 0) {
+                        upcomingStatus.textContent = 'Aucun match à venir dans la base du site pour le moment.';
+                        return;
+                    }
+
+                    upcomingStatus.textContent = '';
+
+                    data.matches.forEach(function (match) {
+                        var row = document.createElement('div');
+                        row.style.cssText = 'display:flex; gap:10px; align-items:center; flex-wrap:wrap; border:1px solid #333; border-radius:6px; padding:8px 10px; margin-bottom:8px;';
+
+                        var label = document.createElement('span');
+                        label.style.cssText = 'flex:1; min-width:320px; font-size:13px; color:#ccc;';
+                        label.textContent = match.day + ' - ' + match.time + ' : ' + match.label + ' — ' + match.team_a + ' vs ' + match.team_b;
+
+                        var add = document.createElement('button');
+                        add.type = 'button';
+                        add.className = 'admin-btn';
+                        add.textContent = 'Ajouter';
+                        add.addEventListener('click', function () {
+                            addScheduleRow({
+                                day: match.day,
+                                time: match.time,
+                                label: match.label,
+                                team_a: match.team_a,
+                                team_b: match.team_b
+                            });
+                        });
+
+                        row.appendChild(label);
+                        row.appendChild(add);
+                        upcomingList.appendChild(row);
+                    });
+                })
+                .catch(function () {
+                    upcomingStatus.textContent = 'Chargement impossible, réessayez plus tard.';
+                });
         });
     }
 

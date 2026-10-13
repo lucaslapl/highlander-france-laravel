@@ -50,15 +50,32 @@ html, body {
     to   { opacity: 1; transform: translateY(0); }
 }
 
-/* ---------- Haut gauche : horloge, musique, décompte, équipes ---------- */
+/* ---------- Haut gauche : horloge, musique, décompte, équipes ----------
+   Deux colonnes : horloge / musique / décompte à gauche, équipes du
+   jour à droite, séparées par une bordure verticale rose/violet. */
 
 .top-left {
     position: absolute;
     top: 52px;
     left: 64px;
     display: flex;
+    align-items: flex-start;
+    gap: 34px;
+}
+
+.tl-main {
+    display: flex;
     flex-direction: column;
     gap: 22px;
+}
+
+.tl-teams {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    padding: 8px 0 8px 34px;
+    border-left: 3px solid var(--violet-line);
+    box-shadow: inset 6px 0 22px -14px rgba(186, 53, 215, 0.7);
 }
 
 .tl-row {
@@ -135,11 +152,14 @@ html, body {
     gap: 16px;
 }
 
-.team-row svg {
-    width: 34px;
-    height: 34px;
-    fill: var(--violet-bright);
-    filter: drop-shadow(0 2px 10px rgba(186, 53, 215, 0.55));
+.team-avatar {
+    width: 52px;
+    height: 52px;
+    border-radius: 12px;
+    object-fit: cover;
+    border: 2px solid var(--violet-line);
+    box-shadow: 0 2px 14px rgba(186, 53, 215, 0.5);
+    background: var(--surface-dark);
     flex: 0 0 auto;
 }
 
@@ -163,6 +183,9 @@ html, body {
     align-items: center;
     gap: 24px;
     text-align: center;
+    /* Décalé un peu sur la gauche du centre écran : laisse de la place
+       au programme de la semaine en bas à droite. */
+    transform: translateX(-220px);
 }
 
 .welcome {

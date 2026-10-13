@@ -148,6 +148,7 @@ Route::middleware('overlay-tools')->prefix('admin')->group(function (): void {
     Route::post('/overlay/rosters/{token}/delete', [AdminRostersController::class, 'delete'])->where('token', '[a-z0-9]{16}');
     Route::get('/overlay/programme', [AdminProgrammeController::class, 'index'])->name('admin.programme');
     Route::get('/overlay/programme/etf2l-match', [AdminProgrammeController::class, 'etf2lMatch']);
+    Route::get('/overlay/programme/upcoming', [AdminProgrammeController::class, 'upcoming']);
     Route::post('/overlay/programme/create', [AdminProgrammeController::class, 'create']);
     Route::get('/overlay/programme/{token}', [AdminProgrammeController::class, 'edit'])->where('token', '[a-z0-9]{16}');
     Route::post('/overlay/programme/{token}/update', [AdminProgrammeController::class, 'update'])->where('token', '[a-z0-9]{16}');
