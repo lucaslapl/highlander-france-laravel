@@ -86,12 +86,13 @@ html, body {
 }
 
 .clock {
-    font-size: 58px;
+    font-size: 40px;
     font-weight: 900;
     letter-spacing: .06em;
     font-variant-numeric: tabular-nums;
     color: var(--accent);
     text-shadow: 0 2px 18px rgba(186, 53, 215, 0.45);
+    opacity: 0.3;
 }
 
 .tl-sep {
