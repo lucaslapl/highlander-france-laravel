@@ -38,7 +38,7 @@
 
         <header class="series-scoreboard__header">
             <div class="series-scoreboard__team series-scoreboard__team--left">
-                <span class="series-scoreboard__name">{{ e($series['teams']['red']['name']) }}</span>
+                <span class="series-scoreboard__name">{{ $series['teams']['red']['name'] }}</span>
             </div>
             <div class="series-scoreboard__score">
                 <span class="series-scoreboard__score-value">{{ (int) $state['score']['red'] }}</span>
@@ -46,7 +46,7 @@
                 <span class="series-scoreboard__score-value">{{ (int) $state['score']['blue'] }}</span>
             </div>
             <div class="series-scoreboard__team series-scoreboard__team--right">
-                <span class="series-scoreboard__name">{{ e($series['teams']['blue']['name']) }}</span>
+                <span class="series-scoreboard__name">{{ $series['teams']['blue']['name'] }}</span>
             </div>
         </header>
 
@@ -71,10 +71,10 @@
                     @if ($map['thumb'] !== null)
                         style="--map-thumb: url('{{ $map['thumb'] }}')"
                     @endif>
-                    <span class="series-map__name">{{ e($map['display']) }}</span>
+                    <span class="series-map__name">{{ $map['display'] }}</span>
                     <span class="series-map__score">{{ $mapScore }}</span>
                     @if ($map['winner'] !== null)
-                        <span class="series-map__winner">{{ e($series['teams'][$map['winner']]['name']) }}</span>
+                        <span class="series-map__winner">{{ $series['teams'][$map['winner']]['name'] }}</span>
                     @endif
                     @if ($map['golden_cap'] && $map['status'] !== 'decided')
                         <span class="series-map__gc">GC</span>
@@ -87,7 +87,7 @@
             <footer class="series-scoreboard__footer">
                 @if ($state['winner'] !== null)
                     <span class="series-scoreboard__winner">
-                        {{ e($series['teams'][$state['winner']]['name']) }}
+                        {{ $series['teams'][$state['winner']]['name'] }}
                     </span>
                 @else
                     <span class="series-scoreboard__winner">Égalité</span>

@@ -50,8 +50,8 @@
     <div style="display:flex; gap:12px; align-items:center; flex-wrap:wrap; margin-bottom:8px;">
         <span>
             <a href="https://logs.tf/{{ (int) $current['log_id'] }}" target="_blank" rel="noopener">#{{ (int) $current['log_id'] }}</a>
-            · {{ e($current['title'] !== '' ? $current['title'] : 'logs.tf #'.$current['log_id']) }}
-            · {{ e($current['map']) }}
+            · {{ $current['title'] !== '' ? $current['title'] : 'logs.tf #'.$current['log_id'] }}
+            · {{ $current['map'] }}
             · score {{ (int) $current['teams']['red']['score'] }} - {{ (int) $current['teams']['blue']['score'] }}
         </span>
         <form method="POST" action="/admin/overlay/refresh">
@@ -92,8 +92,8 @@
                 @foreach ($logs as $entry)
                     <tr>
                         <td><a href="https://logs.tf/{{ (int) $entry['log_id'] }}" target="_blank" rel="noopener">#{{ (int) $entry['log_id'] }}</a></td>
-                        <td>{{ e($entry['title'] !== '' ? $entry['title'] : 'logs.tf #'.$entry['log_id']) }}</td>
-                        <td>{{ e($entry['map']) }}</td>
+                        <td>{{ $entry['title'] !== '' ? $entry['title'] : 'logs.tf #'.$entry['log_id'] }}</td>
+                        <td>{{ $entry['map'] }}</td>
                         <td>{{ (int) $entry['date'] > 0 ? date('d/m/Y H:i', (int) $entry['date']) : '—' }}</td>
                         <td style="white-space:nowrap;">
                             <form method="POST" action="/admin/overlay/{{ $entry['token'] }}/load" style="display:inline;">

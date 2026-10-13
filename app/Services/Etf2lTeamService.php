@@ -380,6 +380,12 @@ final class Etf2lTeamService
             return null;
         }
 
+        // L'API ETF2L remonte parfois des noms avec des entités HTML
+        // (« L&#039;équipe ») : décodage systématique, comme
+        // Etf2lNameResolver — le texte stocké reste brut, les vues
+        // ré-échappent à l'affichage.
+        $name = html_entity_decode($name, ENT_QUOTES | ENT_HTML5, 'UTF-8');
+
         $name = preg_replace('/[\x{0000}-\x{001F}\x{007F}]/u', '', $name);
         if ($name === null) {
             return null;

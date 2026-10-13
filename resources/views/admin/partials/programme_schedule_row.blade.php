@@ -16,27 +16,27 @@
     <div style="flex:1; min-width:200px;">
         <label class="admin-form-label">Date (ex : « Dimanche 11 Octobre »)</label>
         <input type="text" name="schedule[{{ $i }}][day]" class="form-control" maxlength="64"
-               value="{{ e($day) }}" placeholder="Dimanche 11 Octobre">
+               value="{{ $day }}" placeholder="Dimanche 11 Octobre">
     </div>
     <div style="width:110px;">
         <label class="admin-form-label">Heure</label>
         <input type="text" name="schedule[{{ $i }}][time]" class="form-control" maxlength="16"
-               value="{{ e($time) }}" placeholder="21h">
+               value="{{ $time }}" placeholder="21h">
     </div>
     <div style="flex:1; min-width:220px;">
         <label class="admin-form-label">Libellé (tour / division)</label>
         <input type="text" name="schedule[{{ $i }}][label]" class="form-control" maxlength="120"
-               value="{{ e($label) }}" placeholder="Finale Loser Bracket - Prem">
+               value="{{ $label }}" placeholder="Finale Loser Bracket - Prem">
     </div>
     <div style="flex:1; min-width:160px;">
         <label class="admin-form-label">Équipe 1</label>
         <input type="text" name="schedule[{{ $i }}][team_a]" class="form-control js-programme-row-team-a" maxlength="64"
-               value="{{ e($teamA) }}">
+               value="{{ $teamA }}">
     </div>
     <div style="flex:1; min-width:160px;">
         <label class="admin-form-label">Équipe 2</label>
         <input type="text" name="schedule[{{ $i }}][team_b]" class="form-control js-programme-row-team-b" maxlength="64"
-               value="{{ e($teamB) }}">
+               value="{{ $teamB }}">
     </div>
     <button type="button" class="admin-btn admin-btn--danger js-programme-schedule-remove">Retirer</button>
 </div>

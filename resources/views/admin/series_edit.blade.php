@@ -7,7 +7,7 @@
 @include('admin.partials.panel_back_link')
 
 <div class="admin-header" style="--accent:#4cc46a;">
-    <h2><i class="fa-solid fa-trophy"></i> {{ e($series['title']) }}</h2>
+    <h2><i class="fa-solid fa-trophy"></i> {{ $series['title'] }}</h2>
     <p>
         {{ strtoupper($series['format']) }} ·
         @if ((int) ($series['etf2l_match_id'] ?? 0) > 0)
@@ -15,13 +15,13 @@
             ·
         @endif
         score de série (points ETF2L :
-        <strong style="color:#e06c5a;">{{ e($series['teams']['red']['name']) }} {{ (int) $state['score']['red'] }}</strong>
+        <strong style="color:#e06c5a;">{{ $series['teams']['red']['name'] }} {{ (int) $state['score']['red'] }}</strong>
         -
-        <strong style="color:#5885a2;">{{ (int) $state['score']['blue'] }} {{ e($series['teams']['blue']['name']) }}</strong>
+        <strong style="color:#5885a2;">{{ (int) $state['score']['blue'] }} {{ $series['teams']['blue']['name'] }}</strong>
         <span style="color:#777; font-size:12px;">3 pts par map gagnée, golden cap 2/1</span>)
         @if ($state['finished'])
             @if ($state['winner'] !== null)
-                — <strong>{{ e($series['teams'][$state['winner']]['name']) }} remporte la série</strong>
+                — <strong>{{ $series['teams'][$state['winner']]['name'] }} remporte la série</strong>
             @else
                 — <strong>série terminée, égalité</strong>
             @endif
@@ -67,15 +67,15 @@
                        value="{{ (int) ($series['teams'][$team]['etf2l_id'] ?? 0) ?: '' }}">
                 <label class="admin-form-label" for="team-{{ $team }}-name">Nom équipe {{ $label }} (acronyme)</label>
                 <input type="text" id="team-{{ $team }}-name" name="{{ $team }}_name" class="form-control js-team-field-name"
-                       value="{{ e($series['teams'][$team]['name']) }}" maxlength="64" required>
+                       value="{{ $series['teams'][$team]['name'] }}" maxlength="64" required>
                 @if (trim((string) ($series['teams'][$team]['etf2l_name'] ?? '')) !== '')
                     <p style="color:#777; font-size:12px; margin:6px 0 0;">
-                        Nom complet ETF2L : {{ e($series['teams'][$team]['etf2l_name']) }}
+                        Nom complet ETF2L : {{ $series['teams'][$team]['etf2l_name'] }}
                     </p>
                 @endif
                 <label class="admin-form-label" style="margin-top:10px;" for="team-{{ $team }}-avatar-url">Avatar par URL externe (optionnel)</label>
                 <input type="url" id="team-{{ $team }}-avatar-url" name="{{ $team }}_avatar_url" class="form-control js-team-field-avatar"
-                       value="{{ e($series['teams'][$team]['avatar_url'] ?? '') }}"
+                       value="{{ $series['teams'][$team]['avatar_url'] ?? '' }}"
                        placeholder="https://…/logo.png">
             </div>
         @endforeach
@@ -143,7 +143,7 @@
         <label class="admin-form-label" for="series-add-map">Ajouter une map</label>
         <select id="series-add-map" name="map" class="form-control" required>
             @forelse ($addableMaps as $map)
-                <option value="{{ e($map['name']) }}">{{ e(trim((string) ($map['label'] ?? '')) !== '' ? $map['label'] : $map['name']) }}</option>
+                <option value="{{ $map['name'] }}">{{ trim((string) ($map['label'] ?? '')) !== '' ? $map['label'] : $map['name'] }}</option>
             @empty
                 <option value="" disabled>Aucune map active pour ce format</option>
             @endforelse
@@ -170,7 +170,7 @@
         <tbody>
             @foreach ($state['maps'] as $map)
                 <tr>
-                    <td>{{ e($map['name']) }}</td>
+                    <td>{{ $map['name'] }}</td>
                     <td>{{ $map['mode'] === 'double' ? 'Double attaque' : 'Points' }}</td>
                     <td>
                         @if ($map['mode'] === 'double')
@@ -193,7 +193,7 @@
                     </td>
                     <td>
                         @if ($map['winner'] !== null)
-                            <span style="color: {{ $map['winner'] === 'red' ? '#e06c5a' : '#5885a2' }};">{{ e($series['teams'][$map['winner']]['name']) }}</span>
+                            <span style="color: {{ $map['winner'] === 'red' ? '#e06c5a' : '#5885a2' }};">{{ $series['teams'][$map['winner']]['name'] }}</span>
                             @if ($map['status'] === 'decided')
                                 <span style="color:#777; font-size:12px;">({{ $map['decided_by_gc'] ? 'golden cap : +2 / +1' : '+3' }})</span>
                             @endif
@@ -208,14 +208,14 @@
                                 <input type="hidden" name="map" value="{{ $map['name'] }}">
                                 <input type="hidden" name="team" value="red">
                                 <input type="hidden" name="note" value="point manuel depuis l'admin">
-                                <button type="submit" class="admin-btn" style="color:#e06c5a;">+1 {{ e($series['teams']['red']['name']) }}</button>
+                                <button type="submit" class="admin-btn" style="color:#e06c5a;">+1 {{ $series['teams']['red']['name'] }}</button>
                             </form>
                             <form method="POST" action="/admin/series/{{ $series['token'] }}/point" style="display:inline;">
                                 @csrf
                                 <input type="hidden" name="map" value="{{ $map['name'] }}">
                                 <input type="hidden" name="team" value="blue">
                                 <input type="hidden" name="note" value="point manuel depuis l'admin">
-                                <button type="submit" class="admin-btn" style="color:#5885a2;">+1 {{ e($series['teams']['blue']['name']) }}</button>
+                                <button type="submit" class="admin-btn" style="color:#5885a2;">+1 {{ $series['teams']['blue']['name'] }}</button>
                             </form>
                             @if ($map['mode'] !== 'double' && (int) $map['winlimit'] === 5 && ! $map['golden_cap'])
                                 <form method="POST" action="/admin/series/{{ $series['token'] }}/end" style="display:inline; margin-top:6px;"
@@ -233,7 +233,7 @@
                     </td>
                     <td>
                         <form method="POST" action="/admin/series/{{ $series['token'] }}/map/delete"
-                              onsubmit="return confirm('Retirer {{ e($map['name']) }} de la série ?');">
+                              onsubmit="return confirm('Retirer {{ $map['name'] }} de la série ?');">
                             @csrf
                             <input type="hidden" name="map" value="{{ $map['name'] }}">
                             <button type="submit" class="admin-btn" title="Uniquement si aucun point n'a compté sur cette map.">
@@ -278,24 +278,24 @@
                             Annulation
                         @endif
                     </td>
-                    <td>{{ e($event['source'] ?? '') }}</td>
+                    <td>{{ $event['source'] ?? '' }}</td>
                     <td>
                         @if (($event['type'] ?? '') === 'log')
-                            {{ e($event['map'] ?? '') }} : {{ (int) ($event['scores']['red'] ?? 0) }}-{{ (int) ($event['scores']['blue'] ?? 0) }}
+                            {{ $event['map'] ?? '' }} : {{ (int) ($event['scores']['red'] ?? 0) }}-{{ (int) ($event['scores']['blue'] ?? 0) }}
                             @if (($event['winner'] ?? '') !== '')
-                                → {{ e($series['teams'][$event['winner']]['name'] ?? '') }}
+                                → {{ $series['teams'][$event['winner']]['name'] ?? '' }}
                             @else
                                 → égalité
                             @endif
                         @elseif (($event['type'] ?? '') === 'end')
-                            {{ e($event['map'] ?? '') }} : timelimit atteint
+                            {{ $event['map'] ?? '' }} : timelimit atteint
                         @elseif (($event['type'] ?? '') === 'manual')
-                            +1 {{ e($series['teams'][$event['team']]['name'] ?? '') }} sur {{ e($event['map'] ?? '') }}
+                            +1 {{ $series['teams'][$event['team']]['name'] ?? '' }} sur {{ $event['map'] ?? '' }}
                         @else
-                            annule l'événement {{ e($event['target'] ?? '') }}
+                            annule l'événement {{ $event['target'] ?? '' }}
                         @endif
                         @if (($event['note'] ?? '') !== '')
-                            <span style="color:#777;">({{ e($event['note']) }})</span>
+                            <span style="color:#777;">({{ $event['note'] }})</span>
                         @endif
                     </td>
                     <td>

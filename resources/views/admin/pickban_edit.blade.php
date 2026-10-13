@@ -13,7 +13,7 @@
 <div class="admin-header" style="--accent:#9b6dff;">
     <h2>
         <i class="fa-solid fa-map"></i>
-        Overlay Pick/Ban — {{ e($overlay['title'] !== '' ? $overlay['title'] : $overlay['token']) }}
+        Overlay Pick/Ban — {{ $overlay['title'] !== '' ? $overlay['title'] : $overlay['token'] }}
     </h2>
     <p>Modifiez le format, les titres, les équipes et les six cartes (map, capture, action PICK/BAN, équipe). Le format est strict : le compte de cartes PICK et BAN doit correspondre exactement. L'overlay OBS se rafraîchit tout seul à chaque enregistrement.</p>
 </div>
@@ -35,10 +35,10 @@
 </div>
 
 @if (session('success'))
-    <p style="color:#8c8;">{{ e(session('success')) }}</p>
+    <p style="color:#8c8;">{{ session('success') }}</p>
 @endif
 @if (session('error'))
-    <p style="color:#ff8080;">{{ e(session('error')) }}</p>
+    <p style="color:#ff8080;">{{ session('error') }}</p>
 @endif
 
 <form method="POST" action="/admin/overlay/pickban/{{ $overlay['token'] }}/update" class="admin-form-stack admin-form-stack--wide" id="pickban-editor">
@@ -59,13 +59,13 @@
         <div style="flex:1; min-width:280px;">
             <label class="admin-form-label" for="editor-eyebrow">Sur-titre (petit texte au-dessus du titre)</label>
             <input type="text" name="eyebrow" id="editor-eyebrow" class="form-control" maxlength="96"
-                   value="{{ e((string) ($overlay['eyebrow'] ?? '')) }}"
+                   value="{{ (string) ($overlay['eyebrow'] ?? '') }}"
                    placeholder="ETF2L Highlander Saison 36 - Division 1 - Finale">
         </div>
         <div style="flex:1; min-width:200px;">
             <label class="admin-form-label" for="editor-title">Titre *</label>
             <input type="text" name="title" id="editor-title" class="form-control" maxlength="96" required
-                   value="{{ e((string) ($overlay['title'] ?? '')) }}" placeholder="Picks & Bans">
+                   value="{{ (string) ($overlay['title'] ?? '') }}" placeholder="Picks & Bans">
         </div>
     </div>
     <p style="color:#777; font-size:13px; margin:6px 0 0;">
@@ -82,11 +82,11 @@
                 <h4 style="margin:0 0 10px; color:#bbb;">Équipe {{ $label }}</h4>
                 <label class="admin-form-label" for="team-{{ $side }}-name">Nom affiché</label>
                 <input type="text" name="team_{{ $side }}[name]" id="team-{{ $side }}-name" class="form-control js-team-field-name"
-                       maxlength="64" value="{{ e((string) ($overlay['teams'][$side]['name'] ?? '')) }}"
+                       maxlength="64" value="{{ (string) ($overlay['teams'][$side]['name'] ?? '') }}"
                        placeholder="Ex : DD14">
                 <label class="admin-form-label" style="margin-top:10px;" for="team-{{ $side }}-avatar">Avatar (URL)</label>
                 <input type="text" name="team_{{ $side }}[avatar]" id="team-{{ $side }}-avatar" class="form-control js-team-field-avatar"
-                       maxlength="500" value="{{ e((string) ($overlay['teams'][$side]['avatar'] ?? '')) }}"
+                       maxlength="500" value="{{ (string) ($overlay['teams'][$side]['avatar'] ?? '') }}"
                        placeholder="https://…/logo.png">
             </div>
         @endforeach
@@ -103,19 +103,19 @@
                     <select class="form-control js-pickban-map-select" data-index="{{ $index }}">
                         <option value="">— Choisir une map —</option>
                         @foreach ($maps as $map)
-                            <option value="{{ e($map['name']) }}" data-label="{{ e($map['label']) }}" data-image="{{ e($map['image']) }}">{{ e($map['label']) }}</option>
+                            <option value="{{ $map['name'] }}" data-label="{{ $map['label'] }}" data-image="{{ $map['image'] }}">{{ $map['label'] }}</option>
                         @endforeach
                     </select>
                 </div>
                 <div style="flex:1; min-width:180px;">
                     <label class="admin-form-label">Nom affiché</label>
                     <input type="text" name="cards[{{ $index }}][map]" class="form-control js-pickban-map-name" maxlength="64"
-                           value="{{ e((string) ($card['map'] ?? '')) }}" placeholder="pl_upward">
+                           value="{{ (string) ($card['map'] ?? '') }}" placeholder="pl_upward">
                 </div>
                 <div style="flex:1; min-width:220px;">
                     <label class="admin-form-label">Capture (URL)</label>
                     <input type="text" name="cards[{{ $index }}][image]" class="form-control js-pickban-map-image" maxlength="500"
-                           value="{{ e((string) ($card['image'] ?? '')) }}" placeholder="https://…/upward.jpg">
+                           value="{{ (string) ($card['image'] ?? '') }}" placeholder="https://…/upward.jpg">
                 </div>
                 <div>
                     <label class="admin-form-label">Action</label>

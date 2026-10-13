@@ -47,9 +47,9 @@
 
     <header class="roster-head anim" style="--d:0.2s;">
         @if (trim($data['eyebrow']) !== '')
-            <div class="eyebrow">{{ e($data['eyebrow']) }}</div>
+            <div class="eyebrow">{{ $data['eyebrow'] }}</div>
         @endif
-        <h1>{{ e($data['title']) }}</h1>
+        <h1>{{ $data['title'] }}</h1>
         <div class="title-bar"></div>
     </header>
 
@@ -62,22 +62,22 @@
             <section class="roster-team anim" style="--d:{{ 0.9 + $t * 0.2 }}s;">
                 <div class="roster-team__head">
                     <img class="roster-team__avatar"
-                         src="{{ trim($team['avatar']) !== '' ? e($team['avatar']) : hlfr_asset('/_img/av_default.png') }}"
+                         src="{{ trim($team['avatar']) !== '' ? $team['avatar'] : hlfr_asset('/_img/av_default.png') }}"
                          alt="" loading="eager"
                          onerror="this.onerror=null; this.src='{{ hlfr_asset('/_img/av_default.png') }}';">
-                    <span class="roster-team__name">{{ e($team['name']) }}</span>
+                    <span class="roster-team__name">{{ $team['name'] }}</span>
                 </div>
                 <ul class="roster-team__classes">
                     @foreach ($team['players'] as $i => $player)
                         <li class="roster-class{{ $player['merc'] ? ' roster-class--merc' : '' }} anim" style="--d:{{ 1.2 + $t * 0.2 + $i * 0.08 }}s;">
                             @if ($player['portrait'] !== '')
-                                <img class="roster-class__portrait" src="{{ e($player['portrait']) }}"
-                                     alt="{{ e(ucfirst($player['class'])) }}" loading="eager">
+                                <img class="roster-class__portrait" src="{{ $player['portrait'] }}"
+                                     alt="{{ ucfirst($player['class']) }}" loading="eager">
                             @endif
                             @if ($player['merc'])
                                 <span class="roster-class__merc">MERC</span>
                             @endif
-                            <span class="roster-class__name">{{ e($player['name']) }}</span>
+                            <span class="roster-class__name">{{ $player['name'] }}</span>
                         </li>
                     @endforeach
                 </ul>

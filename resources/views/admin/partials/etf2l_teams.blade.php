@@ -38,7 +38,7 @@
                 <select id="{{ $prefix }}-teams-competition" class="form-control js-etf2l-competition">
                     @foreach ($competitions as $competition)
                         <option value="{{ (int) $competition['id'] }}">
-                            {{ e($competition['name']) }}@if ($mixedFormats && ($competition['type'] ?? '') === '6v6') (6v6)@endif{{ $competition['archived'] ? ' (archivée)' : '' }}
+                            {{ $competition['name'] }}@if ($mixedFormats && ($competition['type'] ?? '') === '6v6') (6v6)@endif{{ $competition['archived'] ? ' (archivée)' : '' }}
                         </option>
                     @endforeach
                 </select>

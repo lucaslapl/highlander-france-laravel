@@ -103,7 +103,7 @@ final class AdminProgrammeController extends Controller
 
         $overlay = [
             'token' => bin2hex(random_bytes(8)),
-            'name' => trim((string) $data['name']),
+            'name' => $this->clip((string) $data['name'], self::MAX_NAME_LEN),
             'welcome' => 'Bienvenue sur Highlander France !',
             'team_a' => '',
             'team_b' => '',
@@ -187,10 +187,10 @@ final class AdminProgrammeController extends Controller
         $countdown = [
             'mode' => $mode,
             'label' => trim((string) ($data['countdown_label'] ?? '')) !== ''
-                ? trim((string) $data['countdown_label'])
+                ? $this->clip((string) $data['countdown_label'], self::MAX_SMALL_LEN)
                 : 'Début dans',
             'zero_text' => trim((string) ($data['countdown_zero_text'] ?? '')) !== ''
-                ? trim((string) $data['countdown_zero_text'])
+                ? $this->clip((string) $data['countdown_zero_text'], self::MAX_SMALL_LEN)
                 : 'EN DIRECT',
             'adjust_s' => 0,
         ];
@@ -210,8 +210,8 @@ final class AdminProgrammeController extends Controller
             $countdown['started_at'] = time();
         }
 
-        $overlay['name'] = trim((string) $data['name']);
-        $overlay['welcome'] = trim((string) $data['welcome']);
+        $overlay['name'] = $this->clip((string) $data['name'], self::MAX_NAME_LEN);
+        $overlay['welcome'] = $this->clip((string) $data['welcome'], self::MAX_TEXT_LEN);
         $overlay['team_a'] = $this->clip((string) ($data['team_a'] ?? ''), self::MAX_TEAM_LEN);
         $overlay['team_b'] = $this->clip((string) ($data['team_b'] ?? ''), self::MAX_TEAM_LEN);
         $overlay['team_a_avatar'] = $this->cleanUrl($data['team_a_avatar'] ?? null);
@@ -325,14 +325,17 @@ final class AdminProgrammeController extends Controller
 
         $out = [];
         foreach ((new Etf2lRepository)->upcomingMatches(self::MAX_UPCOMING) as $match) {
+            // Les noms stockés par la synchro peuvent contenir des
+            // entités HTML (« &#039; ») : même décodage que l'import
+            // direct, l'entrée arrive propre dans le formulaire.
             $out[] = [
                 'day' => $this->frenchDay((int) ($match['match_date'] ?? 0)),
                 'time' => $this->frenchHour((int) ($match['match_date'] ?? 0)),
                 'label' => trim((string) ($match['competition_name'] ?? '')) !== ''
-                    ? trim((string) $match['competition_name'])
+                    ? $this->clip((string) $match['competition_name'], self::MAX_TEXT_LEN)
                     : 'ETF2L',
-                'team_a' => trim((string) ($match['team1_name'] ?? '')) !== '' ? trim((string) $match['team1_name']) : 'TBD',
-                'team_b' => trim((string) ($match['team2_name'] ?? '')) !== '' ? trim((string) $match['team2_name']) : 'TBD',
+                'team_a' => trim((string) ($match['team1_name'] ?? '')) !== '' ? $this->clip((string) $match['team1_name'], self::MAX_TEAM_LEN) : 'TBD',
+                'team_b' => trim((string) ($match['team2_name'] ?? '')) !== '' ? $this->clip((string) $match['team2_name'], self::MAX_TEAM_LEN) : 'TBD',
                 'match_url' => 'https://etf2l.org/matches/'.(int) ($match['match_id'] ?? 0).'/',
             ];
         }
@@ -446,11 +449,16 @@ final class AdminProgrammeController extends Controller
     }
 
     /**
-     * Coupe une chaîne en octets sans casser un caractère UTF-8.
+     * Coupe une chaîne en octets sans casser un caractère UTF-8. Les
+     * entités HTML sont d'abord décodées : les données saisies avant le
+     * correctif d'échappement des vues (double échappement de {{
+     * e(…) }}, apostrophes stockées en « &#039; ») se réparent d'elles-
+     * mêmes à l'enregistrement suivant, et un texte collé avec des
+     * entités repart propre. La vue ré-échappe à l'affichage.
      */
     private function clip(string $value, int $maxBytes): string
     {
-        $value = trim($value);
+        $value = trim(html_entity_decode($value, ENT_QUOTES | ENT_HTML5, 'UTF-8'));
         if (strlen($value) > $maxBytes) {
             $value = mb_strcut($value, 0, $maxBytes, 'UTF-8');
         }

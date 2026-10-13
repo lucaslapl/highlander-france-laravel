@@ -35,7 +35,7 @@
             <div class="overlay-team overlay-team--{{ $team }}">
                 <img class="overlay-team__avatar" src="{{ $avatarSrc }}" alt=""
                      onerror="this.onerror=null; this.src='{{ hlfr_asset('/_img/av_default.png') }}';">
-                <span class="overlay-team__name">{{ e($teamData['name']) }}</span>
+                <span class="overlay-team__name">{{ $teamData['name'] }}</span>
                 <span class="overlay-team__score overlay-team__score--{{ $team }}">{{ (int) $teamData['score'] }}</span>
             </div>
             @if ($team === 'blue')
@@ -48,7 +48,7 @@
 
     @if (($overlay['map'] ?? '') !== '')
         <p class="overlay-map">
-            {{ e($overlay['map']) }}
+            {{ $overlay['map'] }}
             @if ((int) ($overlay['length'] ?? 0) > 0)
                 · {{ intdiv((int) $overlay['length'], 60) }} min
             @endif
@@ -99,7 +99,7 @@
                             @endphp
                             {{-- Valeurs brutes en data-* : le JS de tri a besoin
                                  de nombres, pas des cellules formatées. --}}
-                            <tr data-name="{{ e($player['name']) }}"
+                            <tr data-name="{{ $player['name'] }}"
                                 data-kills="{{ (int) $player['kills'] }}"
                                 data-assists="{{ (int) $player['assists'] }}"
                                 data-deaths="{{ (int) $player['deaths'] }}"
@@ -113,7 +113,7 @@
                                         <img src="{{ $classIcon }}" alt="" title="{{ ucfirst(e($player['class'])) }}">
                                     @endif
                                 </td>
-                                <td class="c-name">{{ e($player['name']) }}</td>
+                                <td class="c-name">{{ $player['name'] }}</td>
                                 <td class="num c-kad{{ $bestClass('kills') }}">{{ $fmt((int) $player['kills']) }}</td>
                                 <td class="num c-kad{{ $bestClass('assists') }}">{{ $fmt((int) $player['assists']) }}</td>
                                 <td class="num c-kad{{ $bestClass('deaths') }}">{{ $fmt((int) $player['deaths']) }}</td>

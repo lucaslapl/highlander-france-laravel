@@ -16,9 +16,9 @@
 <div id="scene">
     <header class="anim" style="--d:1s;">
         @if (trim($data['eyebrow']) !== '')
-            <div class="eyebrow">{{ e($data['eyebrow']) }}</div>
+            <div class="eyebrow">{{ $data['eyebrow'] }}</div>
         @endif
-        <h1>{{ e($data['title']) }}</h1>
+        <h1>{{ $data['title'] }}</h1>
         <div class="title-bar"></div>
     </header>
 
@@ -27,25 +27,25 @@
             <div class="card anim action-{{ $card['action'] }}">
                 <div class="map-name">
                     @if (trim($card['map']) !== '')
-                        {{ e(strtoupper($card['map'])) }}
+                        {{ strtoupper($card['map']) }}
                     @else
                         <span class="map-unknown">—</span>
                     @endif
                 </div>
                 <div class="map-shot">
                     @if (trim($card['image']) !== '')
-                        <img src="{{ e($card['image']) }}" alt="" loading="eager">
+                        <img src="{{ $card['image'] }}" alt="" loading="eager">
                     @endif
                 </div>
                 <div class="card-team">
                     @if (trim($card['team']['name']) !== '' || trim($card['team']['avatar']) !== '')
                         <img class="team-avatar"
-                             src="{{ trim($card['team']['avatar']) !== '' ? e($card['team']['avatar']) : hlfr_asset('/_img/av_default.png') }}"
+                             src="{{ trim($card['team']['avatar']) !== '' ? $card['team']['avatar'] : hlfr_asset('/_img/av_default.png') }}"
                              alt="" loading="eager"
                              onerror="this.onerror=null; this.src='{{ hlfr_asset('/_img/av_default.png') }}';">
                     @endif
                     @if (trim($card['team']['name']) !== '')
-                        <span class="team-name">{{ e($card['team']['name']) }}</span>
+                        <span class="team-name">{{ $card['team']['name'] }}</span>
                     @endif
                 </div>
                 <div class="card-action">{{ $card['action'] === 'pick' ? 'PICK' : 'BAN' }}</div>

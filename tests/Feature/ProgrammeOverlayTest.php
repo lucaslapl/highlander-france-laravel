@@ -472,11 +472,61 @@ class ProgrammeOverlayTest extends TestCase
         return $overlay;
     }
 
+    public function test_une_apostrophe_s_affiche_correctement_sans_double_echappement(): void
+    {
+        $this->seedProgramme([
+            'messages' => ["Le compétitif t'intéresse ? Rendez-vous sur notre site"],
+        ]);
+
+        $response = $this->get('/programme-overlay/'.self::TOKEN);
+
+        // assertSee échappe l'aiguille avec e() : il attend donc
+        // l'apostrophe simple-échappée (&#039;) dans le HTML — pas le
+        // double échappement (&amp;#039;) qui affichait « t&#039; » à
+        // l'écran.
+        $response->assertOk()->assertSee("Le compétitif t'intéresse ? Rendez-vous sur notre site");
+        $this->assertStringNotContainsString('&amp;#039;', (string) $response->getContent());
+    }
+
+    public function test_les_entites_html_des_messages_sont_decodees_a_l_enregistrement(): void
+    {
+        $this->seedProgramme();
+
+        // Données polluées par l'ancien double échappement : entité
+        // « &#039; » collée ou ré-enregistrée depuis le formulaire.
+        $this->withSession(['steamid' => '76561198012345678', 'is_caster' => true])
+            ->post('/admin/overlay/programme/'.self::TOKEN.'/update', [
+                'name' => 'Programme du dimanche',
+                'welcome' => 'Bienvenue sur Highlander France !',
+                'countdown_mode' => 'duration',
+                'countdown_duration_min' => 60,
+                'messages' => 'Le compétitif t&#039;intéresse ?',
+                'slideshow_display_s' => 8,
+                'slideshow_fade_s' => 1,
+            ])
+            ->assertSessionHas('success');
+
+        $this->assertSame(
+            ["Le compétitif t'intéresse ?"],
+            $this->findOverlay()['messages']
+        );
+    }
+
+    public function test_l_import_etf2l_decode_les_entites_des_noms_d_equipes(): void
+    {
+        $this->seedEtf2lMatchCache(93234, 'L&#039;Escouade 6');
+
+        $this->withSession(['steamid' => '76561198012345678', 'is_caster' => true])
+            ->get('/admin/overlay/programme/etf2l-match?match_url=https://etf2l.org/matches/93234/')
+            ->assertOk()
+            ->assertJsonPath('match.teams.1.name', "L'Escouade 6");
+    }
+
     /**
      * Amorce le cache ETF2L d'un match (conso modèle SeriesAdminTest) :
      * le service répond depuis le cache, sans appel HTTP réel.
      */
-    private function seedEtf2lMatchCache(int $matchId): void
+    private function seedEtf2lMatchCache(int $matchId, string $team2Name = 'Escouade 6'): void
     {
         DB::table('etf2l_api_cache')->insert([
             'url' => 'https://api-v2.etf2l.org/matches/'.$matchId,
@@ -492,7 +542,7 @@ class ProgrammeOverlayTest extends TestCase
                     ],
                     'clan2' => [
                         'id' => 21748,
-                        'name' => 'Escouade 6',
+                        'name' => $team2Name,
                         'country' => 'France',
                         'steam' => ['avatar' => 'https://example.com/e6.png'],
                     ],

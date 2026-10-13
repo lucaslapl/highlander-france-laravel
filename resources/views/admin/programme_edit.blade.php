@@ -33,7 +33,7 @@
 <div class="admin-header" style="--accent:#9b6dff;">
     <h2>
         <i class="fa-solid fa-calendar-days"></i>
-        Overlay Programme — {{ e(trim((string) ($overlay['name'] ?? '')) !== '' ? $overlay['name'] : $overlay['token']) }}
+        Overlay Programme — {{ trim((string) ($overlay['name'] ?? '')) !== '' ? $overlay['name'] : $overlay['token'] }}
     </h2>
     <p>Modifiez le décompte, les équipes du jour, le bandeau de bienvenue, les messages du diaporama et le programme de la semaine. L'overlay OBS se rafraîchit tout seul à chaque enregistrement (ou ajustement du décompte).</p>
 </div>
@@ -55,10 +55,10 @@
 </div>
 
 @if (session('success'))
-    <p style="color:#8c8;">{{ e(session('success')) }}</p>
+    <p style="color:#8c8;">{{ session('success') }}</p>
 @endif
 @if (session('error'))
-    <p style="color:#ff8080;">{{ e(session('error')) }}</p>
+    <p style="color:#ff8080;">{{ session('error') }}</p>
 @endif
 
 <form method="POST" action="/admin/overlay/programme/{{ $overlay['token'] }}/update" class="admin-form-stack admin-form-stack--wide" id="programme-editor">
@@ -69,12 +69,12 @@
         <div style="flex:1; min-width:240px;">
             <label class="admin-form-label" for="editor-name">Nom (repère dans la liste) *</label>
             <input type="text" name="name" id="editor-name" class="form-control" maxlength="96" required
-                   value="{{ e(old('name', (string) ($overlay['name'] ?? ''))) }}">
+                   value="{{ old('name', (string) ($overlay['name'] ?? '')) }}">
         </div>
         <div style="flex:1; min-width:280px;">
             <label class="admin-form-label" for="editor-welcome">Message de bienvenue (bas de l'écran) *</label>
             <input type="text" name="welcome" id="editor-welcome" class="form-control" maxlength="120" required
-                   value="{{ e(old('welcome', (string) ($overlay['welcome'] ?? ''))) }}">
+                   value="{{ old('welcome', (string) ($overlay['welcome'] ?? '')) }}">
         </div>
     </div>
 
@@ -95,28 +95,28 @@
             <div>
                 <label class="admin-form-label" for="editor-countdown-date">Date</label>
                 <input type="date" name="countdown_date" id="editor-countdown-date" class="form-control"
-                       value="{{ e(old('countdown_date', $targetDate)) }}">
+                       value="{{ old('countdown_date', $targetDate) }}">
             </div>
             <div>
                 <label class="admin-form-label" for="editor-countdown-time">Heure</label>
                 <input type="time" name="countdown_time" id="editor-countdown-time" class="form-control"
-                       value="{{ e(old('countdown_time', $targetTime)) }}">
+                       value="{{ old('countdown_time', $targetTime) }}">
             </div>
         </div>
         <div class="js-programme-duration" style="@if ($mode === 'datetime') display:none; @endif">
             <label class="admin-form-label" for="editor-countdown-duration">Durée (minutes)</label>
             <input type="number" name="countdown_duration_min" id="editor-countdown-duration" class="form-control"
-                   min="0" max="10080" value="{{ e(old('countdown_duration_min', (string) $durationMin)) }}">
+                   min="0" max="10080" value="{{ old('countdown_duration_min', (string) $durationMin) }}">
         </div>
         <div style="flex:1; min-width:200px;">
             <label class="admin-form-label" for="editor-countdown-label">Libellé au-dessus du décompte</label>
             <input type="text" name="countdown_label" id="editor-countdown-label" class="form-control" maxlength="48"
-                   value="{{ e(old('countdown_label', (string) ($countdown['label'] ?? 'Début dans'))) }}">
+                   value="{{ old('countdown_label', (string) ($countdown['label'] ?? 'Début dans')) }}">
         </div>
         <div style="flex:1; min-width:200px;">
             <label class="admin-form-label" for="editor-countdown-zero">Texte une fois le décompte écoulé</label>
             <input type="text" name="countdown_zero_text" id="editor-countdown-zero" class="form-control" maxlength="48"
-                   value="{{ e(old('countdown_zero_text', (string) ($countdown['zero_text'] ?? 'EN DIRECT'))) }}" placeholder="EN DIRECT">
+                   value="{{ old('countdown_zero_text', (string) ($countdown['zero_text'] ?? 'EN DIRECT')) }}" placeholder="EN DIRECT">
         </div>
     </div>
 
@@ -141,23 +141,23 @@
         <div style="flex:1; min-width:220px;">
             <label class="admin-form-label" for="editor-team-a">Équipe 1</label>
             <input type="text" name="team_a" id="editor-team-a" class="form-control" maxlength="64"
-                   value="{{ e(old('team_a', (string) ($overlay['team_a'] ?? ''))) }}">
+                   value="{{ old('team_a', (string) ($overlay['team_a'] ?? '')) }}">
         </div>
         <div style="flex:1; min-width:220px;">
             <label class="admin-form-label" for="editor-team-a-avatar">Avatar équipe 1 (URL image)</label>
             <input type="text" name="team_a_avatar" id="editor-team-a-avatar" class="form-control js-programme-team-a-avatar" maxlength="500"
-                   value="{{ e(old('team_a_avatar', (string) ($overlay['team_a_avatar'] ?? ''))) }}"
+                   value="{{ old('team_a_avatar', (string) ($overlay['team_a_avatar'] ?? '')) }}"
                    placeholder="https://steamcdn… (repli : avatar par défaut)">
         </div>
         <div style="flex:1; min-width:220px;">
             <label class="admin-form-label" for="editor-team-b">Équipe 2</label>
             <input type="text" name="team_b" id="editor-team-b" class="form-control" maxlength="64"
-                   value="{{ e(old('team_b', (string) ($overlay['team_b'] ?? ''))) }}">
+                   value="{{ old('team_b', (string) ($overlay['team_b'] ?? '')) }}">
         </div>
         <div style="flex:1; min-width:220px;">
             <label class="admin-form-label" for="editor-team-b-avatar">Avatar équipe 2 (URL image)</label>
             <input type="text" name="team_b_avatar" id="editor-team-b-avatar" class="form-control js-programme-team-b-avatar" maxlength="500"
-                   value="{{ e(old('team_b_avatar', (string) ($overlay['team_b_avatar'] ?? ''))) }}"
+                   value="{{ old('team_b_avatar', (string) ($overlay['team_b_avatar'] ?? '')) }}"
                    placeholder="https://steamcdn… (repli : avatar par défaut)">
         </div>
     </div>
@@ -165,18 +165,18 @@
     <h3 class="admin-section-title"><i class="fa-regular fa-comments"></i> Diaporama de messages (sous le bandeau)</h3>
     <div class="admin-form-row">
         <label class="admin-form-label" for="editor-messages">Messages — un par ligne, enchaînés en fondu</label>
-        <textarea name="messages" id="editor-messages" class="form-control" rows="5" style="width:100%;">{{ e(old('messages', implode("\n", is_array($overlay['messages'] ?? null) ? $overlay['messages'] : []))) }}</textarea>
+        <textarea name="messages" id="editor-messages" class="form-control" rows="5" style="width:100%;">{{ old('messages', implode("\n", is_array($overlay['messages'] ?? null) ? $overlay['messages'] : [])) }}</textarea>
     </div>
     <div class="admin-form-row" style="display:flex; gap:16px; flex-wrap:wrap;">
         <div>
             <label class="admin-form-label" for="editor-display-s">Durée d'affichage de chaque message (secondes)</label>
             <input type="number" name="slideshow_display_s" id="editor-display-s" class="form-control"
-                   min="2" max="120" value="{{ e(old('slideshow_display_s', (string) ($slideshow['display_s'] ?? 8))) }}">
+                   min="2" max="120" value="{{ old('slideshow_display_s', (string) ($slideshow['display_s'] ?? 8)) }}">
         </div>
         <div>
             <label class="admin-form-label" for="editor-fade-s">Durée du fondu (secondes)</label>
             <input type="number" name="slideshow_fade_s" id="editor-fade-s" class="form-control"
-                   min="0" max="10" value="{{ e(old('slideshow_fade_s', (string) ($slideshow['fade_s'] ?? 1))) }}">
+                   min="0" max="10" value="{{ old('slideshow_fade_s', (string) ($slideshow['fade_s'] ?? 1)) }}">
         </div>
     </div>
 

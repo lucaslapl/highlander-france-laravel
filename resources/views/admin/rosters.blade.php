@@ -45,7 +45,7 @@
 <h3 class="admin-section-title"><i class="fa-solid fa-layer-group"></i> Overlays ({{ count($rosters) }})</h3>
 
 @if (session('success'))
-    <p style="color:#8c8;">{{ e(session('success')) }}</p>
+    <p style="color:#8c8;">{{ session('success') }}</p>
 @endif
 
 @if (empty($rosters))
@@ -67,7 +67,7 @@
                 @foreach ($rosters as $entry)
                     <tr>
                         <td>{{ ($entry['format'] ?? '') === '6v6' ? '6v6' : 'Highlander' }}</td>
-                        <td>{{ e(trim((string) ($entry['title'] ?? '')) !== '' ? $entry['title'] : '(sans titre)') }}</td>
+                        <td>{{ trim((string) ($entry['title'] ?? '')) !== '' ? $entry['title'] : '(sans titre)' }}</td>
                         <td>{{ date('d/m/Y H:i', (int) ($entry['created_at'] ?? 0)) }}</td>
                         <td>{{ date('d/m/Y H:i', (int) ($entry['updated_at'] ?? 0)) }}</td>
                         <td style="max-width:340px;">

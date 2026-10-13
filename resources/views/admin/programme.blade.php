@@ -30,7 +30,7 @@
 <h3 class="admin-section-title"><i class="fa-solid fa-layer-group"></i> Overlays ({{ count($programmes) }})</h3>
 
 @if (session('success'))
-    <p style="color:#8c8;">{{ e(session('success')) }}</p>
+    <p style="color:#8c8;">{{ session('success') }}</p>
 @endif
 
 @if (empty($programmes))
@@ -50,7 +50,7 @@
             <tbody>
                 @foreach ($programmes as $entry)
                     <tr>
-                        <td>{{ e(trim((string) ($entry['name'] ?? '')) !== '' ? $entry['name'] : '(sans nom)') }}</td>
+                        <td>{{ trim((string) ($entry['name'] ?? '')) !== '' ? $entry['name'] : '(sans nom)' }}</td>
                         <td>{{ date('d/m/Y H:i', (int) ($entry['created_at'] ?? 0)) }}</td>
                         <td>{{ date('d/m/Y H:i', (int) ($entry['updated_at'] ?? 0)) }}</td>
                         <td style="max-width:340px;">

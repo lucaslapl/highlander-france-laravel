@@ -137,7 +137,7 @@ class PickBanOverlayTest extends TestCase
 
         $response->assertOk()
             ->assertSee('ETF2L Highlander Saison 36 - Division 1 - Finale')
-            ->assertSee('Picks &amp; Bans')
+            ->assertSee('Picks & Bans')
             ->assertSee('UPWARD')
             ->assertSee('VIGIL')
             ->assertSee('SWIFT')

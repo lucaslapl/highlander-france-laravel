@@ -15,7 +15,7 @@
 <div class="admin-header" style="--accent:#9b6dff;">
     <h2>
         <i class="fa-solid fa-sitemap"></i>
-        Overlay {{ $isBracket ? 'Bracket' : 'Classement' }} — {{ e($bracket['title'] !== '' ? $bracket['title'] : $bracket['token']) }}
+        Overlay {{ $isBracket ? 'Bracket' : 'Classement' }} — {{ $bracket['title'] !== '' ? $bracket['title'] : $bracket['token'] }}
     </h2>
     <p>
         {{ $isBracket
@@ -42,10 +42,10 @@
 </div>
 
 @if (session('success'))
-    <p style="color:#8c8;">{{ e(session('success')) }}</p>
+    <p style="color:#8c8;">{{ session('success') }}</p>
 @endif
 @if (session('error'))
-    <p style="color:#ff8080;">{{ e(session('error')) }}</p>
+    <p style="color:#ff8080;">{{ session('error') }}</p>
 @endif
 
 <form method="POST" action="/admin/overlay/bracket/{{ $bracket['token'] }}/update" class="admin-form-stack admin-form-stack--wide" id="bracket-editor">
@@ -56,18 +56,18 @@
         <div style="flex:1; min-width:260px;">
             <label class="admin-form-label">Sur-titre (petit texte au-dessus du titre)</label>
             <input type="text" name="eyebrow" class="form-control" maxlength="96"
-                   value="{{ e((string) ($bracket['eyebrow'] ?? '')) }}"
+                   value="{{ (string) ($bracket['eyebrow'] ?? '') }}"
                    placeholder="ETF2L Highlander Saison 36">
         </div>
         <div style="flex:1; min-width:200px;">
             <label class="admin-form-label">Titre *</label>
             <input type="text" name="title" class="form-control" maxlength="96" required
-                   value="{{ e((string) ($bracket['title'] ?? '')) }}" placeholder="Division 1">
+                   value="{{ (string) ($bracket['title'] ?? '') }}" placeholder="Division 1">
         </div>
         <div style="flex:1; min-width:160px;">
             <label class="admin-form-label">Mot accentué (en rose dans le titre)</label>
             <input type="text" name="accent" class="form-control" maxlength="48"
-                   value="{{ e((string) ($bracket['accent'] ?? '')) }}" placeholder="Playoffs">
+                   value="{{ (string) ($bracket['accent'] ?? '') }}" placeholder="Playoffs">
         </div>
     </div>
 
@@ -176,9 +176,9 @@
                     <select id="bkv-match-series" class="form-control">
                         <option value="">— Aucune (score saisi ci-dessus) —</option>
                         @foreach (($seriesList ?? []) as $series)
-                            <option value="{{ e((string) ($series['token'] ?? '')) }}">
-                                {{ e((string) ($series['title'] ?? '')) }}
-                                — {{ e((string) ($series['teams']['red']['name'] ?? '')) }} vs {{ e((string) ($series['teams']['blue']['name'] ?? '')) }}
+                            <option value="{{ (string) ($series['token'] ?? '') }}">
+                                {{ (string) ($series['title'] ?? '') }}
+                                — {{ (string) ($series['teams']['red']['name'] ?? '') }} vs {{ (string) ($series['teams']['blue']['name'] ?? '') }}
                             </option>
                         @endforeach
                     </select>

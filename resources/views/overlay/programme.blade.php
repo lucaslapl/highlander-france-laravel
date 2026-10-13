@@ -43,9 +43,9 @@
                  data-started-at="{{ $data['countdown_started_at'] }}"
                  data-duration-s="{{ $data['countdown_duration_s'] }}"
                  data-adjust-s="{{ $data['countdown_adjust_s'] }}"
-                 data-zero-text="{{ e($data['countdown_zero_text']) }}">
+                 data-zero-text="{{ $data['countdown_zero_text'] }}">
                 @if (trim($data['countdown_label']) !== '')
-                    <span class="cd-label">{{ e($data['countdown_label']) }}</span>
+                    <span class="cd-label">{{ $data['countdown_label'] }}</span>
                 @endif
                 <span class="cd-value" id="countdown-value">--:--</span>
             </div>
@@ -57,10 +57,10 @@
                     @if (trim($team['name']) !== '')
                         <div class="team-row">
                             <img class="team-avatar"
-                                 src="{{ trim($team['avatar']) !== '' ? e($team['avatar']) : hlfr_asset('/_img/av_default.png') }}"
+                                 src="{{ trim($team['avatar']) !== '' ? $team['avatar'] : hlfr_asset('/_img/av_default.png') }}"
                                  alt="" loading="eager"
                                  onerror="this.onerror=null; this.src='{{ hlfr_asset('/_img/av_default.png') }}';">
-                            <span class="team-name">{{ e($team['name']) }}</span>
+                            <span class="team-name">{{ $team['name'] }}</span>
                         </div>
                     @endif
                 @endforeach
@@ -71,14 +71,14 @@
     {{-- ── Bas centre : bandeau de bienvenue + diaporama de messages ── --}}
     <div class="bottom-banner">
         @if (trim($data['welcome']) !== '')
-            <div class="welcome anim" style="--d:1.1s;">{{ e($data['welcome']) }}</div>
+            <div class="welcome anim" style="--d:1.1s;">{{ $data['welcome'] }}</div>
         @endif
         @if (count($data['messages']) > 0)
             <div class="slideshow anim" style="--d:1.4s;"
                  data-display-s="{{ $data['slideshow_display_s'] }}"
                  data-fade-s="{{ $data['slideshow_fade_s'] }}">
                 @foreach ($data['messages'] as $i => $message)
-                    <span class="slideshow-msg{{ $i === 0 ? ' is-visible' : '' }}">{{ e($message) }}</span>
+                    <span class="slideshow-msg{{ $i === 0 ? ' is-visible' : '' }}">{{ $message }}</span>
                 @endforeach
             </div>
         @endif
@@ -92,19 +92,19 @@
                 <div class="schedule-entry">
                     <div class="schedule-when">
                         <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M7 2v2h10V2h2v2h1a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h1V2h2zM4 9v11h16V9H4zm6 2h4v2h-4v-2z"/></svg>
-                        <span class="schedule-day">{{ e($entry['day']) }}</span>
+                        <span class="schedule-day">{{ $entry['day'] }}</span>
                         @if (trim($entry['time']) !== '')
-                            <span class="schedule-time">- {{ e($entry['time']) }}</span>
+                            <span class="schedule-time">- {{ $entry['time'] }}</span>
                         @endif
                     </div>
                     @if (trim($entry['label']) !== '')
-                        <div class="schedule-label">{{ e($entry['label']) }}</div>
+                        <div class="schedule-label">{{ $entry['label'] }}</div>
                     @endif
                     @if (trim($entry['team_a']) !== '' || trim($entry['team_b']) !== '')
                         <div class="schedule-teams">
-                            <span class="schedule-team">{{ e($entry['team_a']) }}</span>
+                            <span class="schedule-team">{{ $entry['team_a'] }}</span>
                             <span class="schedule-vs">-</span>
-                            <span class="schedule-team">{{ e($entry['team_b']) }}</span>
+                            <span class="schedule-team">{{ $entry['team_b'] }}</span>
                         </div>
                     @endif
                 </div>

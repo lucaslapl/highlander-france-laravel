@@ -16,12 +16,12 @@
 <div id="scene">
     <header class="anim" style="--d:.2s;">
         @if (trim($data['eyebrow']) !== '')
-            <div class="eyebrow">{{ e($data['eyebrow']) }}</div>
+            <div class="eyebrow">{{ $data['eyebrow'] }}</div>
         @endif
         <h1>
-            {{ e($data['title']) }}
+            {{ $data['title'] }}
             @if (trim($data['accent']) !== '')
-                <em>{{ e($data['accent']) }}</em>
+                <em>{{ $data['accent'] }}</em>
             @endif
         </h1>
         <div class="title-bar"></div>
@@ -49,10 +49,10 @@
                         <td class="team-col">
                             <span class="team-cell">
                                 @if ($row['avatar'] !== '')
-                                    <img class="avatar" src="{{ e($row['avatar']) }}" alt="" loading="lazy"
+                                    <img class="avatar" src="{{ $row['avatar'] }}" alt="" loading="lazy"
                                          onerror="this.onerror=null; this.src='{{ hlfr_asset('/_img/av_default.png') }}';">
                                 @endif
-                                <span class="team-name">{{ e($row['name']) }}</span>
+                                <span class="team-name">{{ $row['name'] }}</span>
                             </span>
                         </td>
                         <td class="numeric">{{ (int) $row['played'] }}</td>

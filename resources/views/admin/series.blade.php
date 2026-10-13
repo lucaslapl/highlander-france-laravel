@@ -89,8 +89,8 @@
                     @foreach (['9v9', '6v6'] as $category)
                         <optgroup label="{{ $category === '9v9' ? 'Highlander (9v9)' : '6v6' }}" data-category="{{ $category }}">
                             @foreach ($mapPools[$category] ?? [] as $map)
-                                <option value="{{ e($map['name']) }}" data-category="{{ $category }}">
-                                    {{ e(trim((string) ($map['label'] ?? '')) !== '' ? $map['label'] : $map['name']) }}
+                                <option value="{{ $map['name'] }}" data-category="{{ $category }}">
+                                    {{ trim((string) ($map['label'] ?? '')) !== '' ? $map['label'] : $map['name'] }}
                                 </option>
                             @endforeach
                         </optgroup>
@@ -133,7 +133,7 @@
             <tbody>
                 @foreach ($seriesList as $entry)
                     <tr>
-                        <td><a href="/admin/series/{{ $entry['token'] }}">{{ e($entry['title']) }}</a></td>
+                        <td><a href="/admin/series/{{ $entry['token'] }}">{{ $entry['title'] }}</a></td>
                         <td>
                             @if ((int) ($entry['etf2l_match_id'] ?? 0) > 0)
                                 <a href="https://etf2l.org/matches/{{ (int) $entry['etf2l_match_id'] }}/" target="_blank" rel="noopener">#{{ (int) $entry['etf2l_match_id'] }}</a>

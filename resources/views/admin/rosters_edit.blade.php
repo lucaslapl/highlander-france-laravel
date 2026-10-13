@@ -11,7 +11,7 @@
 @endphp
 
 <div class="admin-header" style="--accent:#e97fff;">
-    <h2><i class="fa-solid fa-users"></i> {{ e($overlay['title']) }}</h2>
+    <h2><i class="fa-solid fa-users"></i> {{ $overlay['title'] }}</h2>
     <p>
         {{ $formatLabel }} ·
         {{ count($slots) }} classes par équipe —
@@ -82,12 +82,12 @@
         <div style="flex:1; min-width:280px;">
             <label class="admin-form-label" for="rosters-eyebrow">Sur-titre</label>
             <input type="text" name="eyebrow" id="rosters-eyebrow" class="form-control" maxlength="96"
-                   value="{{ e($overlay['eyebrow'] ?? '') }}">
+                   value="{{ $overlay['eyebrow'] ?? '' }}">
         </div>
         <div style="flex:1; min-width:200px;">
             <label class="admin-form-label" for="rosters-title">Titre *</label>
             <input type="text" name="title" id="rosters-title" class="form-control" maxlength="96"
-                   value="{{ e($overlay['title'] ?? '') }}" required>
+                   value="{{ $overlay['title'] ?? '' }}" required>
         </div>
     </div>
 
@@ -99,10 +99,10 @@
                        value="{{ (int) ($overlay['teams'][$side]['etf2l_id'] ?? 0) ?: '' }}">
                 <label class="admin-form-label" for="team-{{ $side }}-name">Nom équipe {{ $label }}</label>
                 <input type="text" id="team-{{ $side }}-name" name="team_{{ $side }}[name]" class="form-control js-team-field-name"
-                       value="{{ e($overlay['teams'][$side]['name'] ?? '') }}" maxlength="64">
+                       value="{{ $overlay['teams'][$side]['name'] ?? '' }}" maxlength="64">
                 <label class="admin-form-label" style="margin-top:10px;" for="team-{{ $side }}-avatar">Avatar par URL externe (optionnel)</label>
                 <input type="url" id="team-{{ $side }}-avatar" name="team_{{ $side }}[avatar]" class="form-control js-team-field-avatar"
-                       value="{{ e($overlay['teams'][$side]['avatar'] ?? '') }}"
+                       value="{{ $overlay['teams'][$side]['avatar'] ?? '' }}"
                        placeholder="https://…/logo.png">
 
                 <h4 style="margin:14px 0 8px;">Classes</h4>
@@ -121,7 +121,7 @@
                                  title="{{ $slot['label'] }}">
                             <span style="flex:0 0 86px; font-size:13px; color:#bbb;">{{ $slot['label'] }}</span>
                             <input type="text" name="players_{{ $side }}[{{ $i }}][name]"
-                                   class="form-control js-roster-slot-name" value="{{ e($playerName) }}"
+                                   class="form-control js-roster-slot-name" value="{{ $playerName }}"
                                    maxlength="40" placeholder="Pseudo du joueur">
                             <label style="flex:none; font-size:13px; color:#bbb; display:flex; gap:5px; align-items:center;">
                                 <input type="hidden" name="players_{{ $side }}[{{ $i }}][merc]" value="0">
