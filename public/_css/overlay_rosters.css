@@ -125,8 +125,8 @@ html, body {
 }
 
 .roster-team__avatar {
-    width: 56px;
-    height: 56px;
+    width: 90px;
+    height: 90px;
     object-fit: contain;
     flex: none;
 }
@@ -230,8 +230,8 @@ html, body {
 .roster-scene--6v6 .roster-teams {
     flex-direction: column;
     align-items: center;
-    gap: 54px;
-    padding-top: 330px;
+    gap: 100px;
+    padding-top: 250px;
 }
 
 .roster-scene--6v6 .roster-team {
@@ -266,5 +266,5 @@ html, body {
    cartes et deux entêtes doivent tenir sur 1920 px de large. */
 .roster-scene--6v6 .roster-class__portrait {
     width: 90%;
-    max-width: 150px;
+    max-width: 135px;
 }
