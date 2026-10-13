@@ -74,7 +74,18 @@ final class ApiStatus
             $message .= ' — budget minute : '.$r['headers']['x-ratelimit-remaining'].'/'.$limit.' requêtes restantes';
         }
         if ((int) $r['http_code'] === 429) {
-            $message = 'HTTP 429 : quota ETF2L de la minute épuisé (rafales de scripts du site ?) — réessayer dans ~1 min.';
+            // Le throttle ETF2L (fenêtre d'une minute depuis le premier appel)
+            // ne peut pas persister plusieurs minutes sans nouveaux appels
+            // partant de l'IP : on expose les en-têtes de la réponse pour
+            // diagnostiquer qui consomme le quota (cron en vol, IP partagée).
+            $message = 'HTTP 429 : quota ETF2L épuisé pour l\'IP du site (cron en vol, IP partagée ?)';
+
+            if (isset($r['headers']['retry-after'])) {
+                $message .= ' — Retry-After : '.$r['headers']['retry-after'].' s';
+            }
+            if (isset($r['headers']['x-ratelimit-remaining'], $r['headers']['x-ratelimit-limit'])) {
+                $message .= ' — fenêtre courante : '.$r['headers']['x-ratelimit-remaining'].'/'.$r['headers']['x-ratelimit-limit'];
+            }
         }
 
         $checks['etf2l'] = [
