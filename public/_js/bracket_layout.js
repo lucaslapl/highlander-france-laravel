@@ -13,7 +13,9 @@
    - les colonnes marquées « à plat » (flat, ex : rounds d'un système
      suisse) ne s'alimentent pas entre elles : espacement régulier et
      aucun connecteur, les paires d'un round étant indépendantes des
-     précédentes ;
+     précédentes ; au-delà de splitFlatAt cases (7 par défaut, soit 14
+     équipes), une colonne à plat se pose en deux sous-colonnes pour ne
+     pas étirer le bracket en hauteur ;
    - les voies haute et basse sont empilées, la grande finale se place à
      droite des voies, centrée sur l'ensemble, avec ses cases compactes
      additionnelles empilées dessous (ex : match de 3è place) ;
@@ -34,7 +36,12 @@
         gapY: 40,
         gfSmallGap: 110,
         laneGap: 90,
-        labelH: 38
+        labelH: 38,
+        /* Sous-colonnes des colonnes à plat larges (système suisse) :
+           écart entre les deux sous-colonnes et seuil de déclenchement
+           (nombre de cases, 7 = 14 équipes). */
+        subGapX: 80,
+        splitFlatAt: 7
     };
 
     function options(overrides) {
@@ -107,7 +114,6 @@
      */
     function layout(data, overrides) {
         var opts = options(overrides);
-        var strideX = opts.cardW + opts.gapX;
         var strideY = opts.cardH + opts.gapY;
 
         var lanes = { upper: [], lower: [], final: [] };
@@ -116,10 +122,54 @@
             lanes[lane].push(column);
         });
 
+        /* Colonnes à plat larges (rounds suisses) : à partir de
+           splitFlatAt cases, la colonne se pose en deux sous-colonnes
+           (moitié gauche / moitié droite) pour éviter une colonne
+           démesurée en hauteur. half = taille de la sous-colonne
+           gauche, 0 = pas de split. */
+        function splitHalf(column) {
+            var n = (column.matches || []).length;
+
+            return column.flat && n >= opts.splitFlatAt ? Math.ceil(n / 2) : 0;
+        }
+
+        function columnWidth(column) {
+            return splitHalf(column) > 0 ? 2 * opts.cardW + opts.subGapX : opts.cardW;
+        }
+
+        /* Abscisses cumulées : chaque colonne occupe sa largeur (simple
+           ou double) plus l'écart inter-colonnes — les colonnes à plat
+           scindées décalent d'autant les suivantes. */
+        var offsets = { upper: [], lower: [] };
+        ['upper', 'lower'].forEach(function (lane) {
+            var x = 0;
+            lanes[lane].forEach(function (column) {
+                offsets[lane].push(x);
+                x += columnWidth(column) + opts.gapX;
+            });
+        });
+
         var centers = {
             upper: laneCenters(lanes.upper, strideY),
             lower: laneCenters(lanes.lower, strideY)
         };
+
+        /* Colonnes à plat scindées : chaque sous-colonne repart du haut
+           de la voie (index relatif à sa demi-pile), les deux se
+           superposent — la hauteur du round est divisée par deux au
+           lieu d'être seulement coupée en deux moitiés décalées. */
+        ['upper', 'lower'].forEach(function (lane) {
+            lanes[lane].forEach(function (column, depth) {
+                var half = splitHalf(column);
+                if (half > 0) {
+                    centers[lane][depth] = centers[lane][depth].map(function (center, index) {
+                        var sub = index < half ? index : index - half;
+
+                        return (sub + 0.5) * strideY;
+                    });
+                }
+            });
+        });
 
         /* Hauteur de chaque voie (étendue réelle des cases posées). */
         function laneHeight(lane) {
@@ -144,7 +194,16 @@
            grande finale (gfSmallGap). L'étiquette est rendue dans la
            carte (gf-head côté overlay) ; le bloc entier (grande finale +
            cartes compactes) est centré sur l'empilement des voies. */
-        var finalOffset = Math.max(lanes.upper.length, lanes.lower.length, 0) * strideX;
+        /* La grande finale se place à droite de la voie la plus large
+           (une colonne à plat scindée occupe deux largeurs de carte). */
+        var finalOffset = 0;
+        ['upper', 'lower'].forEach(function (lane) {
+            var laneColumns = lanes[lane];
+            if (laneColumns.length > 0) {
+                var last = laneColumns[laneColumns.length - 1];
+                finalOffset = Math.max(finalOffset, offsets[lane][laneColumns.length - 1] + columnWidth(last) + opts.gapX);
+            }
+        });
         var finalCount = lanes.final.length > 0 ? (lanes.final[0].matches || []).length : 0;
         var finalBlockH = opts.gfH + Math.max(0, finalCount - 1) * (opts.gfSmallH + opts.gfSmallGap);
         var gfTop = (stackH - finalBlockH) / 2;
@@ -169,12 +228,15 @@
                         depth: depth,
                         text: String(column.label || ''),
                         empty: true,
-                        x: depth * strideX,
+                        x: offsets[lane][depth],
                         y: top - opts.labelH
                     });
                     return;
                 }
 
+                /* Colonne à plat scindée : la seconde moitié des cases se
+                   pose en sous-colonne à droite de la première. */
+                var half = splitHalf(column);
                 var columnTop = Infinity;
                 (column.matches || []).forEach(function (match, index) {
                     var y = top + centers[lane][depth][index] - opts.cardH / 2;
@@ -189,7 +251,8 @@
                         depth: depth,
                         index: index,
                         gf: false,
-                        x: depth * strideX,
+                        flat: !!column.flat,
+                        x: offsets[lane][depth] + (half > 0 && index >= half ? opts.cardW + opts.subGapX : 0),
                         y: y,
                         w: opts.cardW,
                         h: opts.cardH
@@ -205,7 +268,7 @@
                     depth: depth,
                     text: String(column.label || ''),
                     empty: false,
-                    x: depth * strideX,
+                    x: offsets[lane][depth],
                     y: columnTop - opts.labelH
                 });
             });

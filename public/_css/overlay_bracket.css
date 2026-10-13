@@ -283,6 +283,16 @@ h1 em {
     margin-top: 8px;
 }
 
+/* Dans une case « à plat » (round de système suisse) : le badge se pose
+   à droite de la case, centré verticalement — les rounds sont serrés,
+   le badge sous la case empiéterait sur la suivante. */
+.card.flat:not(.gf) .live {
+    left: 100%;
+    top: 50%;
+    transform: translate(0, -50%);
+    margin: 0 0 0 10px;
+}
+
 /* ---------- Conteneur mis à l'échelle (bracket_layout.js) ---------- */
 
 /* Le bracket est posé à sa taille naturelle dans ce conteneur, puis

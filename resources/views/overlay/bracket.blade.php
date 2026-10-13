@@ -32,6 +32,7 @@
 <script type="application/json" id="bracket-data">{!! json_encode($data, JSON_HEX_TAG | JSON_UNESCAPED_UNICODE) !!}</script>
 <script src="{{ hlfr_asset('/_js/bracket_layout.js') }}" defer></script>
 <script src="{{ hlfr_asset('/_js/overlay_bracket.js') }}" defer
-        data-token="{{ $token }}" data-version="{{ (int) $version }}"></script>
+        data-token="{{ $token }}" data-version="{{ (int) $version }}"
+        data-default-avatar="{{ hlfr_asset('/_img/av_default.png') }}"></script>
 </body>
 </html>

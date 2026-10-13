@@ -38,8 +38,11 @@
                     @endif
                 </div>
                 <div class="card-team">
-                    @if (trim($card['team']['avatar']) !== '')
-                        <img class="team-avatar" src="{{ e($card['team']['avatar']) }}" alt="" loading="eager">
+                    @if (trim($card['team']['name']) !== '' || trim($card['team']['avatar']) !== '')
+                        <img class="team-avatar"
+                             src="{{ trim($card['team']['avatar']) !== '' ? e($card['team']['avatar']) : hlfr_asset('/_img/av_default.png') }}"
+                             alt="" loading="eager"
+                             onerror="this.onerror=null; this.src='{{ hlfr_asset('/_img/av_default.png') }}';">
                     @endif
                     @if (trim($card['team']['name']) !== '')
                         <span class="team-name">{{ e($card['team']['name']) }}</span>

@@ -53,9 +53,10 @@
     <div class="roster-teams">
         <section class="roster-team anim" style="--d:0.9s;">
             <div class="roster-team__head">
-                @if (trim($data['team']['avatar']) !== '')
-                    <img class="roster-team__avatar" src="{{ e($data['team']['avatar']) }}" alt="" loading="eager">
-                @endif
+                <img class="roster-team__avatar"
+                     src="{{ trim($data['team']['avatar']) !== '' ? e($data['team']['avatar']) : hlfr_asset('/_img/av_default.png') }}"
+                     alt="" loading="eager"
+                     onerror="this.onerror=null; this.src='{{ hlfr_asset('/_img/av_default.png') }}';">
                 <span class="roster-team__name">{{ e($data['team']['name']) }}</span>
             </div>
             {{-- Les cartes entrent en cascade : le panneau d'abord, puis

@@ -114,6 +114,10 @@ class BracketOverlayTest extends TestCase
         $this->assertStringContainsString('DD14', $html);
         $this->assertStringContainsString('AKATSUKI', $html);
         $this->assertStringContainsString('Grand Final', $html);
+        // Équipes sans avatar : l'image par défaut locale prend le
+        // relais dans le payload (repli onerror côté client en cas
+        // d'URL cassée).
+        $this->assertStringContainsString('av_default.png', $html);
         // Le badge « EN DIRECT ! » est posé par le JS : sa donnée est dans le JSON.
         $this->assertStringContainsString('"live":true', $html);
         // Le polling de version vit dans overlay_bracket.js, référencé par la page.
@@ -225,6 +229,8 @@ class BracketOverlayTest extends TestCase
         $this->assertStringContainsString('DD14', $html);
         $this->assertStringContainsString('AKATSUKI', $html);
         $this->assertStringContainsString('Pén', $html);
+        // Ligne sans avatar : image par défaut locale dans le payload.
+        $this->assertStringContainsString('av_default.png', $html);
         // Plus de surlignage « top X » : seul le top 3 médaille (CSS)
         // distingue les lignes.
         $this->assertStringNotContainsString('qualified', $html);

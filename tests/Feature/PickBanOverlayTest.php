@@ -147,7 +147,9 @@ class PickBanOverlayTest extends TestCase
             ->assertSee('DD14')
             ->assertSee('AKATSUKI')
             ->assertSee('PICK')
-            ->assertSee('BAN');
+            ->assertSee('BAN')
+            // Équipes sans avatar : image par défaut locale.
+            ->assertSee('av_default.png');
     }
 
     public function test_la_page_overlay_n_expose_rien_de_sensible(): void

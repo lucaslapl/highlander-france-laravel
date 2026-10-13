@@ -226,7 +226,10 @@ final class BracketOverlayController extends Controller
             $rows[] = [
                 'rank' => $rank,
                 'name' => (string) ($row['name'] ?? ''),
-                'avatar' => (string) ($row['avatar'] ?? ''),
+                // Avatar par défaut quand l'équipe n'en a pas : l'image
+                // locale av_default.png (repli onerror côté client en cas
+                // d'URL cassée).
+                'avatar' => $this->avatarOrDefault((string) ($row['avatar'] ?? '')),
                 'played' => (int) ($row['played'] ?? 0),
                 'won' => (int) ($row['won'] ?? 0),
                 'lost' => (int) ($row['lost'] ?? 0),
@@ -265,10 +268,18 @@ final class BracketOverlayController extends Controller
 
         return [
             'name' => (string) ($team['name'] ?? ''),
-            'avatar' => (string) ($team['avatar'] ?? ''),
+            'avatar' => $this->avatarOrDefault((string) ($team['avatar'] ?? '')),
             'score' => $ownScore,
             'status' => $status,
         ];
+    }
+
+    /**
+     * Avatar d'une équipe, ou l'image par défaut locale si absent.
+     */
+    private function avatarOrDefault(string $avatar): string
+    {
+        return $avatar !== '' ? $avatar : hlfr_asset('/_img/av_default.png');
     }
 
     /**

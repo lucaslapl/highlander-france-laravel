@@ -108,10 +108,16 @@
                     td.className = 'team-col';
                     var cell = document.createElement('span');
                     cell.className = 'team-cell';
-                    if (row.avatar) {
+                    var avatarSrc = row.avatar || state.default_avatar || '';
+                    if (avatarSrc) {
                         var avatar = document.createElement('img');
-                        avatar.src = row.avatar;
+                        avatar.src = avatarSrc;
                         avatar.alt = '';
+                        avatar.addEventListener('error', function () {
+                            if (state.default_avatar && avatar.getAttribute('src') !== state.default_avatar) {
+                                avatar.src = state.default_avatar;
+                            }
+                        });
                         cell.appendChild(avatar);
                     }
                     var name = document.createElement('span');

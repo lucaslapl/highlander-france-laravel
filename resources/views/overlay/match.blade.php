@@ -28,11 +28,13 @@
         @foreach (['blue', 'red'] as $team)
             @php
                 $teamData = $overlay['teams'][$team];
+                /* Avatar d'équipe : URL externe le cas échéant, sinon
+                   l'image par défaut locale (repli onerror si l'URL casse). */
+                $avatarSrc = ! empty($avatars[$team]) ? $avatars[$team] : hlfr_asset('/_img/av_default.png');
             @endphp
             <div class="overlay-team overlay-team--{{ $team }}">
-                @if (! empty($avatars[$team]))
-                    <img class="overlay-team__avatar" src="{{ $avatars[$team] }}" alt="">
-                @endif
+                <img class="overlay-team__avatar" src="{{ $avatarSrc }}" alt=""
+                     onerror="this.onerror=null; this.src='{{ hlfr_asset('/_img/av_default.png') }}';">
                 <span class="overlay-team__name">{{ e($teamData['name']) }}</span>
                 <span class="overlay-team__score overlay-team__score--{{ $team }}">{{ (int) $teamData['score'] }}</span>
             </div>

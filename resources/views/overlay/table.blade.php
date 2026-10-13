@@ -49,7 +49,8 @@
                         <td class="team-col">
                             <span class="team-cell">
                                 @if ($row['avatar'] !== '')
-                                    <img class="avatar" src="{{ e($row['avatar']) }}" alt="" loading="lazy">
+                                    <img class="avatar" src="{{ e($row['avatar']) }}" alt="" loading="lazy"
+                                         onerror="this.onerror=null; this.src='{{ hlfr_asset('/_img/av_default.png') }}';">
                                 @endif
                                 <span class="team-name">{{ e($row['name']) }}</span>
                             </span>

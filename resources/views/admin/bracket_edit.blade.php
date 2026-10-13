@@ -82,7 +82,8 @@
             sont les voies gagnante / perdante d'une <strong>double élimination</strong> (WB / LB) ; pour une élimination
             <strong>simple</strong>, laissez toutes les colonnes en voie « Haute » — les connecteurs suivront tout seuls.
             « Finale » place la grande carte à droite, alimentée automatiquement. Le <strong>système suisse</strong>
-            génère ceil(log2(N)) rounds indépendants (sans connecteurs) du nombre d'équipes saisi.
+            génère ceil(log2(N)) rounds indépendants (sans connecteurs) du nombre d'équipes saisi ; à partir de
+            7 cases par round (14 équipes), le round se pose en double colonne pour ne pas étirer l'overlay.
         </p>
         <noscript>
             <p style="color:#ff8080;">L'éditeur visuel nécessite JavaScript : sans lui, les cases du bracket ne seraient pas enregistrées.</p>
@@ -222,6 +223,7 @@
         <script type="application/json" id="bkv-data">{!! json_encode([
             'columns' => $bracket['columns'] ?? [],
             'live' => $bracket['live'] ?? null,
+            'default_avatar' => hlfr_asset('/_img/av_default.png'),
         ], JSON_HEX_TAG | JSON_UNESCAPED_UNICODE) !!}</script>
         <div id="bkv-serialized" aria-hidden="true"></div>
 
@@ -306,6 +308,7 @@
              POST au moment d'enregistrer (admin_table_editor.js). --}}
         <script type="application/json" id="bkt-data">{!! json_encode([
             'rows' => $bracket['rows'] ?? [],
+            'default_avatar' => hlfr_asset('/_img/av_default.png'),
         ], JSON_HEX_TAG | JSON_UNESCAPED_UNICODE) !!}</script>
         <div id="bkt-serialized" aria-hidden="true"></div>
 

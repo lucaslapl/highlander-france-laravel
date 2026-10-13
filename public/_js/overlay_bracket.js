@@ -22,6 +22,7 @@
 
     var token = script.dataset.token;
     var version = String(script.dataset.version);
+    var defaultAvatar = script.dataset.defaultAvatar || '';
 
     /* ── Auto-rafraîchissement (bracket et classement) ─────────────────── */
 
@@ -143,7 +144,8 @@
         el.className = 'card anim'
             + (card.gf ? ' gf' : '')
             + (card.small ? ' gf-small' : '')
-            + (card.lane === 'lower' ? ' lower' : '');
+            + (card.lane === 'lower' ? ' lower' : '')
+            + (card.flat ? ' flat' : '');
         el.style.left = card.x + 'px';
         el.style.top = card.y + 'px';
         el.style.width = card.w + 'px';
@@ -170,6 +172,13 @@
                 avatar.className = 'avatar';
                 avatar.src = team.avatar;
                 avatar.alt = '';
+                /* URL d'avatar cassée (404…) : repli sur l'image locale
+                   par défaut, sans boucle si elle manque aussi. */
+                avatar.addEventListener('error', function () {
+                    if (defaultAvatar && avatar.getAttribute('src') !== defaultAvatar) {
+                        avatar.src = defaultAvatar;
+                    }
+                });
                 row.appendChild(avatar);
             }
 

@@ -43,7 +43,8 @@
         gapX: 70,
         gapY: 26,
         laneGap: 60,
-        labelH: 26
+        labelH: 26,
+        subGapX: 30
     };
 
     /* Formes de squelettes : compteurs de cases par colonne. */
@@ -214,6 +215,7 @@
         var el = document.createElement('div');
         el.className = 'bkv-card'
             + (card.lane === 'lower' ? ' bkv-card--lower' : '')
+            + (card.flat ? ' bkv-card--flat' : '')
             + (isLive(card.columnId, card.matchId) ? ' bkv-card--live' : '')
             + (selected && selected.type === 'match' && String(selected.columnId) === String(card.columnId)
                 && String(selected.matchId) === String(card.matchId) ? ' bkv-card--selected' : '');
@@ -247,10 +249,16 @@
             var row = document.createElement('div');
             row.className = 'bkv-team bkv-team--' + teamStatus(team, teams[1 - side]);
 
-            if (team.avatar) {
+            var src = team.avatar || state.default_avatar || '';
+            if (src) {
                 var avatar = document.createElement('img');
-                avatar.src = team.avatar;
+                avatar.src = src;
                 avatar.alt = '';
+                avatar.addEventListener('error', function () {
+                    if (state.default_avatar && avatar.getAttribute('src') !== state.default_avatar) {
+                        avatar.src = state.default_avatar;
+                    }
+                });
                 row.appendChild(avatar);
             }
 

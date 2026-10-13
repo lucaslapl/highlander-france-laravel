@@ -175,6 +175,9 @@ class OverlayTest extends TestCase
         $this->assertStringContainsString('ScoutFR', (string) $response->getContent());
         $this->assertStringContainsString('35 000', (string) $response->getContent());
         $this->assertStringContainsString('best', (string) $response->getContent());
+        // Aucun avatar d'équipe défini : l'image par défaut locale prend
+        // le relais (avec repli onerror si une URL externe casse).
+        $this->assertStringContainsString('av_default.png', (string) $response->getContent());
         $this->assertStringContainsString('no-store', (string) $response->headers->get('Cache-Control'));
     }
 

@@ -220,6 +220,8 @@ class RostersOverlayTest extends TestCase
             ->assertSee('MERC')
             // Portraits de classes : copie locale du wiki TF2.
             ->assertSee('_img/classes_portraits/scout.png')
+            // Équipe sans avatar : image par défaut locale.
+            ->assertSee('av_default.png')
             ->assertDontSee('AKATSUKI')
             ->assertDontSee('kaylus');
     }
