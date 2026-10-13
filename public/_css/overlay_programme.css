@@ -237,10 +237,11 @@ html, body {
     position: absolute;
     right: 64px;
     bottom: 52px;
-    width: 620px;
+    width: 510px;
     display: flex;
     flex-direction: column;
     gap: 18px;
+    text-align: center;
 }
 
 .schedule-title {
@@ -249,7 +250,6 @@ html, body {
     letter-spacing: .14em;
     text-transform: uppercase;
     color: var(--accent);
-    text-align: right;
     text-shadow: 0 2px 16px rgba(186, 53, 215, 0.5);
 }
 
@@ -266,7 +266,7 @@ html, body {
 .schedule-when {
     display: flex;
     align-items: center;
-    justify-content: flex-end;
+    justify-content: center;
     gap: 10px;
     font-size: 21px;
     font-weight: 800;
@@ -289,13 +289,13 @@ html, body {
     font-size: 24px;
     font-weight: 800;
     color: white;
-    text-align: right;
+    text-align: center;
 }
 
 .schedule-teams {
     display: flex;
     align-items: center;
-    justify-content: flex-end;
+    justify-content: center;
     gap: 12px;
     font-size: 26px;
     font-weight: 900;
