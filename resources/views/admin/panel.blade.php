@@ -6,7 +6,7 @@
 @section('content')
 <div class="admin-header" style="--accent:#9b6dff;">
     <h2><i class="fa-solid fa-tv"></i> Overlays Stream</h2>
-    <p>Les cinq outils d'overlay OBS pour les broadcasts Highlander France, au même endroit.</p>
+    <p>Les six outils d'overlay OBS pour les broadcasts Highlander France, au même endroit.</p>
 </div>
 
 <div class="admin-cards-grid">
@@ -38,6 +38,12 @@
         <h4 class="admin-action-card__title"><i class="fa-solid fa-users"></i> Overlay Rosters</h4>
         <p class="admin-action-card__desc">Présentation des rosters (une équipe à la fois, switch depuis les réglages) : Highlander 3x3 ou 6v6 en ligne, remplissage assisté ETF2L, bustes de classes et badge merc.</p>
         <a href="/admin/overlay/rosters" class="admin-link-btn">Gérer les rosters</a>
+    </div>
+
+    <div class="admin-action-card" style="--accent: #e97fff;">
+        <h4 class="admin-action-card__title"><i class="fa-solid fa-calendar-days"></i> Overlay Programme</h4>
+        <p class="admin-action-card__desc">Ecran d'attente / de présentation : horloge, décompte avant le match (ajustable à la volée), équipes du jour, bandeau de bienvenue avec diaporama de messages et programme de la semaine.</p>
+        <a href="/admin/overlay/programme" class="admin-link-btn">Gérer les programmes</a>
     </div>
 </div>
 @endsection

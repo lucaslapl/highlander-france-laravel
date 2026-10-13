@@ -33,6 +33,7 @@ class OverlayToolsAccessTest extends TestCase
         $this->get('/admin/overlays-stream')->assertForbidden();
         $this->get('/admin/overlay')->assertForbidden();
         $this->get('/admin/series')->assertForbidden();
+        $this->get('/admin/overlay/programme')->assertForbidden();
     }
 
     public function test_un_joueur_connecte_sans_role_n_a_pas_acces(): void
@@ -45,6 +46,9 @@ class OverlayToolsAccessTest extends TestCase
 
         $this->withSession(['steamid' => '76561198012345678'])
             ->get('/admin/series')->assertForbidden();
+
+        $this->withSession(['steamid' => '76561198012345678'])
+            ->get('/admin/overlay/programme')->assertForbidden();
     }
 
     public function test_un_caster_accede_au_hub_des_overlays_et_aux_outils(): void
@@ -54,6 +58,7 @@ class OverlayToolsAccessTest extends TestCase
         $this->withSession($session)->get('/admin/overlays-stream')->assertOk();
         $this->withSession($session)->get('/admin/overlay')->assertOk();
         $this->withSession($session)->get('/admin/series')->assertOk();
+        $this->withSession($session)->get('/admin/overlay/programme')->assertOk();
     }
 
     public function test_un_membre_de_la_prod_accede_au_hub_des_overlays_et_aux_outils(): void
@@ -63,6 +68,7 @@ class OverlayToolsAccessTest extends TestCase
         $this->withSession($session)->get('/admin/overlays-stream')->assertOk();
         $this->withSession($session)->get('/admin/overlay')->assertOk();
         $this->withSession($session)->get('/admin/series')->assertOk();
+        $this->withSession($session)->get('/admin/overlay/programme')->assertOk();
     }
 
     public function test_un_caster_n_accede_pas_au_rest_du_panel_admin(): void
@@ -83,7 +89,7 @@ class OverlayToolsAccessTest extends TestCase
 
     // ─── Contenu du hub des overlays ────────────────────────────────────────
 
-    public function test_le_hub_ne_montre_que_le_titre_et_les_cinq_outils(): void
+    public function test_le_hub_ne_montre_que_le_titre_et_les_six_outils(): void
     {
         $response = $this->withSession(['steamid' => '76561198012345678', 'is_caster' => true])
             ->get('/admin/overlays-stream');
@@ -95,6 +101,7 @@ class OverlayToolsAccessTest extends TestCase
             ->assertSee('Overlay Bracket')
             ->assertSee('Overlay Pick/Ban')
             ->assertSee('Overlay Rosters')
+            ->assertSee('Overlay Programme')
             // Aucune statistique du site ne doit fuir sur ce hub.
             ->assertDontSee('Nombre de joueurs dans la base de données')
             ->assertDontSee('Joueurs enregistrés')

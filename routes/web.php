@@ -13,6 +13,7 @@ use App\Http\Controllers\Admin\AdminMapController;
 use App\Http\Controllers\Admin\AdminOverlayController;
 use App\Http\Controllers\Admin\AdminPanelController;
 use App\Http\Controllers\Admin\AdminPickBanController;
+use App\Http\Controllers\Admin\AdminProgrammeController;
 use App\Http\Controllers\Admin\AdminRostersController;
 use App\Http\Controllers\Admin\AdminSeriesController;
 use App\Http\Controllers\Admin\AdminTeamController;
@@ -26,6 +27,7 @@ use App\Http\Controllers\OverlayController;
 use App\Http\Controllers\PageController;
 use App\Http\Controllers\PickBanOverlayController;
 use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\ProgrammeOverlayController;
 use App\Http\Controllers\RostersOverlayController;
 use App\Http\Controllers\SeriesOverlayController;
 use App\Http\Controllers\ServerHookController;
@@ -113,6 +115,8 @@ Route::get('/pickban-overlay/{token}', [PickBanOverlayController::class, 'show']
 Route::get('/pickban-overlay/{token}/version', [PickBanOverlayController::class, 'version'])->where('token', '[a-z0-9]{16}');
 Route::get('/roster-overlay/{token}', [RostersOverlayController::class, 'show'])->where('token', '[a-z0-9]{16}');
 Route::get('/roster-overlay/{token}/version', [RostersOverlayController::class, 'version'])->where('token', '[a-z0-9]{16}');
+Route::get('/programme-overlay/{token}', [ProgrammeOverlayController::class, 'show'])->where('token', '[a-z0-9]{16}');
+Route::get('/programme-overlay/{token}/version', [ProgrammeOverlayController::class, 'version'])->where('token', '[a-z0-9]{16}');
 
 // ─── Outils overlay OBS (admins + rôles caster / prod) ───────────────────────
 // Panel restreint : les casters et prod n'ont accès qu'aux outils
@@ -142,6 +146,13 @@ Route::middleware('overlay-tools')->prefix('admin')->group(function (): void {
     Route::post('/overlay/rosters/{token}/update', [AdminRostersController::class, 'update'])->where('token', '[a-z0-9]{16}');
     Route::post('/overlay/rosters/{token}/switch', [AdminRostersController::class, 'switch'])->where('token', '[a-z0-9]{16}');
     Route::post('/overlay/rosters/{token}/delete', [AdminRostersController::class, 'delete'])->where('token', '[a-z0-9]{16}');
+    Route::get('/overlay/programme', [AdminProgrammeController::class, 'index'])->name('admin.programme');
+    Route::get('/overlay/programme/etf2l-match', [AdminProgrammeController::class, 'etf2lMatch']);
+    Route::post('/overlay/programme/create', [AdminProgrammeController::class, 'create']);
+    Route::get('/overlay/programme/{token}', [AdminProgrammeController::class, 'edit'])->where('token', '[a-z0-9]{16}');
+    Route::post('/overlay/programme/{token}/update', [AdminProgrammeController::class, 'update'])->where('token', '[a-z0-9]{16}');
+    Route::post('/overlay/programme/{token}/countdown', [AdminProgrammeController::class, 'countdown'])->where('token', '[a-z0-9]{16}');
+    Route::post('/overlay/programme/{token}/delete', [AdminProgrammeController::class, 'delete'])->where('token', '[a-z0-9]{16}');
     Route::get('/series', [AdminSeriesController::class, 'index'])->name('admin.series');
     Route::get('/series/etf2l-match', [AdminSeriesController::class, 'etf2lMatch']);
     Route::post('/series/create', [AdminSeriesController::class, 'create']);

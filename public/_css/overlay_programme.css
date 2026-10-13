@@ -1,0 +1,279 @@
+/* Overlay « Programme » (/programme-overlay/{token}) — page 1920x1080
+   entièrement transparente pour OBS, palette et style repris des autres
+   overlays (thème rose/violet du site). Trois zones :
+   - haut gauche : horloge, note de musique (repère du plugin OBS du
+     caster), décompte avant le match et équipes du jour ;
+   - bas centre : bandeau de bienvenue sur fond rose/violet et
+     diaporama de messages en fondu ;
+   - bas droite : programme de la semaine des prochains matchs castés.
+   Le fond (image de scène) et le logo Highlander France sont ajoutés
+   dans OBS, jamais ici. */
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+:root {
+    --accent: #fbb7fb;
+    --accent-soft: #ffc9ec;
+    --border: #38193d;
+    --surface-dark: rgba(21, 10, 24, 0.92);
+    --violet-bright: #e97fff;
+    --violet-line: rgba(186, 53, 215, 0.57);
+    --text-dim: rgba(255, 220, 246, 0.72);
+}
+
+html, body {
+    width: 1920px;
+    height: 1080px;
+    overflow: hidden;
+    background: transparent;
+    font-family: "Montserrat", "Segoe UI", Roboto, Arial, sans-serif;
+    color: white;
+    cursor: default;
+}
+
+#scene {
+    position: relative;
+    width: 1920px;
+    height: 1080px;
+}
+
+/* ---------- Apparition des éléments ---------- */
+
+.anim {
+    opacity: 0;
+    animation: rise .7s cubic-bezier(.22, 1, .36, 1) forwards;
+    animation-delay: var(--d, 0s);
+}
+
+@keyframes rise {
+    from { opacity: 0; transform: translateY(26px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ---------- Haut gauche : horloge, musique, décompte, équipes ---------- */
+
+.top-left {
+    position: absolute;
+    top: 52px;
+    left: 64px;
+    display: flex;
+    flex-direction: column;
+    gap: 22px;
+}
+
+.tl-row {
+    display: flex;
+    align-items: center;
+    gap: 22px;
+}
+
+.clock {
+    font-size: 58px;
+    font-weight: 900;
+    letter-spacing: .06em;
+    font-variant-numeric: tabular-nums;
+    color: var(--accent);
+    text-shadow: 0 2px 18px rgba(186, 53, 215, 0.45);
+}
+
+.tl-sep {
+    width: 3px;
+    height: 44px;
+    border-radius: 3px;
+    background: linear-gradient(180deg, var(--violet-bright), rgba(186, 53, 215, 0.15));
+}
+
+/* Repère du plugin OBS de musique : simple note, aucune donnée de
+   lecture ici — le caster pose son plugin à cet endroit précis. */
+.music-slot svg {
+    width: 48px;
+    height: 48px;
+    fill: var(--violet-bright);
+    filter: drop-shadow(0 2px 12px rgba(186, 53, 215, 0.55));
+}
+
+.countdown {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.cd-label {
+    font-size: 22px;
+    font-weight: 800;
+    letter-spacing: .3em;
+    text-transform: uppercase;
+    color: var(--accent-soft);
+}
+
+.cd-value {
+    font-size: 74px;
+    font-weight: 900;
+    letter-spacing: .1em;
+    line-height: 1;
+    font-variant-numeric: tabular-nums;
+    color: white;
+    text-shadow: 0 2px 24px rgba(186, 53, 215, 0.6);
+}
+
+/* Décompte écoulé : le texte paramétrable (ex : « EN DIRECT ») prend
+   la couleur rose/violet de l'accent. */
+.cd-value.is-zero {
+    color: var(--violet-bright);
+    text-shadow: 0 2px 24px rgba(186, 53, 215, 0.8);
+}
+
+.teams {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+}
+
+.team-row {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+}
+
+.team-row svg {
+    width: 34px;
+    height: 34px;
+    fill: var(--violet-bright);
+    filter: drop-shadow(0 2px 10px rgba(186, 53, 215, 0.55));
+    flex: 0 0 auto;
+}
+
+.team-name {
+    font-size: 36px;
+    font-weight: 800;
+    letter-spacing: .04em;
+    color: white;
+    text-shadow: 0 2px 16px rgba(21, 10, 24, 0.8);
+}
+
+/* ---------- Bas centre : bandeau de bienvenue + diaporama ---------- */
+
+.bottom-banner {
+    position: absolute;
+    left: 0;
+    bottom: 64px;
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 24px;
+    text-align: center;
+}
+
+.welcome {
+    padding: 18px 54px;
+    border-radius: 999px;
+    font-size: 44px;
+    font-weight: 900;
+    letter-spacing: .02em;
+    color: white;
+    background: linear-gradient(90deg, #ba35d7, #e97fff 50%, #ba35d7);
+    box-shadow: 0 8px 34px rgba(186, 53, 215, 0.55);
+}
+
+.slideshow {
+    position: relative;
+    height: 34px;
+    width: 1000px;
+    max-width: 64vw;
+}
+
+.slideshow-msg {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 26px;
+    font-weight: 600;
+    color: var(--text-dim);
+    opacity: 0;
+    transition: opacity 1s ease-in-out;
+    transition-duration: var(--fade, 1s);
+    white-space: nowrap;
+}
+
+.slideshow-msg.is-visible {
+    opacity: 1;
+}
+
+/* ---------- Bas droite : programme de la semaine ---------- */
+
+.schedule {
+    position: absolute;
+    right: 64px;
+    bottom: 52px;
+    width: 620px;
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+}
+
+.schedule-title {
+    font-size: 30px;
+    font-weight: 900;
+    letter-spacing: .14em;
+    text-transform: uppercase;
+    color: var(--accent);
+    text-align: right;
+    text-shadow: 0 2px 16px rgba(186, 53, 215, 0.5);
+}
+
+.schedule-entry {
+    padding: 16px 22px;
+    border-radius: 14px;
+    border: 1px solid var(--violet-line);
+    background: var(--surface-dark);
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.schedule-when {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 10px;
+    font-size: 21px;
+    font-weight: 800;
+    color: var(--accent-soft);
+}
+
+.schedule-when svg {
+    width: 22px;
+    height: 22px;
+    fill: var(--violet-bright);
+    flex: 0 0 auto;
+}
+
+.schedule-time {
+    color: var(--text-dim);
+    font-weight: 700;
+}
+
+.schedule-label {
+    font-size: 24px;
+    font-weight: 800;
+    color: white;
+    text-align: right;
+}
+
+.schedule-teams {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 12px;
+    font-size: 26px;
+    font-weight: 900;
+    color: white;
+}
+
+.schedule-vs {
+    color: var(--violet-bright);
+    font-weight: 800;
+}
