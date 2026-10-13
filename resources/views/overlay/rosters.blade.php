@@ -7,13 +7,14 @@
      Nombre d'équipes affichées selon le format : Highlander = une
      seule, celle choisie côté admin (bouton « Switcher le roster
      affiché » du panneau de paramétrage — les spectateurs ne voient
-     pas l'interaction) ; 6v6 = les deux équipes face à face sur la
-     même page, rosters en miroir (les Medics au centre). Un switch
+     pas l'interaction) ; 6v6 = les deux équipes empilées l'une sous
+     l'autre, classes en vis-à-vis (colonnes alignées pour comparer
+     qui joue quoi). Un switch
      rejoue l'animation d'apparition de l'équipe qui arrive
      ($replay_enter) ; tout autre enregistrement reste un
      rafraîchissement statique (drapeau rosters-no-enter). Disposition
      selon le format : Highlander = grille 3x3 des neuf classes,
-     6v6 = deux blocs de six classes face à face. --}}
+     6v6 = deux lignes de six classes empilées, en vis-à-vis. --}}
 <!DOCTYPE html>
 <html lang="fr">
 <head>

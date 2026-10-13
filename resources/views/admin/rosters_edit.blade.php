@@ -43,9 +43,9 @@
     <div style="border:2px solid #e97fff; border-radius:10px; padding:16px; margin-bottom:16px; background:rgba(233,127,255,0.08);">
         <h4 style="margin:0 0 8px;"><i class="fa-solid fa-users"></i> Équipes affichées</h4>
         <p style="margin:0; font-size:14px; line-height:1.5;">
-            Le format 6v6 affiche <strong>les deux équipes face à face</strong> sur la même page d'overlay
-            (rosters en miroir, les Medics au centre) : aucun switch n'est nécessaire, la page se rafraîchit
-            toute seule à chaque enregistrement.
+            Le format 6v6 affiche <strong>les deux équipes empilées l'une sous l'autre</strong> sur la même page d'overlay
+            (entêtes à gauche, classes en vis-à-vis pour comparer qui joue quoi) : aucun switch n'est nécessaire,
+            la page se rafraîchit toute seule à chaque enregistrement.
         </p>
     </div>
 @else

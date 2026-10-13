@@ -7,8 +7,8 @@
    direct. Le roster affiché est piloté côté admin en Highlander
    (bouton « Switcher le roster affiché » du panneau de paramétrage) :
    les spectateurs ne voient jamais l'interaction, seulement le
-   résultat ; en 6v6, les deux équipes s'affichent face à face et le
-   switch n'est plus proposé.
+   résultat ; en 6v6, les deux équipes s'affichent empilées l'une
+   sous l'autre et le switch n'est plus proposé.
 
    Le drapeau posé juste avant le reload coupe l'animation d'entrée au
    rendu suivant pour un rafraîchissement statique ; la vue laisse la

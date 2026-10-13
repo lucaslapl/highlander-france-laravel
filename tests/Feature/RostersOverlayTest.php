@@ -16,8 +16,9 @@ use Tests\TestCase;
  * affiché ») : le switch bump la version avec le drapeau replay_enter
  * pour rejouer l'animation d'apparition, les autres enregistrements
  * restent des rafraîchissements statiques. En 6v6, les deux équipes
- * s'affichent face à face sur la même page, rosters en miroir (les
- * Medics au centre), sans switch. L'outil admin (création / édition)
+ * s'affichent empilées l'une sous l'autre sur la même page, classes
+ * en vis-à-vis (colonnes alignées pour comparer qui joue quoi), sans
+ * switch. L'outil admin (création / édition)
  * impose le format choisi à la création (Highlander = neuf classes,
  * 6v6 = six classes) : les affectations suivent cet ordre, chaque
  * joueur peut être marqué merc pour le badge rose de l'overlay.
@@ -145,9 +146,9 @@ class RostersOverlayTest extends TestCase
             ->assertSee('Scout 2')
             ->assertSee('Soldier 2')
             ->assertSee('Demoman')
-            // Les deux équipes sont affichées face à face : pas de
-            // bouton de switch pour ce format.
-            ->assertSee('face à face')
+            // Les deux équipes sont affichées empilées l'une sous
+            // l'autre : pas de bouton de switch pour ce format.
+            ->assertSee('empilées')
             ->assertDontSee('Switcher le roster affiché');
     }
 
@@ -301,7 +302,7 @@ class RostersOverlayTest extends TestCase
         $this->assertFalse((bool) $overlay['replay_enter']);
     }
 
-    public function test_l_overlay_6v6_affiche_les_deux_equipes_face_a_face(): void
+    public function test_l_overlay_6v6_affiche_les_deux_equipes_en_visi_a_vis(): void
     {
         $classes = ['scout', 'scout', 'soldier', 'soldier', 'demoman', 'medic'];
         $this->seedRosters([
@@ -323,13 +324,13 @@ class RostersOverlayTest extends TestCase
         // Les deux équipes rendues : douze cartes de classe.
         $this->assertSame(12, substr_count($content, '<li class="roster-class'));
 
-        // Roster de l'équipe B en miroir : l'ordre des classes est
-        // inversé pour que les Medics se retrouvent au centre de la
-        // page, les Scouts aux extrémités.
+        // Les deux équipes sont empilées dans le même ordre de classes :
+        // chaque colonne est en vis-à-vis, on compare d'un coup d'œil
+        // qui joue quoi (pas de miroir).
         preg_match_all('~classes_portraits/([a-z]+)\.png~', $content, $matches);
         $this->assertSame(
             ['scout', 'scout', 'soldier', 'soldier', 'demoman', 'medic',
-                'medic', 'demoman', 'soldier', 'soldier', 'scout', 'scout'],
+                'scout', 'scout', 'soldier', 'soldier', 'demoman', 'medic'],
             $matches[1]
         );
     }

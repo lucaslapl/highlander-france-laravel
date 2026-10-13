@@ -2,13 +2,14 @@
    entièrement transparent pour OBS. Palette et style repris des autres
    overlays (thème rose/violet du site) : une seule équipe en
    Highlander (celle choisie côté admin via le bouton « Switcher le
-   roster affiché »), les deux équipes face à face en 6v6.
+   roster affiché »), les deux équipes empilées l'une sous l'autre en
+   6v6.
    Chaque joueur est présenté devant le buste officiel de sa classe (wiki
    TF2, copie locale dans public/_img/classes_portraits), les mercs portent
    un badge rose. Disposition selon le format : Highlander = une seule
-   équipe en grille 3x3 des neuf classes, 6v6 = les deux équipes face à
-   face sur la même page, rosters en miroir (les Medics au centre, les
-   Scouts aux extrémités). */
+   équipe en grille 3x3 des neuf classes, 6v6 = les deux équipes
+   empilées l'une sous l'autre, entêtes à gauche et classes en
+   vis-à-vis (colonnes alignées pour comparer qui joue quoi). */
 
 * { margin: 0; padding: 0; box-sizing: border-box; }
 
@@ -219,51 +220,51 @@ html, body {
     grid-template-columns: repeat(3, 1fr);
 }
 
-/* ---------- 6v6 : les deux équipes face à face ---------- */
+/* ---------- 6v6 : les deux équipes empilées, classes en vis-à-vis ------- */
 
-/* Deux panneaux côte à côte, chacun avec son entête centré au-dessus
-   de ses six classes ; l'équipe B est rendue en miroir côté contrôleur
-   (ordre des classes inversé) pour que les Medics se retrouvent au
-   centre de la page, les Scouts aux extrémités. */
+/* Deux panneaux empilés verticalement : chaque équipe a son entête à
+   gauche (nom aligné sur la gauche) et ses six classes alignées à
+   droite. Les deux grilles partagent la même structure : les colonnes
+   de classes se superposent entre les deux équipes, chaque classe
+   est donc en vis-à-vis — on compare d'un coup d'œil qui joue quoi. */
 .roster-scene--6v6 .roster-teams {
-    gap: 40px;
-    padding-top: 420px;
+    flex-direction: column;
+    align-items: center;
+    gap: 54px;
+    padding-top: 330px;
 }
 
 .roster-scene--6v6 .roster-team {
-    width: 880px;
+    width: 1840px;
+    display: flex;
+    align-items: center;
+    gap: 24px;
 }
 
 .roster-scene--6v6 .roster-team__head {
+    flex: 0 0 250px;
+    flex-direction: column;
     justify-content: center;
-    gap: 12px;
-    margin-bottom: 16px;
-    min-height: 48px;
-}
-
-.roster-scene--6v6 .roster-team__avatar {
-    width: 48px;
-    height: 48px;
+    align-items: flex-start;
+    gap: 8px;
+    margin-bottom: 0;
+    text-align: left;
 }
 
 .roster-scene--6v6 .roster-team__name {
-    font-size: 26px;
     white-space: normal;
+    font-size: 26px;
 }
 
 .roster-scene--6v6 .roster-team__classes {
+    flex: 1;
     grid-template-columns: repeat(6, 1fr);
     gap: 14px;
 }
 
-/* Cartes plus compactes que la version une-équipe : douze cartes et
-   deux entêtes doivent tenir côte à côte sur 1920 px. */
+/* Cartes un peu plus compactes que la version Highlander : douze
+   cartes et deux entêtes doivent tenir sur 1920 px de large. */
 .roster-scene--6v6 .roster-class__portrait {
     width: 90%;
-    max-width: 118px;
-}
-
-.roster-scene--6v6 .roster-class__name {
-    font-size: 17px;
-    min-height: 22px;
+    max-width: 150px;
 }

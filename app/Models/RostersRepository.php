@@ -9,8 +9,9 @@ namespace App\Models;
  * Rosters ») : la présentation des rosters des deux équipes d'un match
  * pour les broadcasts OBS — une équipe affichée à la fois en Highlander
  * (bascule par bouton depuis le panneau de réglages admin, grille 3x3
- * des neuf classes), les deux équipes face à face en 6v6 (rosters en
- * miroir, les Medics au centre, six classes par équipe).
+ * des neuf classes), les deux équipes empilées l'une sous l'autre en
+ * 6v6 (classes en vis-à-vis, colonnes alignées pour comparer qui
+ * joue quoi).
  *
  * Même modèle que PickBanRepository : caches JSON sous
  * hlfr_data_path('rosters/') — un index (liste des overlays) et un payload

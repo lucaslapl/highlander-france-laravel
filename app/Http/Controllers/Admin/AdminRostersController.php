@@ -17,10 +17,11 @@ use Illuminate\Http\Request;
  * Outil « Overlay Rosters » : présentation des rosters des deux équipes
  * d'un match pour les broadcasts OBS — en Highlander, une équipe
  * affichée à la fois (bascule par bouton sur l'overlay, grille 3x3
- * des neuf classes) ; en 6v6, les deux équipes face à face sur la
- * même page, rosters en miroir (les Medics au centre), six classes
- * par équipe — le bouton de switch est alors masqué, il ne servirait
- * à rien. Accessible aux admins et aux rôles caster / prod, aux côtés
+ * des neuf classes) ; en 6v6, les deux équipes empilées l'une sous
+ * l'autre sur la même page, entêtes à gauche et classes en vis-à-vis
+ * (colonnes alignées pour comparer qui joue quoi), six classes par
+ * équipe — le bouton de switch est alors masqué, il ne servirait à
+ * rien. Accessible aux admins et aux rôles caster / prod, aux côtés
  * des autres outils overlay (middleware overlay-tools).
  *
  * Le remplissage est assisté : noms et avatars des équipes piochés dans
@@ -39,8 +40,8 @@ use Illuminate\Http\Request;
  * d'apparition se rejoue pour l'équipe qui arrive, les autres
  * enregistrements restent des rafraîchissements statiques (voir
  * RostersOverlayController). En 6v6, les deux équipes sont déjà
- * affichées face à face : le panneau de switch est masqué côté éditeur
- * et le bouton n'a plus d'effet visible.
+ * affichées empilées l'une sous l'autre : le panneau de switch est
+ * masqué côté éditeur et le bouton n'a plus d'effet visible.
  */
 final class AdminRostersController extends Controller
 {
