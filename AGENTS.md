@@ -49,6 +49,12 @@ Run before finishing any change:
 - Tests are PHPUnit with Pest-style attributes, in `tests/Unit` and `tests/Feature`. Add/extend tests when changing behavior (reference existing suites like `ComputePlayerLevelsServiceTest`).
 - Don't commit `storage/app/hlfr/` artifacts, logs, or generated files.
 
+## External API usage — ETF2L (strict)
+
+- **The ETF2L API is heavily rate-limited right now.** Do not make live calls to it during tests or investigation. Checking the API documentation (e.g. existing docs/cached payloads) is enough in almost all cases.
+- **Only call the ETF2L API if it is genuinely necessary** for the task, not for convenience or verification.
+- When live calls are truly unavoidable, **space them out with long intervals between requests** to minimize the risk of rate limiting. Never burst requests; prefer a single, minimal request and cache/reuse the result.
+
 ## Security (strict)
 
 - `.env` contains **live production credentials** (APP_KEY, Steam/Twitch API keys, webhook tokens, DB password). NEVER modify `.env`, print its contents, log secrets, or commit them. `.env.example` is the only safe reference.
