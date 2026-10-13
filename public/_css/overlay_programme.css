@@ -177,17 +177,15 @@ html, body {
 
 .bottom-banner {
     position: absolute;
-    left: 0;
     bottom: 64px;
+    right: 805px;
+    padding: 35px 20px;
     width: 100%;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
     gap: 24px;
     text-align: center;
-    /* Décalé un peu sur la gauche du centre écran : laisse de la place
-       au programme de la semaine en bas à droite. */
-    transform: translateX(-340px);
+    box-sizing: content-box;
+    border-left: 1px solid linear-gradient(180deg, var(--violet-line), rgba(186, 53, 215, 0.15));
+    border-bottom: 1px solid linear-gradient(90deg, var(--violet-line), rgba(186, 53, 215, 0.15));
 }
 
 .welcome {
@@ -196,7 +194,7 @@ html, body {
     font-weight: 900;
     letter-spacing: .02em;
     color: white;
-    background: linear-gradient(90deg, #ba35d7, #e97fff 50%, #ba35d7);
+    background: linear-gradient(90deg, var(--violet-line), var(--violet-bright));
     box-shadow: 0 8px 34px rgba(186, 53, 215, 0.55);
 }
 
