@@ -38,5 +38,11 @@
         <input type="text" name="schedule[{{ $i }}][team_b]" class="form-control js-programme-row-team-b" maxlength="64"
                value="{{ $teamB }}">
     </div>
+    <div style="display:flex; flex-direction:column; gap:4px; align-self:center;">
+        <button type="button" class="admin-btn js-programme-schedule-up" title="Monter l'entrée dans le programme"
+                style="padding:4px 10px;"><i class="fa-solid fa-arrow-up"></i></button>
+        <button type="button" class="admin-btn js-programme-schedule-down" title="Descendre l'entrée dans le programme"
+                style="padding:4px 10px;"><i class="fa-solid fa-arrow-down"></i></button>
+    </div>
     <button type="button" class="admin-btn admin-btn--danger js-programme-schedule-remove">Retirer</button>
 </div>

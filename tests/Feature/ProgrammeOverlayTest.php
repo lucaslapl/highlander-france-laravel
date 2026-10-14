@@ -95,7 +95,12 @@ class ProgrammeOverlayTest extends TestCase
 
     public function test_l_editeur_s_affiche_avec_le_formulaire(): void
     {
-        $this->seedProgramme();
+        $this->seedProgramme([
+            'schedule' => [
+                ['day' => 'Dimanche 11 Octobre', 'time' => '21h', 'label' => 'Finale Loser Bracket - Prem', 'team_a' => 'TWICE', 'team_b' => 'ChudsX6'],
+                ['day' => 'Dimanche 18 Octobre', 'time' => '21h', 'label' => 'Demi-Finale - Open', 'team_a' => 'ZeroKen', 'team_b' => 'RUINATION'],
+            ],
+        ]);
 
         $this->withSession(['steamid' => '76561198012345678', 'is_caster' => true])
             ->get('/admin/overlay/programme/'.self::TOKEN)
@@ -104,7 +109,11 @@ class ProgrammeOverlayTest extends TestCase
             ->assertSee('Équipes du jour')
             ->assertSee('Programme de la semaine')
             ->assertSee('Diaporama de messages')
-            ->assertSee('Ajuster le décompte à la volée');
+            ->assertSee('Ajuster le décompte à la volée')
+            // Flèches de réordonnancement : une paire par entrée du
+            // programme (branchées par admin_programme.js).
+            ->assertSee('js-programme-schedule-up')
+            ->assertSee('js-programme-schedule-down');
     }
 
     public function test_la_mise_a_jour_enregistre_une_duree_et_les_messages(): void
@@ -248,6 +257,60 @@ class ProgrammeOverlayTest extends TestCase
 
         // Rien n'a été enregistré : le mode d'origine est intact.
         $this->assertSame('duration', $this->findOverlay()['countdown']['mode']);
+    }
+
+    public function test_changer_de_mode_conserve_les_reglages_de_l_autre_mode(): void
+    {
+        $this->seedProgramme();
+        $session = ['steamid' => '76561198012345678', 'is_caster' => true];
+        $expected = (new \DateTimeImmutable('2026-10-18 21:00', new \DateTimeZone('Europe/Paris')))->getTimestamp();
+
+        // Passage en mode date/heure : la durée réglée (60 min à la
+        // création) doit survivre à l'enregistrement.
+        $this->withSession($session)
+            ->post('/admin/overlay/programme/'.self::TOKEN.'/update', [
+                'name' => 'Programme du dimanche',
+                'welcome' => 'Bienvenue sur Highlander France !',
+                'countdown_mode' => 'datetime',
+                'countdown_date' => '2026-10-18',
+                'countdown_time' => '21:00',
+                'messages' => '',
+                'slideshow_display_s' => 8,
+                'slideshow_fade_s' => 1,
+            ])
+            ->assertSessionHas('success');
+
+        $overlay = $this->findOverlay();
+        $this->assertSame('datetime', $overlay['countdown']['mode']);
+        $this->assertSame($expected, $overlay['countdown']['target_ts']);
+        $this->assertSame(3600, $overlay['countdown']['duration_s']);
+
+        // Retour en mode durée : la cible saisie doit survivre aussi —
+        // l'éditeur la re-préremplit au lieu de vider les champs.
+        $this->withSession($session)
+            ->post('/admin/overlay/programme/'.self::TOKEN.'/update', [
+                'name' => 'Programme du dimanche',
+                'welcome' => 'Bienvenue sur Highlander France !',
+                'countdown_mode' => 'duration',
+                'countdown_duration_min' => 90,
+                'countdown_date' => '',
+                'countdown_time' => '',
+                'messages' => '',
+                'slideshow_display_s' => 8,
+                'slideshow_fade_s' => 1,
+            ])
+            ->assertSessionHas('success');
+
+        $overlay = $this->findOverlay();
+        $this->assertSame('duration', $overlay['countdown']['mode']);
+        $this->assertSame(90 * 60, $overlay['countdown']['duration_s']);
+        $this->assertSame($expected, $overlay['countdown']['target_ts']);
+
+        $html = (string) $this->withSession($session)
+            ->get('/admin/overlay/programme/'.self::TOKEN)
+            ->getContent();
+        $this->assertStringContainsString('value="2026-10-18"', $html);
+        $this->assertStringContainsString('value="21:00"', $html);
     }
 
     public function test_l_overlay_affiche_decompte_equipes_messages_et_programme(): void
@@ -433,6 +496,59 @@ class ProgrammeOverlayTest extends TestCase
 
         $this->assertNull((new ProgrammeRepository)->find(self::TOKEN));
         $this->get('/programme-overlay/'.self::TOKEN)->assertNotFound();
+    }
+
+    public function test_un_echec_d_ecriture_est_signale_au_lieu_d_afficher_un_succes_faux(): void
+    {
+        $this->seedProgramme();
+
+        // Nom d'équipe en UTF-8 invalide : json_encode échoue et le
+        // dépôt ne peut pas écrire le payload. L'outil doit le dire —
+        // avant, le message « Overlay enregistré » s'affichait alors
+        // que rien n'était sauvé et le formulaire revenait à son état
+        // d'avant.
+        $this->withSession(['steamid' => '76561198012345678', 'is_caster' => true])
+            ->post('/admin/overlay/programme/'.self::TOKEN.'/update', [
+                'name' => 'Programme du dimanche',
+                'welcome' => 'Bienvenue sur Highlander France !',
+                'team_a' => "\xB1\x31",
+                'countdown_mode' => 'datetime',
+                'countdown_date' => '2026-10-18',
+                'countdown_time' => '21:00',
+                'messages' => '',
+                'slideshow_display_s' => 8,
+                'slideshow_fade_s' => 1,
+            ])
+            ->assertSessionHas('error');
+
+        // Rien n'a été enregistré : le mode d'origine est intact.
+        $this->assertSame('duration', $this->findOverlay()['countdown']['mode']);
+    }
+
+    public function test_le_depot_signale_une_ecriture_impossible(): void
+    {
+        // data_dir pointant sous un fichier : le répertoire des
+        // payloads ne peut être ni créé ni écrit, save() comme
+        // delete() doivent retourner false plutôt que mentir.
+        if (! is_dir($this->dataDir)) {
+            @mkdir($this->dataDir, 0775, true);
+        }
+        file_put_contents($this->dataDir.'/bloque.txt', 'x');
+        config(['hlfr.data_dir' => $this->dataDir.'/bloque.txt']);
+
+        $repository = new ProgrammeRepository;
+
+        try {
+            $this->assertFalse($repository->save([
+                'token' => self::TOKEN,
+                'name' => 'Programme du dimanche',
+                'welcome' => 'Bienvenue sur Highlander France !',
+                'schedule' => [],
+            ]));
+            $this->assertFalse($repository->delete(self::TOKEN));
+        } finally {
+            @unlink($this->dataDir.'/bloque.txt');
+        }
     }
 
     /**

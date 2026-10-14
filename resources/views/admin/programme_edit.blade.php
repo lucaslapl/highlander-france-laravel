@@ -184,7 +184,7 @@
     <p style="color:#777; font-size:13px; margin:0 0 10px;">
         Une entrée par match à caster : date (ex : « Dimanche 11 Octobre »), heure (ex : « 21h »), libellé du tour /
         division (ex : « Finale Loser Bracket - Prem ») et les deux équipes. L'ordre du formulaire fait l'ordre
-        d'affichage ; les entrées vides sont ignorées.
+        d'affichage ; les flèches déplacent une entrée d'un cran, les entrées vides sont ignorées.
     </p>
 
     <div style="border:1px solid #333; border-radius:8px; padding:14px; margin-bottom:14px;">

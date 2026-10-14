@@ -10,8 +10,10 @@
    - import des prochains matchs ETF2L depuis la table synchronisée
      du site (/admin/overlay/programme/upcoming) : chaque match proposé
      s'ajoute en une entrée pré-remplie du programme ;
-   - entrées du programme de la semaine ajoutées / retirées à la
-     volée (le gabarit <template> de la page fournit le rendu).
+   - entrées du programme de la semaine ajoutées / retirées /
+     réordonnées à la volée (flèches haut / bas, le gabarit
+     <template> de la page fournit le rendu et l'ordre du DOM fait
+     l'ordre soumis).
 
    Conso modèle admin_series_match.js — tout reste corrigible à la
    main avant l'envoi du formulaire. */
@@ -83,7 +85,7 @@
 
         wireRow(row);
         scheduleBox.appendChild(row);
-        scheduleBox.dataset.next = String(index + 1);
+        renumberScheduleRows();
     }
 
     function wireRow(row) {
@@ -91,11 +93,72 @@
         if (remove) {
             remove.addEventListener('click', function () {
                 row.remove();
+                renumberScheduleRows();
+            });
+        }
+
+        var up = row.querySelector('.js-programme-schedule-up');
+        if (up) {
+            up.addEventListener('click', function () {
+                moveScheduleRow(row, -1);
+            });
+        }
+
+        var down = row.querySelector('.js-programme-schedule-down');
+        if (down) {
+            down.addEventListener('click', function () {
+                moveScheduleRow(row, 1);
             });
         }
     }
 
+    /* Déplace une entrée d'un cran vers le haut (-1) ou le bas (+1) :
+       l'échange de nœuds suffit, la renumérotation refait le reste. */
+    function moveScheduleRow(row, direction) {
+        var sibling = direction < 0 ? row.previousElementSibling : row.nextElementSibling;
+        if (!sibling || !sibling.classList.contains('js-programme-schedule-row')) {
+            return;
+        }
+
+        if (direction < 0) {
+            row.parentNode.insertBefore(row, sibling);
+        } else {
+            row.parentNode.insertBefore(sibling, row);
+        }
+
+        renumberScheduleRows();
+    }
+
+    /* Renumérote les entrées 0..n-1 dans l'ordre du DOM : l'ordre
+       affiché est l'ordre soumis, quel que soit l'historique des
+       ajouts / retraits / déplacements. Les flèches de la première et
+       de la dernière entrée sont désactivées (butée). */
+    function renumberScheduleRows() {
+        if (!scheduleBox) {
+            return;
+        }
+
+        var rows = scheduleBox.querySelectorAll('.js-programme-schedule-row');
+        rows.forEach(function (row, index) {
+            row.querySelectorAll('input[name^="schedule["]').forEach(function (input) {
+                input.name = input.name.replace(/^schedule\[\d+\]/, 'schedule[' + index + ']');
+            });
+
+            var up = row.querySelector('.js-programme-schedule-up');
+            var down = row.querySelector('.js-programme-schedule-down');
+            if (up) {
+                up.disabled = index === 0;
+            }
+            if (down) {
+                down.disabled = index === rows.length - 1;
+            }
+        });
+
+        scheduleBox.dataset.next = String(rows.length);
+    }
+
     scheduleBox.querySelectorAll('.js-programme-schedule-row').forEach(wireRow);
+    renumberScheduleRows();
 
     if (scheduleAdd) {
         scheduleAdd.addEventListener('click', function () {

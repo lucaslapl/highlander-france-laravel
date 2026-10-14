@@ -123,7 +123,13 @@ final class AdminProgrammeController extends Controller
             'created_at' => time(),
         ];
 
-        $this->programmes->save($overlay);
+        if (! $this->programmes->save($overlay)) {
+            AdminLogger::log('admin_programme_create', null, 'FAILURE ('.$overlay['token'].' : écriture impossible)');
+
+            return redirect('/admin/overlay/programme')
+                ->with('error', 'Création impossible : l\'écriture du fichier de l\'overlay a échoué (vérifiez les droits sur storage/app/hlfr/programmes).');
+        }
+
         AdminLogger::log('admin_programme_create', null, 'SUCCESS ('.$overlay['token'].' : '.$overlay['name'].')');
 
         return redirect('/admin/overlay/programme/'.$overlay['token'])
@@ -195,6 +201,19 @@ final class AdminProgrammeController extends Controller
             'adjust_s' => 0,
         ];
 
+        // Les réglages du mode inactif (cible date/heure ou durée) sont
+        // repris de l'état stocké : changer de mode à l'enregistrement
+        // ne doit pas effacer ce qui avait été saisi pour l'autre mode —
+        // l'éditeur re-préremplit ces champs au prochain affichage au
+        // lieu de les remettre à vide.
+        $stored = is_array($overlay['countdown'] ?? null) ? $overlay['countdown'] : [];
+        if (isset($stored['target_ts'])) {
+            $countdown['target_ts'] = (int) $stored['target_ts'];
+        }
+        if (isset($stored['duration_s'])) {
+            $countdown['duration_s'] = (int) $stored['duration_s'];
+        }
+
         if ($mode === 'datetime') {
             // Heure locale France (Europe/Paris) convertie en timestamp
             // UTC : la page overlay n'a plus qu'une soustraction à faire.
@@ -224,7 +243,16 @@ final class AdminProgrammeController extends Controller
         $overlay['countdown'] = $countdown;
         $overlay['schedule'] = $this->scheduleFromRequest($request);
 
-        $this->programmes->save($overlay);
+        if (! $this->programmes->save($overlay)) {
+            // Écriture impossible (répertoire non inscriptible, JSON
+            // invalide) : sans ce retour, le message « enregistré »
+            // mentait et le formulaire revenait à son état d'avant.
+            AdminLogger::log('admin_programme_update', null, 'FAILURE ('.$token.' : écriture impossible)');
+
+            return back()->withInput()
+                ->with('error', 'Enregistrement impossible : l\'écriture du fichier de l\'overlay a échoué (vérifiez les droits sur storage/app/hlfr/programmes).');
+        }
+
         AdminLogger::log('admin_programme_update', null, 'SUCCESS ('.$token.')');
 
         return back()->with('success', 'Overlay enregistré — l\'overlay OBS se rafraîchit aussitôt.');
@@ -257,7 +285,12 @@ final class AdminProgrammeController extends Controller
             );
         }
 
-        $this->programmes->save($overlay);
+        if (! $this->programmes->save($overlay)) {
+            AdminLogger::log('admin_programme_countdown', null, 'FAILURE ('.$token.' : écriture impossible)');
+
+            return back()->with('error', 'Ajustement impossible : l\'écriture du fichier de l\'overlay a échoué.');
+        }
+
         AdminLogger::log('admin_programme_countdown', null, 'SUCCESS ('.$token.' : '.(int) $overlay['countdown']['adjust_s'].'s)');
 
         return back()->with('success', 'Décompte ajusté — l\'overlay OBS se resynchronise aussitôt.');
@@ -271,7 +304,10 @@ final class AdminProgrammeController extends Controller
         Auth::requireOverlayTools();
 
         $this->requireOverlay($token);
-        $this->programmes->delete($token);
+        if (! $this->programmes->delete($token)) {
+            return redirect('/admin/overlay/programme')
+                ->with('error', 'Suppression impossible : l\'écriture a échoué (vérifiez les droits sur storage/app/hlfr/programmes).');
+        }
 
         return redirect('/admin/overlay/programme')->with('success', 'Overlay supprimé.');
     }

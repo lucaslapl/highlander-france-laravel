@@ -62,14 +62,18 @@ final class ProgrammeRepository
     /**
      * Persiste un overlay (payload + entrée d'index) en bumpant sa
      * version, que la vue overlay interroge pour se rafraîchir dans OBS.
+     * Retourne false si l'écriture échoue (répertoire absent / non
+     * inscriptible, JSON invalide) : l'appelant doit le signaler —
+     * sinon l'outil admin affiche « enregistré » alors que rien n'a
+     * été écrit et que le formulaire revient à son état d'avant.
      *
      * @param  array<string, mixed>  $overlay
      */
-    public function save(array $overlay): void
+    public function save(array $overlay): bool
     {
         $token = (string) ($overlay['token'] ?? '');
         if ($token === '') {
-            return;
+            return false;
         }
 
         $overlay['version'] = time();
@@ -79,7 +83,10 @@ final class ProgrammeRepository
             @mkdir($this->dir, 0755, true);
         }
 
-        @file_put_contents($this->payloadFile($token), json_encode($overlay), LOCK_EX);
+        $json = json_encode($overlay);
+        if ($json === false || @file_put_contents($this->payloadFile($token), $json, LOCK_EX) === false) {
+            return false;
+        }
 
         $index = $this->readIndex();
         $entry = [
@@ -102,25 +109,30 @@ final class ProgrammeRepository
             $index[] = $entry;
         }
 
-        $this->writeIndex($index);
+        return $this->writeIndex($index);
     }
 
     /**
-     * Supprime un overlay : payload et entrée d'index.
+     * Supprime un overlay : payload et entrée d'index. Retourne false
+     * si l'écriture de l'index échoue.
      */
-    public function delete(string $token): void
+    public function delete(string $token): bool
     {
         if (! preg_match('/^[a-z0-9]{16}$/', $token)) {
-            return;
+            return false;
         }
 
-        @unlink($this->payloadFile($token));
+        $payloadFile = $this->payloadFile($token);
+        if (is_file($payloadFile) && ! @unlink($payloadFile)) {
+            return false;
+        }
 
         $index = array_values(array_filter(
             $this->readIndex(),
             static fn (array $entry): bool => ($entry['token'] ?? '') !== $token
         ));
-        $this->writeIndex($index);
+
+        return $this->writeIndex($index);
     }
 
     /**
@@ -141,13 +153,13 @@ final class ProgrammeRepository
     /**
      * @param  array<int, array<string, mixed>>  $index
      */
-    private function writeIndex(array $index): void
+    private function writeIndex(array $index): bool
     {
         if (! is_dir($this->dir)) {
             @mkdir($this->dir, 0755, true);
         }
 
-        @file_put_contents($this->dir.'/index.json', json_encode(array_values($index)), LOCK_EX);
+        return @file_put_contents($this->dir.'/index.json', json_encode(array_values($index)), LOCK_EX) !== false;
     }
 
     private function payloadFile(string $token): string
