@@ -162,6 +162,13 @@ body {
     color: #d9a544;
 }
 
+/* Overtime infinie (playoffs 6v6, barème base 2) : même badge que la
+   golden cap, teinte bleutée pour les distinguer. */
+.series-map__gc--ot {
+    background: rgba(88, 133, 162, 0.25);
+    color: #7fb3d5;
+}
+
 /* Map remportée : aucun code couleur d'équipe (les couleurs en jeu changent
    plusieurs fois par map) — la ligne ressort de façon neutre et c'est le
    badge « series-map__winner » qui nomme l'équipe vainqueure. */

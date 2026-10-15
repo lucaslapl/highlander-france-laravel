@@ -6,6 +6,19 @@
 @section('content')
 @include('admin.partials.panel_back_link')
 
+@php
+    // Barème des points ETF2L de la série : base 2 pour le 6v6 (Season 53,
+    // sans golden cap — nuls en saison régulière, overtime infinie en BO),
+    // base 3 (golden cap 2/1) pour le Highlander et les séries sans
+    // catégorie rattachée.
+    $base2 = ($series['category'] ?? null) === '6v6';
+    $endHint = $base2
+        ? ($series['wins_needed'] !== null
+            ? 'la map part en overtime infinie (winlimit progressif, le point qui l\'atteint la décide)'
+            : 'le meneur l\'emporte, une égalité solde la map sur un nul (1-1)')
+        : 'le meneur remporte la map, une égalité part en golden cap';
+@endphp
+
 <div class="admin-header" style="--accent:#4cc46a;">
     <h2><i class="fa-solid fa-trophy"></i> {{ $series['title'] }}</h2>
     <p>
@@ -18,7 +31,7 @@
         <strong style="color:#e06c5a;">{{ $series['teams']['red']['name'] }} {{ (int) $state['score']['red'] }}</strong>
         -
         <strong style="color:#5885a2;">{{ (int) $state['score']['blue'] }} {{ $series['teams']['blue']['name'] }}</strong>
-        <span style="color:#777; font-size:12px;">3 pts par map gagnée, golden cap 2/1</span>)
+        <span style="color:#777; font-size:12px;">{{ $base2 ? '2 pts par map gagnée, map nulle 1-1 (sans golden cap)' : '3 pts par map gagnée, golden cap 2/1' }}</span>)
         @if ($state['finished'])
             @if ($state['winner'] !== null)
                 — <strong>{{ $series['teams'][$state['winner']]['name'] }} remporte la série</strong>
@@ -182,6 +195,8 @@
                         @endif
                         @if ($map['golden_cap'])
                             <span style="color:#d9a544;">golden cap en attente — le prochain point la tranche</span>
+                        @elseif ($map['overtime'])
+                            <span style="color:#7fb3d5;">overtime infinie — le prochain point qui atteint le winlimit la décide</span>
                         @endif
                     </td>
                     <td>
@@ -195,8 +210,10 @@
                         @if ($map['winner'] !== null)
                             <span style="color: {{ $map['winner'] === 'red' ? '#e06c5a' : '#5885a2' }};">{{ $series['teams'][$map['winner']]['name'] }}</span>
                             @if ($map['status'] === 'decided')
-                                <span style="color:#777; font-size:12px;">({{ $map['decided_by_gc'] ? 'golden cap : +2 / +1' : '+3' }})</span>
+                                <span style="color:#777; font-size:12px;">({{ $base2 ? '+2' : ($map['decided_by_gc'] ? 'golden cap : +2 / +1' : '+3') }})</span>
                             @endif
+                        @elseif ($map['draw'])
+                            <span style="color:#777;">Nul (+1 / +1)</span>
                         @else
                             —
                         @endif
@@ -218,13 +235,20 @@
                                 <button type="submit" class="admin-btn" style="color:#5885a2;">+1 {{ $series['teams']['blue']['name'] }}</button>
                             </form>
                             @if ($map['mode'] !== 'double' && (int) $map['winlimit'] === 5 && ! $map['golden_cap'])
+                                @php
+                                    // En overtime infinie (6v6), le bouton sert de rattrapage :
+                                    // solder la map pour l'équipe en tête.
+                                    $hint = $map['overtime']
+                                        ? 'l\'overtime est soldée pour l\'équipe en tête (rattrapage)'
+                                        : $endHint;
+                                @endphp
                                 <form method="POST" action="/admin/series/{{ $series['token'] }}/end" style="display:inline; margin-top:6px;"
-                                      onsubmit="return confirm('Match terminé (timelimit 30 min atteint sans winlimit) ? Le meneur remporte la map, une égalité part en golden cap.');">
+                                      onsubmit="return confirm('Match terminé (timelimit 30 min atteint sans winlimit) ? {{ $hint }}.');">
                                     @csrf
                                     <input type="hidden" name="map" value="{{ $map['name'] }}">
                                     <input type="hidden" name="note" value="fin de map déclarée à la main (timelimit)">
                                     <button type="submit" class="admin-btn"
-                                            title="Map 5cp à timelimit (30 min) sans winlimit atteint : le meneur l'emporte, une égalité part en golden cap.">
+                                            title="Map 5cp à timelimit (30 min) sans winlimit atteint : {{ $hint }}.">
                                         <i class="fa-solid fa-flag-checkered"></i> Match terminé
                                     </button>
                                 </form>

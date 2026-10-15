@@ -15,11 +15,13 @@ use Tests\TestCase;
  * la main (« Match terminé », timelimit des 5cp), annulations et
  * achèvement de la série (BO3/BO5/maps fixes).
  *
- * Le score global de la série vaut les points de ligue ETF2L (règle « Tier
- * System », identique 6v6 / 9v9) : 3 points par map gagnée, 2 pour une
- * victoire en golden cap, 1 pour une défaite en golden cap. Les BO3/BO5 se
- * terminent au nombre de maps gagnées ; les maps fixes (saison régulière)
- * se départagent aux points (4-2 sur un 1-1 en maps).
+ * Le score global de la série vaut les points de ligue ETF2L — base 3
+ * (Highlander, « Tier System ») : 3 points par map gagnée, 2 pour une
+ * victoire en golden cap, 1 pour une défaite en golden cap ; base 2 (6v6,
+ * Season 53 — automne 2026) : 2 points par map gagnée, map nulle 1-1, sans
+ * golden cap (nul en saison régulière, overtime infinie au winlimit
+ * progressif en playoffs). Les BO3/BO5 se terminent au nombre de maps
+ * gagnées ; les maps fixes (saison régulière) se départagent aux points.
  */
 class SeriesScoreServiceTest extends TestCase
 {
@@ -457,17 +459,211 @@ class SeriesScoreServiceTest extends TestCase
         $this->assertSame('red', $state['winner']);
     }
 
+    // ─── Barème 6v6 « base 2 » (Season 53, automne 2026) ────────────────
+
+    public function test_une_serie_6v6_compte_2_points_par_map_gagnee(): void
+    {
+        // KOTH décidé au winlimit (3 points) : victoire de map à 2 points
+        // de ligue, défaite à 0 — pas de golden cap en base 2.
+        $series = $this->series(['koth_product_final'], 'bo3', 2, [
+            $this->manualEvent('e1', 'koth_product_final', 'red'),
+            $this->manualEvent('e2', 'koth_product_final', 'red'),
+            $this->manualEvent('e3', 'koth_product_final', 'red'),
+        ], '6v6');
+
+        $state = (new SeriesScoreService)->compute($series);
+
+        $this->assertSame('decided', $state['maps'][0]['status']);
+        $this->assertSame('red', $state['maps'][0]['winner']);
+        $this->assertFalse($state['maps'][0]['decided_by_gc']);
+        $this->assertSame(2, $state['score']['red']);
+        $this->assertSame(0, $state['score']['blue']);
+    }
+
+    public function test_un_match_6v6_a_maps_fixes_peut_finir_3_1_victoire_plus_nul(): void
+    {
+        // Saison régulière 6v6 (2 maps fixes) : une map gagnée (2 pts) plus
+        // une map nulle (1 pt partout) — le match se joue aux points.
+        $series = $this->series(['koth_product_final', 'cp_process_f7'], 'fixed', null, [
+            $this->manualEvent('e1', 'koth_product_final', 'red'),
+            $this->manualEvent('e2', 'koth_product_final', 'red'),
+            $this->manualEvent('e3', 'koth_product_final', 'red'),
+            $this->manualEvent('e4', 'cp_process_f7', 'red'),
+            $this->manualEvent('e5', 'cp_process_f7', 'red'),
+            $this->manualEvent('e6', 'cp_process_f7', 'blue'),
+            $this->manualEvent('e7', 'cp_process_f7', 'blue'),
+            $this->endEvent('e8', 'cp_process_f7'),
+        ], '6v6');
+
+        $state = (new SeriesScoreService)->compute($series);
+
+        $this->assertSame('decided', $state['maps'][0]['status']);
+        $this->assertSame('red', $state['maps'][0]['winner']);
+        $this->assertSame('decided', $state['maps'][1]['status']);
+        $this->assertNull($state['maps'][1]['winner']);
+        $this->assertTrue($state['maps'][1]['draw']);
+        $this->assertSame(3, $state['score']['red']);
+        $this->assertSame(1, $state['score']['blue']);
+        $this->assertTrue($state['finished']);
+        $this->assertSame('red', $state['winner']);
+    }
+
+    public function test_un_match_6v6_a_maps_fixes_fin_2_2_sur_deux_maps_nulles(): void
+    {
+        // Deux maps nulles : 1 point partout à chaque fois, le match
+        // finit 2-2 — égalité, série terminée sans vainqueur.
+        $series = $this->series(['cp_process_f7', 'cp_sunshine'], 'fixed', null, [
+            $this->manualEvent('e1', 'cp_process_f7', 'red'),
+            $this->manualEvent('e2', 'cp_process_f7', 'red'),
+            $this->manualEvent('e3', 'cp_process_f7', 'blue'),
+            $this->manualEvent('e4', 'cp_process_f7', 'blue'),
+            $this->endEvent('e5', 'cp_process_f7'),
+            $this->endEvent('e6', 'cp_sunshine'),
+        ], '6v6');
+
+        $state = (new SeriesScoreService)->compute($series);
+
+        $this->assertTrue($state['maps'][0]['draw']);
+        $this->assertTrue($state['maps'][1]['draw']);
+        $this->assertSame(2, $state['score']['red']);
+        $this->assertSame(2, $state['score']['blue']);
+        $this->assertTrue($state['finished']);
+        $this->assertNull($state['winner']);
+    }
+
+    public function test_la_fin_de_map_6v6_a_egalite_est_nulle_en_maps_fixes(): void
+    {
+        // 5cp finie 2-2 au timelimit, saison régulière (plus de golden cap
+        // en base 2) : la map est nulle, 1 point de ligue partout.
+        $series = $this->series(['cp_process_f7'], 'fixed', null, [
+            $this->manualEvent('e1', 'cp_process_f7', 'red'),
+            $this->manualEvent('e2', 'cp_process_f7', 'red'),
+            $this->manualEvent('e3', 'cp_process_f7', 'blue'),
+            $this->manualEvent('e4', 'cp_process_f7', 'blue'),
+            $this->endEvent('e5', 'cp_process_f7'),
+        ], '6v6');
+
+        $state = (new SeriesScoreService)->compute($series);
+
+        $this->assertSame('decided', $state['maps'][0]['status']);
+        $this->assertTrue($state['maps'][0]['draw']);
+        $this->assertNull($state['maps'][0]['winner']);
+        $this->assertFalse($state['maps'][0]['golden_cap']);
+        $this->assertSame(1, $state['score']['red']);
+        $this->assertSame(1, $state['score']['blue']);
+    }
+
+    public function test_la_fin_de_map_6v6_a_egalite_part_en_overtime_en_bo(): void
+    {
+        // Playoffs 6v6 : overtime infinie — au timelimit le winlimit devient
+        // le score le plus haut +1 (2-2 → 3), le point qui l'atteint décide.
+        $series = $this->series(['cp_process_f7'], 'bo3', 2, [
+            $this->manualEvent('e1', 'cp_process_f7', 'red'),
+            $this->manualEvent('e2', 'cp_process_f7', 'red'),
+            $this->manualEvent('e3', 'cp_process_f7', 'blue'),
+            $this->manualEvent('e4', 'cp_process_f7', 'blue'),
+            $this->endEvent('e5', 'cp_process_f7'),
+        ], '6v6');
+
+        $overtime = (new SeriesScoreService)->compute($series);
+        $this->assertSame('pending', $overtime['maps'][0]['status']);
+        $this->assertTrue($overtime['maps'][0]['overtime']);
+        $this->assertFalse($overtime['maps'][0]['golden_cap']);
+        $this->assertSame(3, $overtime['maps'][0]['ot_winlimit']);
+        $this->assertSame(['red' => 0, 'blue' => 0], $overtime['score']);
+
+        $series['journal'][] = $this->manualEvent('e6', 'cp_process_f7', 'blue');
+        $decided = (new SeriesScoreService)->compute($series);
+        $this->assertSame('decided', $decided['maps'][0]['status']);
+        $this->assertSame('blue', $decided['maps'][0]['winner']);
+        $this->assertFalse($decided['maps'][0]['decided_by_gc']);
+        $this->assertSame(3, $decided['maps'][0]['scores']['blue']);
+        // Une victoire d'overtime vaut une victoire : 2 points au vainqueur,
+        // 0 au perdant (le barème golden cap 2/1 n'existe pas en base 2).
+        $this->assertSame(2, $decided['score']['blue']);
+        $this->assertSame(0, $decided['score']['red']);
+    }
+
+    public function test_l_overtime_6v6_continue_si_l_equipe_menee_egalise(): void
+    {
+        // 1-2 au timelimit : winlimit progressif à 3 — l'équipe menée
+        // égalise (2-2, la map continue), le point suivant décide.
+        $series = $this->series(['cp_process_f7'], 'bo3', 2, [
+            $this->manualEvent('e1', 'cp_process_f7', 'red'),
+            $this->manualEvent('e2', 'cp_process_f7', 'blue'),
+            $this->manualEvent('e3', 'cp_process_f7', 'blue'),
+            $this->endEvent('e4', 'cp_process_f7'),
+        ], '6v6');
+
+        $overtime = (new SeriesScoreService)->compute($series);
+        $this->assertSame('pending', $overtime['maps'][0]['status']);
+        $this->assertTrue($overtime['maps'][0]['overtime']);
+        $this->assertSame(3, $overtime['maps'][0]['ot_winlimit']);
+
+        $series['journal'][] = $this->manualEvent('e5', 'cp_process_f7', 'red');
+        $equalized = (new SeriesScoreService)->compute($series);
+        $this->assertSame('pending', $equalized['maps'][0]['status']);
+        $this->assertSame(2, $equalized['maps'][0]['scores']['red']);
+
+        $series['journal'][] = $this->manualEvent('e6', 'cp_process_f7', 'blue');
+        $decided = (new SeriesScoreService)->compute($series);
+        $this->assertSame('decided', $decided['maps'][0]['status']);
+        $this->assertSame('blue', $decided['maps'][0]['winner']);
+        $this->assertSame(3, $decided['maps'][0]['scores']['blue']);
+    }
+
+    public function test_l_overtime_6v6_peut_etre_soldee_au_meneur_par_une_deuxieme_fin(): void
+    {
+        // Rattrapage : en overtime avec un meneur (point décisif non saisi),
+        // une nouvelle fin de map déclarée à la main soldé la map au meneur.
+        $series = $this->series(['cp_process_f7'], 'bo3', 2, [
+            $this->manualEvent('e1', 'cp_process_f7', 'red'),
+            $this->manualEvent('e2', 'cp_process_f7', 'red'),
+            $this->manualEvent('e3', 'cp_process_f7', 'blue'),
+            $this->endEvent('e4', 'cp_process_f7'),
+        ], '6v6');
+
+        $overtime = (new SeriesScoreService)->compute($series);
+        $this->assertSame('pending', $overtime['maps'][0]['status']);
+        $this->assertTrue($overtime['maps'][0]['overtime']);
+        $this->assertSame(3, $overtime['maps'][0]['ot_winlimit']);
+
+        $series['journal'][] = $this->endEvent('e5', 'cp_process_f7');
+        $decided = (new SeriesScoreService)->compute($series);
+        $this->assertSame('decided', $decided['maps'][0]['status']);
+        $this->assertSame('red', $decided['maps'][0]['winner']);
+        $this->assertSame(2, $decided['score']['red']);
+        $this->assertSame(0, $decided['score']['blue']);
+    }
+
+    public function test_une_serie_sans_categorie_reste_au_bareme_highlander(): void
+    {
+        // Séries manuelles ou créées avant le rattachement ETF2L : le
+        // barème 3/2/1 avec golden cap reste la référence par défaut.
+        $series = $this->series(['koth_product_final'], 'bo3', 2, [
+            $this->manualEvent('e1', 'koth_product_final', 'red'),
+            $this->manualEvent('e2', 'koth_product_final', 'red'),
+            $this->manualEvent('e3', 'koth_product_final', 'red'),
+        ]);
+
+        $state = (new SeriesScoreService)->compute($series);
+
+        $this->assertSame(3, $state['score']['red']);
+        $this->assertSame(0, $state['score']['blue']);
+    }
+
     // ─── Fixtures ─────────────────────────────────────────────────────────
 
     /**
-     * Série minimale : deux équipes, des maps déclarées (mode déduit) et un
-     * journal d'événements optionnel.
+     * Série minimale : deux équipes, des maps déclarées (mode déduit), un
+     * journal d'événements optionnel et une catégorie optionnelle (« 6v6 »
+     * active le barème base 2, sinon barème Highlander par défaut).
      *
      * @param  array<int, string>  $mapNames
      * @param  array<int, array<string, mixed>>  $journal
      * @return array<string, mixed>
      */
-    private function series(array $mapNames, string $format = 'bo3', ?int $winsNeeded = 2, array $journal = []): array
+    private function series(array $mapNames, string $format = 'bo3', ?int $winsNeeded = 2, array $journal = [], ?string $category = null): array
     {
         $maps = [];
         foreach ($mapNames as $name) {
@@ -477,6 +673,7 @@ class SeriesScoreServiceTest extends TestCase
         return [
             'token' => 'aaaaaaaaaaaaaaaa',
             'title' => 'Test : Rouges vs Bleus',
+            'category' => $category,
             'format' => $format,
             'wins_needed' => $winsNeeded,
             'status' => 'live',

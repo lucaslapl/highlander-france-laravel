@@ -40,15 +40,27 @@ namespace App\Services;
  *    5 en 5cp (mp_winlimit 5, mp_timelimit 30 : une égalité au timelimit
  *    part en golden cap, le point suivant tranche).
  *
- * Barème du score global de la série (règle ETF2L « Tier System », identique
- * en 6v6 et 9v9) : chaque map décidée rapporte des points de ligue —
- * victoire régulière 3 points (défaite 0), victoire en golden cap 2 points
- * (défaite 1). Un match classique de deux maps peut donc finir 6-0, 3-3,
- * 5-1 ou 4-2. En BO3/BO5 (playoffs), la série se termine au nombre de maps
- * gagnées — le gagnant de la golden cap gagne la map — le vainqueur est
+ * Barème du score global de la série — points de ligue ETF2L, dont la base
+ * dépend du mode de jeu de la série (champ « category », déduit du type de
+ * compétition du match ETF2L lié) :
+ *
+ *  - 9v9 (Highlander, barème historique « Tier System ») : victoire de map
+ *    3 points (défaite 0), victoire en golden cap 2 points (défaite 1) —
+ *    un match de deux maps finit 6-0, 5-1, 4-2 ou 3-3 ;
+ *  - 6v6 (barème « base 2 », ETF2L Season 53 — automne 2026) : victoire de
+ *    map 2 points (défaite 0), map nulle 1 point partout — un match de
+ *    deux maps finit 4-0, 3-1 ou 2-2. La golden cap n'existe plus : en
+ *    saison régulière (maps fixes), une 5cp à égalité au timelimit est
+ *    nulle ; en BO3/BO5 (playoffs), l'overtime est infinie — au timelimit
+ *    le winlimit devient le score le plus haut +1 (« progressive ruleset »)
+ *    et la map reste indécise jusqu'à ce qu'une équipe l'atteigne.
+ *
+ * En BO3/BO5, la série se termine au nombre de maps gagnées — le gagnant
+ * de la golden cap ou de l'overtime gagne la map — le vainqueur est
  * l'équipe qui atteint le nombre de maps requis ; en maps fixes (saison
  * régulière), le vainqueur est départagé aux points de ligue (4-2 l'emporte
- * sur un 1-1 en maps, 3-3 reste une égalité).
+ * sur un 1-1 en maps, 3-3 reste une égalité — en base 2, 3-1 sur un gain
+ * plus un nul, 2-2 sur deux maps partagées ou deux nuls).
  */
 final class SeriesScoreService
 {
@@ -100,6 +112,20 @@ final class SeriesScoreService
     }
 
     /**
+     * Barème « base 2 » (ETF2L 6v6, Season 53 — automne 2026) : la série
+     * est 6v6 quand le mode de jeu a été reconnu sur son match ETF2L
+     * (champ « category »). Une série sans catégorie (manuelle, ou créée
+     * avant que l'API ne remonte le type de compétition) reste au barème
+     * Highlander.
+     *
+     * @param  array<string, mixed>  $series
+     */
+    public static function isBase2(array $series): bool
+    {
+        return ($series['category'] ?? null) === '6v6';
+    }
+
+    /**
      * Rattache le nom de map d'un log logs.tf (souvent suffixé d'une version,
      * ex. « cp_steel_f12 ») à la map déclarée correspondante de la série.
      * La correspondance la plus longue gagne (« cp_steel » pour « cp_steel_f12 »).
@@ -130,6 +156,9 @@ final class SeriesScoreService
      */
     public function compute(array $series): array
     {
+        $base2 = self::isBase2($series);
+        $bestOf = ($series['wins_needed'] ?? null) !== null;
+
         $voided = $this->voidedEventIds($series);
         $journal = is_array($series['journal'] ?? null) ? $series['journal'] : [];
 
@@ -146,6 +175,9 @@ final class SeriesScoreService
                 'log_ids' => [],
                 'golden_cap' => false,
                 'decided_by_gc' => false,
+                'draw' => false,
+                'overtime' => false,
+                'ot_winlimit' => null,
             ];
         }
 
@@ -186,7 +218,14 @@ final class SeriesScoreService
                         // victoire vaut 2 points de ligue (1 pour le perdant).
                         $map['decided_by_gc'] = $map['golden_cap'];
                     } elseif ($map['rounds']['red'] === 1 && $map['rounds']['blue'] === 1) {
-                        $map['golden_cap'] = true;
+                        // Base 3 : golden cap ; base 2 (6v6) : overtime —
+                        // le 3e round tranche dans tous les cas, seul le
+                        // barème des points de ligue diffère.
+                        if ($base2) {
+                            $map['overtime'] = true;
+                        } else {
+                            $map['golden_cap'] = true;
+                        }
                     }
                 } else {
                     // Log unique : le log ne remonte qu'à la fin de la map et
@@ -212,7 +251,7 @@ final class SeriesScoreService
                         $map['decided_by_gc'] = $map['golden_cap'];
                         $map['golden_cap'] = false;
                     } elseif ($map['scores'] !== null && $map['scores']['red'] === $map['scores']['blue']) {
-                        $map['golden_cap'] = true;
+                        $this->resolveTie($map, $base2, $bestOf);
                     }
                 }
             } elseif ($type === 'manual') {
@@ -230,7 +269,14 @@ final class SeriesScoreService
                         // victoire vaut 2 points de ligue (1 pour le perdant).
                         $map['decided_by_gc'] = $map['golden_cap'];
                     } elseif ($map['rounds']['red'] === 1 && $map['rounds']['blue'] === 1) {
-                        $map['golden_cap'] = true;
+                        // Base 3 : golden cap ; base 2 (6v6) : overtime —
+                        // le 3e round tranche dans tous les cas, seul le
+                        // barème des points de ligue diffère.
+                        if ($base2) {
+                            $map['overtime'] = true;
+                        } else {
+                            $map['golden_cap'] = true;
+                        }
                     }
                 } else {
                     // Log unique : le point manuel est un point marqué en
@@ -244,7 +290,13 @@ final class SeriesScoreService
                     }
                     $map['scores'][$team]++;
 
-                    if ($map['golden_cap'] || $map['scores'][$team] >= $map['winlimit']) {
+                    // Overtime 6v6 (BO) : au timelimit le winlimit devient
+                    // le score le plus haut + 1 (progressive ruleset) — le
+                    // point qui l'atteint décide la map ; sinon décision au
+                    // winlimit d'origine (KOTH : 3, 5cp : 5), ou golden cap
+                    // en attente en base 3.
+                    $decidesAt = $map['overtime'] ? (int) $map['ot_winlimit'] : (int) $map['winlimit'];
+                    if ($map['golden_cap'] || $map['scores'][$team] >= $decidesAt) {
                         $map['status'] = 'decided';
                         $map['winner'] = $team;
                         $map['decided_by_gc'] = $map['golden_cap'];
@@ -253,18 +305,28 @@ final class SeriesScoreService
             } elseif ($type === 'end') {
                 // Fin de map à timelimit déclarée à la main (5cp,
                 // mp_timelimit 30) : le winlimit n'a pas été atteint, mais
-                // le temps réglementaire est écoulé — l'équipe en tête
-                // l'emporte (règle ETF2L), une égalité part en golden cap
-                // (mp_winlimit 1) que le point suivant tranche. Réservé aux
-                // maps à log unique : une double attaque ne peut pas
-                // finir sans gagnant (2 rounds requis).
+                // le temps réglementaire est écoulé. Base 3 : l'équipe en
+                // tête l'emporte, une égalité part en golden cap. Base 2
+                // (6v6) : l'équipe en tête l'emporte et une égalité est
+                // nulle en maps fixes (saison régulière) ; en BO
+                // (playoffs, progressive ruleset), la map n'est jamais
+                // départagée au timelimit — même un meneur joue l'overtime
+                // infinie au winlimit score max +1, déjà en overtime
+                // l'admin peut la solder à la main pour le meneur.
+                // Réservé aux maps à log unique : une double attaque ne
+                // peut pas finir sans gagnant (2 rounds requis).
                 if ($map['mode'] !== self::MODE_SINGLE) {
                     continue;
                 }
 
                 $scores = $map['scores'] ?? ['red' => 0, 'blue' => 0];
-                if ($scores['red'] === $scores['blue']) {
-                    $map['golden_cap'] = true;
+                $map['scores'] = $scores;
+
+                if ($base2 && $bestOf && ! $map['overtime']) {
+                    $map['overtime'] = true;
+                    $map['ot_winlimit'] = max((int) $scores['red'], (int) $scores['blue']) + 1;
+                } elseif ($scores['red'] === $scores['blue']) {
+                    $this->resolveTie($map, $base2, $bestOf);
                 } else {
                     $map['status'] = 'decided';
                     $map['winner'] = $scores['red'] > $scores['blue'] ? 'red' : 'blue';
@@ -275,21 +337,36 @@ final class SeriesScoreService
 
         $maps = array_values($maps);
 
-        // Score global : points de ligue ETF2L (règle « Tier System »,
-        // identique 6v6 / 9v9) — victoire de map 3-0, victoire en golden cap
-        // 2-1. Les maps gagnées restent comptées à part : ce sont elles qui
-        // terminent un BO3/BO5 (le gagnant de la golden cap gagne la map),
-        // les points de ligue départagent quant à eux un match à maps fixes
-        // (saison régulière : 4-2 sur un 1-1 en maps).
+        // Score global : points de ligue ETF2L — base 3 (9v9, règle « Tier
+        // System ») : victoire de map 3-0, victoire en golden cap 2-1 ;
+        // base 2 (6v6, Season 53) : victoire de map 2-0, map nulle 1-1.
+        // Les maps gagnées restent comptées à part : ce sont elles qui
+        // terminent un BO3/BO5 (le gagnant de la golden cap ou de
+        // l'overtime gagne la map), les points de ligue départagent quant
+        // à eux un match à maps fixes (saison régulière : 4-2 en base 3,
+        // 3-1 en base 2, sur un 1-1 en maps).
         $score = ['red' => 0, 'blue' => 0];
         $mapWins = ['red' => 0, 'blue' => 0];
         foreach ($maps as $map) {
-            if ($map['status'] === 'decided' && $map['winner'] !== null) {
+            if ($map['status'] !== 'decided') {
+                continue;
+            }
+
+            if ($map['winner'] !== null) {
                 $winner = (string) $map['winner'];
                 $loser = $winner === 'red' ? 'blue' : 'red';
                 $mapWins[$winner]++;
-                $score[$winner] += $map['decided_by_gc'] ? 2 : 3;
-                $score[$loser] += $map['decided_by_gc'] ? 1 : 0;
+
+                if ($base2) {
+                    $score[$winner] += 2;
+                } else {
+                    $score[$winner] += $map['decided_by_gc'] ? 2 : 3;
+                    $score[$loser] += $map['decided_by_gc'] ? 1 : 0;
+                }
+            } elseif ($map['draw']) {
+                // Map nulle (6v6, saison régulière) : 1 point partout.
+                $score['red'] += 1;
+                $score['blue'] += 1;
             }
         }
 
@@ -322,6 +399,35 @@ final class SeriesScoreService
             'finished' => $finished,
             'winner' => $winner,
         ];
+    }
+
+    /**
+     * Traite une égalité au timelimit d'une map à log unique. Base 3
+     * (9v9) : golden cap en attente, le point suivant tranche. Base 2
+     * (6v6, sans golden cap) : la map est nulle en maps fixes (saison
+     * régulière, 1 point de ligue partout) ; en BO (playoffs) elle part
+     * en overtime infinie — le winlimit devient le score le plus haut +1
+     * (« progressive ruleset »), le point qui l'atteint décide la map.
+     *
+     * @param  array<string, mixed>  $map
+     */
+    private function resolveTie(array &$map, bool $base2, bool $bestOf): void
+    {
+        if (! $base2) {
+            $map['golden_cap'] = true;
+
+            return;
+        }
+
+        if ($bestOf) {
+            $map['overtime'] = true;
+            $map['ot_winlimit'] = max((int) $map['scores']['red'], (int) $map['scores']['blue']) + 1;
+
+            return;
+        }
+
+        $map['status'] = 'decided';
+        $map['draw'] = true;
     }
 
     /**

@@ -75,9 +75,15 @@
                     <span class="series-map__score">{{ $mapScore }}</span>
                     @if ($map['winner'] !== null)
                         <span class="series-map__winner">{{ $series['teams'][$map['winner']]['name'] }}</span>
+                    @elseif ($map['draw'])
+                        {{-- Map nulle (barème base 2, saison régulière 6v6). --}}
+                        <span class="series-map__winner">Nul</span>
                     @endif
                     @if ($map['golden_cap'] && $map['status'] !== 'decided')
                         <span class="series-map__gc">GC</span>
+                    @elseif ($map['overtime'] && $map['status'] !== 'decided')
+                        {{-- Overtime infinie (playoffs 6v6, base 2). --}}
+                        <span class="series-map__gc series-map__gc--ot">OT</span>
                     @endif
                 </li>
             @endforeach

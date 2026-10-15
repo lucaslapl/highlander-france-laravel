@@ -175,7 +175,7 @@ final class AdminSeriesController extends Controller
             ];
         }
 
-        $this->series->save([
+        $series = [
             'token' => $token,
             'title' => $match !== null ? $match['title'] : 'Match ETF2L #'.$matchId,
             'etf2l_match_id' => $matchId,
@@ -190,11 +190,20 @@ final class AdminSeriesController extends Controller
             'teams' => $teams,
             'maps' => $maps,
             'journal' => [],
-        ]);
+        ];
+
+        $this->series->save($series);
 
         AdminLogger::log('admin_series_create', null, 'SUCCESS (série '.$token.' : match ETF2L #'.$matchId.')');
 
-        return redirect('/admin/series/'.$token)->with('success', 'Série créée : le score se saisit map par map dans le détail — barème ETF2L, 3 points par map gagnée, 2/1 en golden cap.');
+        // Barème des points ETF2L : base 2 pour le 6v6 (Season 53, plus de
+        // golden cap — nuls autorisés), base 3 pour le Highlander.
+        $success = 'Série créée : le score se saisit map par map dans le détail — barème ETF2L '
+            .(SeriesScoreService::isBase2($series)
+                ? '6v6 : 2 points par map gagnée, map nulle 1-1 (plus de golden cap).'
+                : ': 3 points par map gagnée, 2/1 en golden cap.');
+
+        return redirect('/admin/series/'.$token)->with('success', $success);
     }
 
     /**
@@ -405,7 +414,8 @@ final class AdminSeriesController extends Controller
      *
      * Sur une map à points (KOTH, 5cp), le point s'accumule en score live :
      * la map n'est décidée qu'au winlimit (KOTH : 3 points, 5cp : 5), sauf
-     * golden cap en attente que le point tranche.
+     * golden cap en attente (base 3) ou overtime infinie (base 2, BO 6v6)
+     * que le point tranche.
      */
     public function point(Request $request, string $token): RedirectResponse
     {
@@ -449,10 +459,13 @@ final class AdminSeriesController extends Controller
     /**
      * POST /admin/series/{token}/end — « Match terminé » sur une map à
      * timelimit (5cp, mp_timelimit 30) dont aucune équipe n'a atteint le
-     * winlimit : au timelimit, l'équipe en tête remporte la map ; à
-     * égalité, la map part en golden cap — le prochain point manuel la
-     * départage (config ETF2L mp_winlimit 1). C'est un événement du
-     * journal comme les autres, visible et annulable.
+     * winlimit : au timelimit, l'équipe en tête remporte la map. À
+     * égalité, la suite dépend du barème : golden cap en base 3 (le
+     * prochain point manuel la départage), nul en base 2 à maps fixes
+     * (saison régulière 6v6 : 1 point de ligue partout), overtime infinie
+     * en base 2 en BO (playoffs 6v6 : le winlimit devient le score le plus
+     * haut +1, le point qui l'atteint décide la map). C'est un événement
+     * du journal comme les autres, visible et annulable.
      */
     public function end(Request $request, string $token): RedirectResponse
     {
@@ -488,6 +501,7 @@ final class AdminSeriesController extends Controller
         }
 
         $state = (new SeriesScoreService)->compute($series);
+        $solderOvertime = false;
         foreach ($state['maps'] as $mapState) {
             if ($mapState['name'] === (string) $data['map']) {
                 if ($mapState['status'] === 'decided') {
@@ -495,6 +509,17 @@ final class AdminSeriesController extends Controller
                 }
                 if ($mapState['golden_cap']) {
                     return back()->with('error', 'Cette map est déjà en golden cap : le prochain point la départage.');
+                }
+                if ($mapState['overtime']) {
+                    // Overtime infinie 6v6 : elle continue tant que le
+                    // winlimit progressif n'est pas atteint — sauf meneur,
+                    // que l'admin peut solder à la main (rattrapage).
+                    $otScores = is_array($mapState['scores'] ?? null) ? $mapState['scores'] : ['red' => 0, 'blue' => 0];
+                    if ((int) $otScores['red'] === (int) $otScores['blue']) {
+                        return back()->with('error', 'Cette map est en overtime infinie : le prochain point qui atteint le winlimit la décide.');
+                    }
+
+                    $solderOvertime = true;
                 }
                 break;
             }
@@ -509,7 +534,23 @@ final class AdminSeriesController extends Controller
 
         AdminLogger::log('admin_series_end', null, 'SUCCESS (série '.$token.' : fin de map '.$data['map'].')');
 
-        return back()->with('success', 'Map terminée : l\'équipe en tête l\'emporte, ou golden cap en cas d\'égalité.');
+        // Message selon le barème : golden cap en base 3 ; en base 2 (6v6),
+        // nul à égalité en maps fixes (saison régulière), overtime infinie
+        // en BO (playoffs) — ou solder manuel au meneur si déjà en overtime.
+        $success = 'Map terminée : l\'équipe en tête l\'emporte';
+        if (SeriesScoreService::isBase2($series)) {
+            if ($solderOvertime) {
+                $success .= ' (overtime soldée à la main).';
+            } elseif (($series['wins_needed'] ?? null) !== null) {
+                $success .= ' — la map part en overtime infinie (winlimit progressif), le point qui l\'atteint la décide.';
+            } else {
+                $success .= ', une égalité solde la map sur un nul (1-1).';
+            }
+        } else {
+            $success .= ', ou golden cap en cas d\'égalité.';
+        }
+
+        return back()->with('success', $success);
     }
 
     /**

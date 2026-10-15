@@ -229,13 +229,82 @@ class SeriesOverlayTest extends TestCase
         $this->get('/series-overlay/'.self::TOKEN.'/avatar/blue')->assertNotFound();
     }
 
+    // ─── Barème 6v6 « base 2 » (Season 53, automne 2026) ────────────────
+
+    public function test_l_overlay_6v6_affiche_une_map_nulle(): void
+    {
+        // Saison régulière 6v6 : une 5cp finie à égalité au timelimit est
+        // nulle (1 point de ligue partout) — badge « Nul », pas de GC.
+        $this->seedSeries([], [
+            ['name' => 'cp_process_f7', 'mode' => SeriesScoreService::MODE_SINGLE],
+        ], 'fixed', null, '6v6');
+
+        $repo = new SeriesRepository;
+        foreach (['red', 'red', 'blue', 'blue'] as $team) {
+            $repo->appendEvent(self::TOKEN, [
+                'type' => 'manual',
+                'source' => 'manual',
+                'map' => 'cp_process_f7',
+                'team' => $team,
+                'note' => '',
+            ]);
+        }
+        $repo->appendEvent(self::TOKEN, [
+            'type' => 'end',
+            'source' => 'manual',
+            'map' => 'cp_process_f7',
+            'note' => 'fin de map déclarée à la main (timelimit)',
+        ]);
+
+        $html = (string) $this->get('/series-overlay/'.self::TOKEN)->assertOk()->getContent();
+
+        $this->assertStringContainsString('series-map__winner">Nul', $html);
+        // Score de série 1-1 : deux fois 1 point de ligue (barème base 2).
+        $this->assertStringContainsString('series-scoreboard__score-value">1', $html);
+        $this->assertStringNotContainsString('series-map__gc', $html);
+    }
+
+    public function test_l_overlay_6v6_affiche_le_badge_overtime_en_bo(): void
+    {
+        // Playoffs 6v6 : 2-2 au timelimit = overtime infinie, la map
+        // reste indécise avec un badge « OT » (pas de golden cap).
+        $this->seedSeries([], [
+            ['name' => 'cp_process_f7', 'mode' => SeriesScoreService::MODE_SINGLE],
+        ], 'bo3', 2, '6v6');
+
+        $repo = new SeriesRepository;
+        foreach (['red', 'red', 'blue', 'blue'] as $team) {
+            $repo->appendEvent(self::TOKEN, [
+                'type' => 'manual',
+                'source' => 'manual',
+                'map' => 'cp_process_f7',
+                'team' => $team,
+                'note' => '',
+            ]);
+        }
+        $repo->appendEvent(self::TOKEN, [
+            'type' => 'end',
+            'source' => 'manual',
+            'map' => 'cp_process_f7',
+            'note' => 'fin de map déclarée à la main (timelimit)',
+        ]);
+
+        $html = (string) $this->get('/series-overlay/'.self::TOKEN)->assertOk()->getContent();
+
+        $this->assertStringContainsString('series-map__gc--ot">OT', $html);
+        $this->assertStringNotContainsString('series-map__gc">GC', $html);
+        // Aucune map décidée : pas de badge vainqueur.
+        $this->assertStringNotContainsString('series-map__winner', $html);
+    }
+
     /**
-     * Série avec un journal optionnel (« log » historiques ou rien).
+     * Série avec un journal optionnel (« log » historiques ou rien), un
+     * format et une catégorie optionnels (« 6v6 » active le barème base 2).
      *
      * @param  array<string, array{map: string, winner: string}>  $journal
      * @param  array<int, array{name: string, mode: string}>|null  $maps
      */
-    private function seedSeries(array $journal = [], ?array $maps = null): void
+    private function seedSeries(array $journal = [], ?array $maps = null, string $format = 'bo3', ?int $winsNeeded = 2, ?string $category = null): void
     {
         $events = [];
         foreach ($journal as $id => $event) {
@@ -255,8 +324,9 @@ class SeriesOverlayTest extends TestCase
         (new SeriesRepository)->save([
             'token' => self::TOKEN,
             'title' => 'Finale playoffs — Les Baguettes vs Escouade 6',
-            'format' => 'bo3',
-            'wins_needed' => 2,
+            'category' => $category,
+            'format' => $format,
+            'wins_needed' => $winsNeeded,
             'created_at' => time() - 4000,
             'version' => 1000,
             'teams' => [

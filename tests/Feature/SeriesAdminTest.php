@@ -457,6 +457,89 @@ class SeriesAdminTest extends TestCase
         $this->assertFalse($state['maps'][0]['golden_cap']);
     }
 
+    // ─── Barème 6v6 « base 2 » (Season 53, automne 2026) ────────────────
+
+    public function test_la_creation_d_une_serie_6v6_mentionne_le_bareme_base_2(): void
+    {
+        // Compétition 6v6 reconnue sur le match ETF2L : la série mémorise
+        // la catégorie et le message de création reflète le barème base 2.
+        $this->seedEtf2lMatchCache(self::MATCH_ID, ['cp_process_f7', 'cp_gullywash_f7'], '6v6', 'ETF2L 6v6 Season 53: Premiership');
+
+        $response = $this->withSession($this->adminSession())
+            ->post('/admin/series/create', $this->createInput())
+            ->assertRedirect();
+
+        $this->assertStringContainsString('2 points par map gagnée', (string) session('success'));
+
+        $seriesList = (new SeriesRepository)->all();
+        $series = (new SeriesRepository)->find((string) $seriesList[0]['token']);
+        $this->assertSame('6v6', $series['category']);
+    }
+
+    public function test_la_fin_de_map_6v6_a_egalite_solde_un_nul_en_maps_fixes(): void
+    {
+        // Saison régulière 6v6 (base 2, sans golden cap) : 2-2 au timelimit
+        // = map nulle, 1 point de ligue partout.
+        $this->seedSeries(['cp_granary_pro_rc4'], 'fixed', null, '6v6');
+
+        $this->point('cp_granary_pro_rc4', 'red');
+        $this->point('cp_granary_pro_rc4', 'red');
+        $this->point('cp_granary_pro_rc4', 'blue');
+        $this->point('cp_granary_pro_rc4', 'blue');
+        $this->end('cp_granary_pro_rc4');
+
+        $state = (new SeriesScoreService)->compute((new SeriesRepository)->find(self::TOKEN));
+        $this->assertSame('decided', $state['maps'][0]['status']);
+        $this->assertTrue($state['maps'][0]['draw']);
+        $this->assertNull($state['maps'][0]['winner']);
+        $this->assertSame(1, $state['score']['red']);
+        $this->assertSame(1, $state['score']['blue']);
+
+        // Une deuxième fin de map ne double pas l'événement (map nulle
+        // déjà décidée).
+        $this->withSession($this->adminSession())
+            ->post('/admin/series/'.self::TOKEN.'/end', ['map' => 'cp_granary_pro_rc4'])
+            ->assertRedirect()
+            ->assertSessionHas('error');
+    }
+
+    public function test_la_fin_de_map_6v6_a_egalite_bascule_en_overtime_en_bo(): void
+    {
+        // Playoffs 6v6 (base 2) : 2-2 au timelimit = overtime infinie —
+        // la map reste indécise jusqu'au point qui atteint le winlimit
+        // progressif (score le plus haut +1).
+        $this->seedSeries(['cp_granary_pro_rc4'], 'bo3', 2, '6v6');
+
+        $this->point('cp_granary_pro_rc4', 'red');
+        $this->point('cp_granary_pro_rc4', 'red');
+        $this->point('cp_granary_pro_rc4', 'blue');
+        $this->point('cp_granary_pro_rc4', 'blue');
+        $this->end('cp_granary_pro_rc4');
+
+        $overtime = (new SeriesScoreService)->compute((new SeriesRepository)->find(self::TOKEN));
+        $this->assertSame('pending', $overtime['maps'][0]['status']);
+        $this->assertTrue($overtime['maps'][0]['overtime']);
+        $this->assertFalse($overtime['maps'][0]['golden_cap']);
+
+        // Tant que l'overtime n'est pas tranchée, une deuxième fin de map
+        // est refusée.
+        $this->withSession($this->adminSession())
+            ->post('/admin/series/'.self::TOKEN.'/end', ['map' => 'cp_granary_pro_rc4'])
+            ->assertRedirect()
+            ->assertSessionHas('error');
+
+        // Le point décisif (3 en overtime après un 2-2) clôt la map :
+        // 2 points de ligue au vainqueur, 0 au perdant.
+        $this->point('cp_granary_pro_rc4', 'blue');
+
+        $state = (new SeriesScoreService)->compute((new SeriesRepository)->find(self::TOKEN));
+        $this->assertSame('decided', $state['maps'][0]['status']);
+        $this->assertSame('blue', $state['maps'][0]['winner']);
+        $this->assertSame(3, $state['maps'][0]['scores']['blue']);
+        $this->assertSame(2, $state['score']['blue']);
+        $this->assertSame(0, $state['score']['red']);
+    }
+
     /**
      * Enregistre un point manuel pour une équipe sur une map de la série.
      */
@@ -767,7 +850,7 @@ class SeriesAdminTest extends TestCase
      *
      * @param  array<int, string>|null  $maps
      */
-    private function seedSeries(?array $maps = null): void
+    private function seedSeries(?array $maps = null, string $format = 'bo3', ?int $winsNeeded = 2, ?string $category = null): void
     {
         $declared = [];
         foreach ($maps ?? ['pl_upward_f10', 'cp_steel_f12'] as $name) {
@@ -777,8 +860,9 @@ class SeriesAdminTest extends TestCase
         (new SeriesRepository)->save([
             'token' => self::TOKEN,
             'title' => 'Finale playoffs — Les Baguettes vs Escouade 6',
-            'format' => 'bo3',
-            'wins_needed' => 2,
+            'category' => $category,
+            'format' => $format,
+            'wins_needed' => $winsNeeded,
             'created_at' => time() - 60,
             'teams' => [
                 'red' => ['name' => 'Les Baguettes'],
@@ -795,7 +879,7 @@ class SeriesAdminTest extends TestCase
      *
      * @param  array<int, string>|null  $maps
      */
-    private function seedEtf2lMatchCache(int $matchId = self::MATCH_ID, ?array $maps = null): void
+    private function seedEtf2lMatchCache(int $matchId = self::MATCH_ID, ?array $maps = null, string $competitionType = 'Highlander', string $competitionName = 'Highlander Season 36: High Playoffs'): void
     {
         DB::table('etf2l_api_cache')->insert([
             'url' => 'https://api-v2.etf2l.org/matches/'.$matchId,
@@ -815,7 +899,7 @@ class SeriesAdminTest extends TestCase
                         'country' => 'France',
                         'steam' => ['avatar' => 'https://example.com/e6.png'],
                     ],
-                    'competition' => ['id' => 1060, 'name' => 'Highlander Season 36: High Playoffs', 'type' => 'Highlander'],
+                    'competition' => ['id' => 1060, 'name' => $competitionName, 'type' => $competitionType],
                     'maps' => $maps ?? ['pl_upward_f10', 'koth_product_final'],
                 ],
             ], JSON_THROW_ON_ERROR),
