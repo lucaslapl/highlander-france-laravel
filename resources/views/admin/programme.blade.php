@@ -27,6 +27,20 @@
     </p>
 </form>
 
+@if (! empty($template))
+    {{-- Duplication rapide : l'overlay marqué « Modèle par défaut » est
+         repris tel quel, seule l'URL overlay change. --}}
+    <form method="POST" action="/admin/overlay/programme/{{ $template['token'] }}/duplicate" style="margin-top:12px;">
+        @csrf
+        <button type="submit" class="admin-btn admin-btn--primary">
+            <i class="fa-solid fa-clone"></i> Dupliquer le modèle par défaut
+        </button>
+    </form>
+    <p style="color:#777; font-size:13px; margin:6px 0 0;">
+        Reprend tel quel le modèle « {{ $template['name'] ?? '' }} » : le bouton « Définir comme modèle » de la liste désigne un autre modèle à tout moment.
+    </p>
+@endif
+
 <h3 class="admin-section-title"><i class="fa-solid fa-layer-group"></i> Overlays ({{ count($programmes) }})</h3>
 
 @if (session('success'))
@@ -50,7 +64,12 @@
             <tbody>
                 @foreach ($programmes as $entry)
                     <tr>
-                        <td>{{ trim((string) ($entry['name'] ?? '')) !== '' ? $entry['name'] : '(sans nom)' }}</td>
+                        <td>
+                            {{ trim((string) ($entry['name'] ?? '')) !== '' ? $entry['name'] : '(sans nom)' }}
+                            @if (! empty($entry['is_template']))
+                                <span class="badge badge-mixer">Modèle par défaut</span>
+                            @endif
+                        </td>
                         <td>{{ date('d/m/Y H:i', (int) ($entry['created_at'] ?? 0)) }}</td>
                         <td>{{ date('d/m/Y H:i', (int) ($entry['updated_at'] ?? 0)) }}</td>
                         <td style="max-width:340px;">
@@ -60,6 +79,18 @@
                         </td>
                         <td style="white-space:nowrap;">
                             <a href="/admin/overlay/programme/{{ $entry['token'] }}" class="admin-btn">Modifier</a>
+                            <form method="POST" action="/admin/overlay/programme/{{ $entry['token'] }}/duplicate"
+                                  style="display:inline;">
+                                @csrf
+                                <button type="submit" class="admin-btn">Dupliquer</button>
+                            </form>
+                            @if (empty($entry['is_template']))
+                                <form method="POST" action="/admin/overlay/programme/{{ $entry['token'] }}/template"
+                                      style="display:inline;">
+                                    @csrf
+                                    <button type="submit" class="admin-btn">Définir comme modèle</button>
+                                </form>
+                            @endif
                             <form method="POST" action="/admin/overlay/programme/{{ $entry['token'] }}/delete"
                                   style="display:inline;"
                                   onsubmit="return confirm('Supprimer cet overlay ?');">

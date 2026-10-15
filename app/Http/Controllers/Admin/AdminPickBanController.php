@@ -82,6 +82,7 @@ final class AdminPickBanController extends Controller
             'title' => 'Admin - Overlay Pick/Ban (OBS)',
             'description' => 'Overlays de pick / ban de maps pour les broadcasts OBS de Highlander France.',
             'pickbans' => $this->pickbans->all(),
+            'template' => $this->pickbans->findDefaultTemplate(),
         ]);
     }
 
@@ -218,6 +219,45 @@ final class AdminPickBanController extends Controller
         $this->pickbans->delete($token);
 
         return redirect('/admin/overlay/pickban')->with('success', 'Overlay supprimé.');
+    }
+
+    /**
+     * POST /admin/overlay/pickban/{token}/duplicate — duplique l'overlay
+     * (copie intégrale sous un nouveau token) et ouvre la copie dans
+     * l'éditeur : l'original reste intact.
+     */
+    public function duplicate(Request $request, string $token): RedirectResponse
+    {
+        Auth::requireOverlayTools();
+
+        $copy = $this->pickbans->duplicate($token);
+        if ($copy === null) {
+            abort(404);
+        }
+
+        AdminLogger::log('admin_pickban_duplicate', null, 'SUCCESS ('.$token.' → '.$copy['token'].')');
+
+        return redirect('/admin/overlay/pickban/'.$copy['token'])
+            ->with('success', 'Overlay dupliqué : voici la copie, l\'original est intact. Modifiez-la ci-dessous.');
+    }
+
+    /**
+     * POST /admin/overlay/pickban/{token}/template — désigne l'overlay
+     * comme « modèle par défaut » de l'outil (unique) : le bouton
+     * « Dupliquer le modèle » de la zone de création le reprend.
+     */
+    public function setDefaultTemplate(Request $request, string $token): RedirectResponse
+    {
+        Auth::requireOverlayTools();
+
+        if (! $this->pickbans->setDefaultTemplate($token)) {
+            abort(404);
+        }
+
+        AdminLogger::log('admin_pickban_template', null, 'SUCCESS ('.$token.')');
+
+        return redirect('/admin/overlay/pickban')
+            ->with('success', 'Overlay désigné comme modèle par défaut : le bouton « Dupliquer le modèle » de la création le reprend.');
     }
 
     /**

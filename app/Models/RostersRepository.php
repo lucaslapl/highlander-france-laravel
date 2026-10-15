@@ -89,6 +89,7 @@ final class RostersRepository
             'title' => trim(((string) ($overlay['eyebrow'] ?? '')).' '.((string) ($overlay['title'] ?? ''))),
             'created_at' => (int) ($overlay['created_at'] ?? time()),
             'updated_at' => (int) $overlay['updated_at'],
+            'is_template' => (bool) ($overlay['is_template'] ?? false),
         ];
 
         $found = false;
@@ -123,6 +124,82 @@ final class RostersRepository
             static fn (array $entry): bool => ($entry['token'] ?? '') !== $token
         ));
         $this->writeIndex($index);
+    }
+
+    /**
+     * Duplique un overlay : copie intégrale du payload sous un nouveau
+     * token, sans le label « modèle par défaut » (une copie se marque à
+     * la main si besoin). Sert au bouton « Dupliquer » de la liste et au
+     * bouton « Dupliquer le modèle » de la création.
+     *
+     * @return array<string, mixed>|null La copie persistée, ou null si le token est inconnu.
+     */
+    public function duplicate(string $token): ?array
+    {
+        $overlay = $this->find($token);
+        if ($overlay === null) {
+            return null;
+        }
+
+        $copy = $overlay;
+        $copy['token'] = bin2hex(random_bytes(8));
+        $copy['created_at'] = time();
+        unset($copy['is_template'], $copy['version'], $copy['updated_at']);
+
+        $this->save($copy);
+
+        return $this->find((string) $copy['token']);
+    }
+
+    /**
+     * Désigne un overlay comme « modèle par défaut » de l'outil (unique :
+     * le label est retiré au précédent porteur, s'il existe).
+     */
+    public function setDefaultTemplate(string $token): bool
+    {
+        if ($this->find($token) === null) {
+            return false;
+        }
+
+        foreach ($this->all() as $entry) {
+            $other = (string) ($entry['token'] ?? '');
+            $overlay = $other === '' ? null : $this->find($other);
+            if ($overlay === null) {
+                continue;
+            }
+
+            $wanted = $other === $token;
+            if ((bool) ($overlay['is_template'] ?? false) === $wanted) {
+                continue;
+            }
+
+            if ($wanted) {
+                $overlay['is_template'] = true;
+            } else {
+                unset($overlay['is_template']);
+            }
+
+            $this->save($overlay);
+        }
+
+        return true;
+    }
+
+    /**
+     * L'overlay portant le label « modèle par défaut », ou null.
+     *
+     * @return array<string, mixed>|null
+     */
+    public function findDefaultTemplate(): ?array
+    {
+        foreach ($this->all() as $entry) {
+            $overlay = $this->find((string) ($entry['token'] ?? ''));
+            if ($overlay !== null && (bool) ($overlay['is_template'] ?? false)) {
+                return $overlay;
+            }
+        }
+
+        return null;
     }
 
     /**

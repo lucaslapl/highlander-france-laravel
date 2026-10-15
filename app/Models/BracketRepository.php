@@ -86,6 +86,7 @@ final class BracketRepository
             'title' => trim(((string) ($bracket['eyebrow'] ?? '')).' '.((string) ($bracket['title'] ?? ''))),
             'created_at' => (int) ($bracket['created_at'] ?? time()),
             'updated_at' => (int) $bracket['updated_at'],
+            'is_template' => (bool) ($bracket['is_template'] ?? false),
         ];
 
         $found = false;
@@ -120,6 +121,82 @@ final class BracketRepository
             static fn (array $entry): bool => ($entry['token'] ?? '') !== $token
         ));
         $this->writeIndex($index);
+    }
+
+    /**
+     * Duplique un overlay : copie intégrale du payload sous un nouveau
+     * token, sans le label « modèle par défaut » (une copie se marque à
+     * la main si besoin). Sert au bouton « Dupliquer » de la liste et au
+     * bouton « Dupliquer le modèle » de la création.
+     *
+     * @return array<string, mixed>|null La copie persistée, ou null si le token est inconnu.
+     */
+    public function duplicate(string $token): ?array
+    {
+        $bracket = $this->find($token);
+        if ($bracket === null) {
+            return null;
+        }
+
+        $copy = $bracket;
+        $copy['token'] = bin2hex(random_bytes(8));
+        $copy['created_at'] = time();
+        unset($copy['is_template'], $copy['version'], $copy['updated_at']);
+
+        $this->save($copy);
+
+        return $this->find((string) $copy['token']);
+    }
+
+    /**
+     * Désigne un overlay comme « modèle par défaut » de l'outil (unique :
+     * le label est retiré au précédent porteur, s'il existe).
+     */
+    public function setDefaultTemplate(string $token): bool
+    {
+        if ($this->find($token) === null) {
+            return false;
+        }
+
+        foreach ($this->all() as $entry) {
+            $other = (string) ($entry['token'] ?? '');
+            $bracket = $other === '' ? null : $this->find($other);
+            if ($bracket === null) {
+                continue;
+            }
+
+            $wanted = $other === $token;
+            if ((bool) ($bracket['is_template'] ?? false) === $wanted) {
+                continue;
+            }
+
+            if ($wanted) {
+                $bracket['is_template'] = true;
+            } else {
+                unset($bracket['is_template']);
+            }
+
+            $this->save($bracket);
+        }
+
+        return true;
+    }
+
+    /**
+     * L'overlay portant le label « modèle par défaut », ou null.
+     *
+     * @return array<string, mixed>|null
+     */
+    public function findDefaultTemplate(): ?array
+    {
+        foreach ($this->all() as $entry) {
+            $bracket = $this->find((string) ($entry['token'] ?? ''));
+            if ($bracket !== null && (bool) ($bracket['is_template'] ?? false)) {
+                return $bracket;
+            }
+        }
+
+        return null;
     }
 
     /**

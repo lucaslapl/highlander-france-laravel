@@ -110,6 +110,7 @@ final class AdminRostersController extends Controller
             'description' => 'Overlays de rosters d\'équipes pour les broadcasts OBS de Highlander France (Highlander et 6v6).',
             'rosters' => $this->rosters->all(),
             'formats' => $this->formatLabels(),
+            'template' => $this->rosters->findDefaultTemplate(),
         ]);
     }
 
@@ -275,6 +276,45 @@ final class AdminRostersController extends Controller
         $this->rosters->delete($token);
 
         return redirect('/admin/overlay/rosters')->with('success', 'Overlay supprimé.');
+    }
+
+    /**
+     * POST /admin/overlay/rosters/{token}/duplicate — duplique l'overlay
+     * (copie intégrale sous un nouveau token) et ouvre la copie dans
+     * l'éditeur : l'original reste intact.
+     */
+    public function duplicate(Request $request, string $token): RedirectResponse
+    {
+        Auth::requireOverlayTools();
+
+        $copy = $this->rosters->duplicate($token);
+        if ($copy === null) {
+            abort(404);
+        }
+
+        AdminLogger::log('admin_rosters_duplicate', null, 'SUCCESS ('.$token.' → '.$copy['token'].')');
+
+        return redirect('/admin/overlay/rosters/'.$copy['token'])
+            ->with('success', 'Overlay dupliqué : voici la copie, l\'original est intact. Modifiez-la ci-dessous.');
+    }
+
+    /**
+     * POST /admin/overlay/rosters/{token}/template — désigne l'overlay
+     * comme « modèle par défaut » de l'outil (unique) : le bouton
+     * « Dupliquer le modèle » de la zone de création le reprend.
+     */
+    public function setDefaultTemplate(Request $request, string $token): RedirectResponse
+    {
+        Auth::requireOverlayTools();
+
+        if (! $this->rosters->setDefaultTemplate($token)) {
+            abort(404);
+        }
+
+        AdminLogger::log('admin_rosters_template', null, 'SUCCESS ('.$token.')');
+
+        return redirect('/admin/overlay/rosters')
+            ->with('success', 'Overlay désigné comme modèle par défaut : le bouton « Dupliquer le modèle » de la création le reprend.');
     }
 
     /**

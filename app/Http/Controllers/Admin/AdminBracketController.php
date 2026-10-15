@@ -68,6 +68,7 @@ final class AdminBracketController extends Controller
             'title' => 'Admin - Overlay Bracket (OBS)',
             'description' => 'Overlays de brackets de playoffs et de classements pour les broadcasts OBS de Highlander France.',
             'brackets' => $this->brackets->all(),
+            'template' => $this->brackets->findDefaultTemplate(),
         ]);
     }
 
@@ -195,6 +196,45 @@ final class AdminBracketController extends Controller
         $this->brackets->delete($token);
 
         return redirect('/admin/overlay/bracket')->with('success', 'Overlay supprimé.');
+    }
+
+    /**
+     * POST /admin/overlay/bracket/{token}/duplicate — duplique l'overlay
+     * (copie intégrale sous un nouveau token) et ouvre la copie dans
+     * l'éditeur : l'original reste intact.
+     */
+    public function duplicate(Request $request, string $token): RedirectResponse
+    {
+        Auth::requireOverlayTools();
+
+        $copy = $this->brackets->duplicate($token);
+        if ($copy === null) {
+            abort(404);
+        }
+
+        AdminLogger::log('admin_bracket_duplicate', null, 'SUCCESS ('.$token.' → '.$copy['token'].')');
+
+        return redirect('/admin/overlay/bracket/'.$copy['token'])
+            ->with('success', 'Overlay dupliqué : voici la copie, l\'original est intact. Modifiez-la ci-dessous.');
+    }
+
+    /**
+     * POST /admin/overlay/bracket/{token}/template — désigne l'overlay
+     * comme « modèle par défaut » de l'outil (unique) : le bouton
+     * « Dupliquer le modèle » de la zone de création le reprend.
+     */
+    public function setDefaultTemplate(Request $request, string $token): RedirectResponse
+    {
+        Auth::requireOverlayTools();
+
+        if (! $this->brackets->setDefaultTemplate($token)) {
+            abort(404);
+        }
+
+        AdminLogger::log('admin_bracket_template', null, 'SUCCESS ('.$token.')');
+
+        return redirect('/admin/overlay/bracket')
+            ->with('success', 'Overlay désigné comme modèle par défaut : le bouton « Dupliquer le modèle » de la création le reprend.');
     }
 
     /**

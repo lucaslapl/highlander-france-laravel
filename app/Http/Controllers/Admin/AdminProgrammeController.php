@@ -86,6 +86,7 @@ final class AdminProgrammeController extends Controller
             'title' => 'Admin - Overlay Programme (OBS)',
             'description' => 'Ecrans d\'attente / de présentation pour les broadcasts OBS de Highlander France.',
             'programmes' => $this->programmes->all(),
+            'template' => $this->programmes->findDefaultTemplate(),
         ]);
     }
 
@@ -310,6 +311,51 @@ final class AdminProgrammeController extends Controller
         }
 
         return redirect('/admin/overlay/programme')->with('success', 'Overlay supprimé.');
+    }
+
+    /**
+     * POST /admin/overlay/programme/{token}/duplicate — duplique l'overlay
+     * (copie intégrale sous un nouveau token) et ouvre la copie dans
+     * l'éditeur : l'original reste intact.
+     */
+    public function duplicate(Request $request, string $token): RedirectResponse
+    {
+        Auth::requireOverlayTools();
+
+        $this->requireOverlay($token);
+
+        $copy = $this->programmes->duplicate($token);
+        if ($copy === null) {
+            return redirect('/admin/overlay/programme')
+                ->with('error', 'Duplication impossible : l\'écriture a échoué (vérifiez les droits sur storage/app/hlfr/programmes).');
+        }
+
+        AdminLogger::log('admin_programme_duplicate', null, 'SUCCESS ('.$token.' → '.$copy['token'].')');
+
+        return redirect('/admin/overlay/programme/'.$copy['token'])
+            ->with('success', 'Overlay dupliqué : voici la copie, l\'original est intact. Réglez-la ci-dessous.');
+    }
+
+    /**
+     * POST /admin/overlay/programme/{token}/template — désigne l'overlay
+     * comme « modèle par défaut » de l'outil (unique) : le bouton
+     * « Dupliquer le modèle » de la zone de création le reprend.
+     */
+    public function setDefaultTemplate(Request $request, string $token): RedirectResponse
+    {
+        Auth::requireOverlayTools();
+
+        $this->requireOverlay($token);
+
+        if (! $this->programmes->setDefaultTemplate($token)) {
+            return redirect('/admin/overlay/programme')
+                ->with('error', 'Désignation impossible : l\'écriture a échoué (vérifiez les droits sur storage/app/hlfr/programmes).');
+        }
+
+        AdminLogger::log('admin_programme_template', null, 'SUCCESS ('.$token.')');
+
+        return redirect('/admin/overlay/programme')
+            ->with('success', 'Overlay désigné comme modèle par défaut : le bouton « Dupliquer le modèle » de la création le reprend.');
     }
 
     /**
