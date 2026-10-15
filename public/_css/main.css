@@ -590,6 +590,10 @@ body #nav .nav-right #session-profile button {
   text-decoration: none;
   font-weight: 600;
   font-size: 0.95em;
+  /* line-height explicite (normal ≈ 19px avec Montserrat 600 à 0.95em) :
+     les contrôles de formulaire calculent leur propre « normal », ce qui
+     décale le texte du bouton natif vers le haut. */
+  line-height: 1.25;
   color: rgba(var(--white-rgb), 0.85);
   padding: 9px 14px;
   border-radius: 10px;
@@ -597,9 +601,7 @@ body #nav .nav-right #session-profile button {
 }
 body #nav .nav-right #session-profile button {
   /* Rendu identique aux autres boutons de la nav (inline-flex, comme les
-     toggles de dropdown) : sans ça, le texte du <button> natif se cale sur
-     la boîte em du contrôle (et non la baseline du texte) et la mention
-     « Déconnexion » paraît décalée vers le haut. */
+     toggles de dropdown) pour centrer le texte comme un lien. */
   display: inline-flex;
   align-items: center;
   background: none;

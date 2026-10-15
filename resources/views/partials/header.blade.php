@@ -86,7 +86,11 @@ $isLoggedIn = \App\Services\Auth::isLoggedIn();
                 <div id="session-profile">
                     @if ($isLoggedIn)
                     <a href="/profile/dashboard" class="{{ $currentPath === '/profile/dashboard' ? 'active' : '' }}">Mon Profil</a>
-                    <form action="/logout" method="POST" style="display:inline">
+                    {{-- display:contents : le bouton devient un item flex direct de
+                         #session-profile, aligné au centre comme le lien « Mon Profil »
+                         (aligné par baseline dans un <form> display:inline, il se
+                         retrouvait légèrement décalé vers le haut). --}}
+                    <form action="/logout" method="POST" style="display:contents">
                         @csrf
                         <button type="submit" class="nav-logout-btn">Déconnexion</button>
                     </form>
