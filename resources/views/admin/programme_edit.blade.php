@@ -83,11 +83,11 @@
         <div>
             <label class="admin-form-label">Mode</label>
             <label style="display:block; margin:4px 0;">
-                <input type="radio" name="countdown_mode" value="datetime" class="js-programme-mode" @checked($mode === 'datetime')}>
+                <input type="radio" name="countdown_mode" value="datetime" class="js-programme-mode" @checked($mode === 'datetime')>
                 Date et heure de début (Europe/Paris)
             </label>
             <label style="display:block; margin:4px 0;">
-                <input type="radio" name="countdown_mode" value="duration" class="js-programme-mode" @checked($mode !== 'datetime')}>
+                <input type="radio" name="countdown_mode" value="duration" class="js-programme-mode" @checked($mode !== 'datetime')>
                 Durée (repart de zéro à chaque enregistrement)
             </label>
         </div>

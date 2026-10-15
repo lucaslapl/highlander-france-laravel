@@ -240,6 +240,37 @@ class ProgrammeOverlayTest extends TestCase
         $this->assertSame($expected, $overlay['countdown']['target_ts']);
     }
 
+    public function test_l_editeur_precoche_le_bouton_radio_du_mode_enregistre(): void
+    {
+        $session = ['steamid' => '76561198012345678', 'is_caster' => true];
+        $this->seedProgramme();
+
+        $this->withSession($session)
+            ->post('/admin/overlay/programme/'.self::TOKEN.'/update', [
+                'name' => 'Programme du dimanche',
+                'welcome' => 'Bienvenue sur Highlander France !',
+                'countdown_mode' => 'datetime',
+                'countdown_date' => '2026-10-18',
+                'countdown_time' => '21:00',
+                'messages' => '',
+                'slideshow_display_s' => 8,
+                'slideshow_fade_s' => 1,
+            ])
+            ->assertSessionHas('success');
+
+        // Le bouton radio du mode sauvegardé doit être réellement coché à
+        // la réouverture de l'éditeur : une accolade parasite après
+        // @checked() rendait « checked} » dans le HTML — interprété comme
+        // un attribut inconnu par le navigateur, le bouton paraissait
+        // décoché (et la boîte date/heure masquée par le JS) et
+        // l'enregistrement suivant échouait sur « validation.required ».
+        $html = (string) $this->withSession($session)
+            ->get('/admin/overlay/programme/'.self::TOKEN)
+            ->getContent();
+        $this->assertStringContainsString('value="datetime" class="js-programme-mode" checked', $html);
+        $this->assertStringNotContainsString('checked}', $html);
+    }
+
     public function test_le_mode_date_heure_exige_une_date_et_une_heure(): void
     {
         $this->seedProgramme();
