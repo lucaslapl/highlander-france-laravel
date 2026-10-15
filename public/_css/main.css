@@ -596,6 +596,12 @@ body #nav .nav-right #session-profile button {
   transition: background-color 0.25s, color 0.25s;
 }
 body #nav .nav-right #session-profile button {
+  /* Rendu identique aux autres boutons de la nav (inline-flex, comme les
+     toggles de dropdown) : sans ça, le texte du <button> natif se cale sur
+     la boîte em du contrôle (et non la baseline du texte) et la mention
+     « Déconnexion » paraît décalée vers le haut. */
+  display: inline-flex;
+  align-items: center;
   background: none;
   border: none;
   font-family: inherit;

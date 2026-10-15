@@ -133,4 +133,33 @@ class OverlayToolsAccessTest extends TestCase
             ->assertSee('Retour aux overlays')
             ->assertSee('href="/admin/overlays-stream"', false);
     }
+
+    // ─── Lien de retour vers le dashboard admin sur le hub ────────────────
+
+    public function test_le_hub_affiche_le_lien_de_retour_vers_le_dashboard_admin_pour_un_admin(): void
+    {
+        $this->withSession(['steamid' => '76561198012345678', 'is_admin' => true])
+            ->get('/admin/overlays-stream')
+            ->assertOk()
+            ->assertSee('Retour au panel d\'administration', false)
+            ->assertSee('href="/admin/dashboard"', false);
+    }
+
+    public function test_le_hub_n_affiche_pas_le_lien_du_dashboard_au_caster_ni_a_la_prod(): void
+    {
+        $caster = ['steamid' => '76561198012345678', 'is_caster' => true];
+        $prod = ['steamid' => '76561198012345678', 'is_producer' => true];
+
+        $this->withSession($caster)
+            ->get('/admin/overlays-stream')
+            ->assertOk()
+            ->assertDontSee('Retour au panel d\'administration', false)
+            ->assertDontSee('href="/admin/dashboard"', false);
+
+        $this->withSession($prod)
+            ->get('/admin/overlays-stream')
+            ->assertOk()
+            ->assertDontSee('Retour au panel d\'administration', false)
+            ->assertDontSee('href="/admin/dashboard"', false);
+    }
 }

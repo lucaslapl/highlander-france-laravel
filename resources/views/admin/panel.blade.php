@@ -4,6 +4,14 @@
 @section('description', $description)
 
 @section('content')
+    {{-- Lien de retour vers le dashboard admin : réservé aux admins, les
+         casters et prod n'ont accès à rien d'autre du /admin/*. --}}
+    @if (\App\Services\Auth::isAdmin())
+        <a href="/admin/dashboard" class="admin-link-btn" style="display:inline-flex; align-items:center; gap:6px; margin-bottom:16px;">
+            <i class="fa-solid fa-arrow-left" aria-hidden="true"></i> Retour au panel d'administration
+        </a>
+    @endif
+
     <div class="admin-header" style="--accent:#9b6dff;">
         <h2><i class="fa-solid fa-tv"></i> Overlays Stream</h2>
         <p>Les six outils d'overlay OBS pour les broadcasts Highlander France, au même endroit.</p>
