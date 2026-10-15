@@ -173,6 +173,8 @@ Route::middleware('overlay-tools')->prefix('admin')->group(function (): void {
 // ─── Panel admin (accès strict réservé aux admins) ───────────────────────────
 Route::middleware('admin')->prefix('admin')->group(function (): void {
     Route::get('/dashboard', [AdminController::class, 'dashboard']);
+    Route::get('/tools/site', [AdminController::class, 'toolsSite'])->name('admin.tools_site');
+    Route::get('/tools/users', [AdminController::class, 'toolsUsers'])->name('admin.tools_users');
     Route::get('/list-staff', [AdminController::class, 'listStaff']);
     Route::get('/manage-blacklist', [AdminController::class, 'manageBlacklist']);
     Route::get('/manage-player/{steamid}', [AdminController::class, 'managePlayer'])->where('steamid', '[0-9]{17}');

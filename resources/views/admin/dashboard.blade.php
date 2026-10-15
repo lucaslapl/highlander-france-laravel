@@ -15,7 +15,6 @@ window.__dashboardData = {!! json_encode($dashboardData, JSON_UNESCAPED_UNICODE 
 @push('scripts')
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
 <script src="/_js/admin_charts.js"></script>
-<script src="/_js/admin_player_search.js"></script>
 @endpush
 
 @section('content')
@@ -95,86 +94,21 @@ window.__dashboardData = {!! json_encode($dashboardData, JSON_UNESCAPED_UNICODE 
 <div class="admin-content-layout">
 
     <section class="admin-manipulations">
-        <h3 class="admin-section-title"><i class="fa-solid fa-gears"></i> Gestion du site</h3>
+        <h3 class="admin-section-title">Actions disponibles</h3>
 
         <div class="admin-cards-grid">
 
             <div class="admin-action-card" style="--accent: #f39c12;">
-                <h4 class="admin-action-card__title"><i class="fa-solid fa-clock-rotate-left"></i> Logs des matchs joués</h4>
-                <p class="admin-action-card__desc">Liste des matchs joués avec nombre de joueurs et durée, avec alertes orange (match court, effectif incomplet).</p>
-                <a href="/admin/match-logs" class="admin-link-btn">Voir les logs</a>
+                <h4 class="admin-action-card__title"><i class="fa-solid fa-gears"></i> Gestion du site</h4>
+                <p class="admin-action-card__desc">Logs des matchs joués, logs blacklistés, maps ETF2L, guides & FAQ, équipes FR, plus les outils internes du site (logs, tâches CRON, simulateur d'API).</p>
+                <a href="/admin/tools/site" class="admin-link-btn">Ouvrir les outils</a>
             </div>
-
-            <div class="admin-action-card" style="--accent: #f35f5f;">
-                <h4 class="admin-action-card__title"><i class="fa-solid fa-ban"></i> Logs blacklistés</h4>
-                <p class="admin-action-card__desc">Exclure des logs logs.tf des stats et de la page Match Stats, avec motif et traçabilité.</p>
-                <a href="/admin/manage-blacklist" class="admin-link-btn">Gérer la blacklist</a>
-            </div>
-
-            <div class="admin-action-card" style="--accent: #8a5cf5;">
-                <h4 class="admin-action-card__title"><i class="fa-solid fa-map-location-dot"></i> Maps ETF2L</h4>
-                <p class="admin-action-card__desc">Upload des cartes en .bsp avec miniatures pour la page Maps (6v6 / 9v9).</p>
-                <a href="/admin/maps" class="admin-link-btn">Gérer les maps</a>
-            </div>
-
-            <div class="admin-action-card" style="--accent: #fbb7fb;">
-                <h4 class="admin-action-card__title"><i class="fa-solid fa-book-open"></i> Guides & FAQ</h4>
-                <p class="admin-action-card__desc">Guides SEO (Markdown étendu, tableaux, blocs couleur) et FAQ par cluster d’intentions.</p>
-                <a href="/admin/guides" class="admin-link-btn">Gérer les guides</a>
-            </div>
-
-            <div class="admin-action-card" style="--accent: #2ec4b6;">
-                <h4 class="admin-action-card__title"><i class="fa-solid fa-users-between-lines"></i> Équipes FR</h4>
-                <p class="admin-action-card__desc">Import d'équipes ETF2L, roster, leaders, division et logo pour la sidebar d'accueil et les pages /equipes.</p>
-                <a href="/admin/equipes" class="admin-link-btn">Gérer les équipes</a>
-            </div>
-
-            <div class="admin-action-card" style="--accent: #3498db;">
-                <h4 class="admin-action-card__title"><i class="fa-solid fa-database"></i> Logs du site <i class="fa-solid fa-triangle-exclamation" style="color: #f39c12;" title="Outil interne : manipuler avec précaution"></i></h4>
-                <p class="admin-action-card__desc">Liste des logs du site avec détails et filtres.</p>
-                <a href="/admin/view-logs" class="admin-link-btn">Ouvrir l'inspecteur log</a>
-            </div>
-
-            <div class="admin-action-card" style="--accent: #f39c12;">
-                <h4 class="admin-action-card__title"><i class="fa-solid fa-rotate"></i> Tâches CRON <i class="fa-solid fa-triangle-exclamation" style="color: #f39c12;" title="Outil interne : manipuler avec précaution"></i></h4>
-                <p class="admin-action-card__desc">NE PAS UTILISER SAUF URGENCE OU SANS Y AVOIR ÉTÉ INVITÉ</p>
-                <a href="/admin/run-cron-manual" class="admin-link-btn">Panel CRON</a>
-            </div>
-
-            <div class="admin-action-card" style="--accent: #9b59b6;">
-                <h4 class="admin-action-card__title"><i class="fa-solid fa-flask"></i> Simulateur d'API <i class="fa-solid fa-triangle-exclamation" style="color: #f39c12;" title="Outil interne : manipuler avec précaution"></i></h4>
-                <p class="admin-action-card__desc">Simuler un match en direct, des streams Twitch ou créer des matchs ETF2L factices pour tester les affichages sans serveur réel.</p>
-                <a href="/admin/api-test" class="admin-link-btn">Ouvrir le simulateur</a>
-            </div>
-
-        </div>
-
-        <h3 class="admin-section-title"><i class="fa-solid fa-users"></i> Gestion des utilisateurs</h3>
-
-        <div class="admin-cards-grid">
 
             <div class="admin-action-card" style="--accent: #ff4444;">
-                <div>
-                    <h4 class="admin-action-card__title"><i class="fa-solid fa-users-gear"></i> Modération des joueurs</h4>
-                    <p class="admin-action-card__desc">Rechercher un profil, attribuer/retirer des rôles, changer le pseudo ou nationalité d'un joueur (ou réinitialiser la restriction associée).</p>
-                </div>
-                <div class="search-container">
-                    <input type="text" id="player-search-input" placeholder="Rechercher un joueur..." autocomplete="off">
-                    <div id="search-results-dropdown" class="search-dropdown" style="display: none;"></div>
-                </div>
+                <h4 class="admin-action-card__title"><i class="fa-solid fa-users"></i> Gestion des utilisateurs</h4>
+                <p class="admin-action-card__desc">Modération des joueurs (recherche de profil, rôles, pseudo, nationalité) et vue de l'équipe staff complète avec ses rôles.</p>
+                <a href="/admin/tools/users" class="admin-link-btn">Ouvrir les outils</a>
             </div>
-
-            <div class="admin-action-card" style="--accent: #00bc8c;">
-                <h4 class="admin-action-card__title"><i class="fa-solid fa-user-shield"></i> Staff & Rôles</h4>
-                <p class="admin-action-card__desc">Liste complète des utilisateurs possédant un rôle staff pour vérifier les permissions globales.</p>
-                <a href="/admin/list-staff" class="admin-link-btn">Voir l'équipe</a>
-            </div>
-
-        </div>
-
-        <h3 class="admin-section-title"><i class="fa-solid fa-tv"></i> Gestion des Overlays OBS</h3>
-
-        <div class="admin-cards-grid">
 
             <div class="admin-action-card" style="--accent: #9b6dff;">
                 <h4 class="admin-action-card__title"><i class="fa-solid fa-tv"></i> Gestion des Overlays OBS</h4>

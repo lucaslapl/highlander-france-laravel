@@ -95,7 +95,7 @@ class OverlayToolsAccessTest extends TestCase
             ->get('/admin/overlays-stream');
 
         $response->assertOk()
-            ->assertSee('Overlays Stream')
+            ->assertSee('Gestion des Overlays OBS')
             ->assertSee('Overlay Logs (OBS)')
             ->assertSee('Overlay Scores')
             ->assertSee('Overlay Bracket')

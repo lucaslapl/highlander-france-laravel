@@ -13,7 +13,7 @@
     @endif
 
     <div class="admin-header" style="--accent:#9b6dff;">
-        <h2><i class="fa-solid fa-tv"></i> Overlays Stream</h2>
+        <h2><i class="fa-solid fa-tv"></i> Gestion des Overlays OBS</h2>
         <p>Les six outils d'overlay OBS pour les broadcasts Highlander France, au même endroit.</p>
     </div>
 

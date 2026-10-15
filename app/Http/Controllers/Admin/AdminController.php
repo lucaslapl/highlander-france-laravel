@@ -44,7 +44,6 @@ final class AdminController extends Controller
             'scripts' => [
                 'https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js',
                 '/_js/admin_charts.js',
-                '/_js/admin_player_search.js',
             ],
             'dashboardData' => [
                 'registrations' => $dashboard['registrations'],
@@ -54,6 +53,32 @@ final class AdminController extends Controller
             'dashboard' => $dashboard,
             'apiStatuses' => (new ApiStatus())->get($request->query('refresh_apis', '') === '1'),
             'techTeam' => $this->repo->technicalTeam(),
+        ]);
+    }
+
+    /**
+     * GET /admin/tools/site
+     */
+    public function toolsSite(): View
+    {
+        Auth::requireAdmin();
+
+        return view('admin.tools_site', [
+            'title' => 'Admin - Gestion du site',
+            'description' => 'Outils de gestion du contenu et de l\'infrastructure de Highlander France.',
+        ]);
+    }
+
+    /**
+     * GET /admin/tools/users
+     */
+    public function toolsUsers(): View
+    {
+        Auth::requireAdmin();
+
+        return view('admin.tools_users', [
+            'title' => 'Admin - Gestion des utilisateurs',
+            'description' => 'Outils de modération et de gestion des rôles des membres de Highlander France.',
         ]);
     }
 

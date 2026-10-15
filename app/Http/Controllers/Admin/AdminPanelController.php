@@ -24,8 +24,8 @@ final class AdminPanelController extends Controller
         Auth::requireOverlayTools();
 
         return view('admin.panel', [
-            'title' => 'Overlays Stream - '.config('app.name'),
-            'description' => 'Overlays Stream : outils d\'overlay OBS pour les broadcasts Highlander France.',
+            'title' => 'Gestion des Overlays OBS - '.config('app.name'),
+            'description' => 'Gestion des Overlays OBS : outils d\'overlay pour les broadcasts Highlander France.',
         ]);
     }
 }
