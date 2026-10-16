@@ -42,7 +42,7 @@
             </div>
             <div class="series-scoreboard__score">
                 <span class="series-scoreboard__score-value">{{ (int) $state['score']['red'] }}</span>
-                <span class="series-scoreboard__score-sep">–</span>
+                <span class="series-scoreboard__score-sep">-</span>
                 <span class="series-scoreboard__score-value">{{ (int) $state['score']['blue'] }}</span>
             </div>
             <div class="series-scoreboard__team series-scoreboard__team--right">
