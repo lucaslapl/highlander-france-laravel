@@ -10,14 +10,18 @@ use Illuminate\Console\Command;
 final class SyncEtf2lCommand extends Command
 {
     protected $signature = 'app:sync-etf2l
-                            {--history-days=7 : Fenêtre d\'historique en jours}';
+                            {--history-days=7 : Fenêtre d\'historique en jours}
+                            {--refresh-rosters : Purge le cache des fiches équipes ETF2L pour re-télécharger les rosters}';
 
     protected $description = 'Synchronise l\'agenda des matchs ETF2L français';
 
     public function handle(): int
     {
         set_time_limit(300);
-        $this->info((new SyncEtf2lService())->run(max(1, (int) $this->option('history-days'))));
+        $this->info((new SyncEtf2lService)->run(
+            max(1, (int) $this->option('history-days')),
+            (bool) $this->option('refresh-rosters')
+        ));
 
         return self::SUCCESS;
     }

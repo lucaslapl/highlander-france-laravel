@@ -91,7 +91,7 @@ final class SyncEtf2lService
         $matches = [];
 
         for ($page = 1; ; $page++) {
-            $responseObj = $this->cachedGet($baseUrl . '&page=' . $page, self::CACHE_TTL_MATCHES);
+            $responseObj = $this->cachedGet($baseUrl.'&page='.$page, self::CACHE_TTL_MATCHES);
 
             $results = $responseObj['results'] ?? [];
             $pageMatches = $results['data'] ?? [];
@@ -131,14 +131,16 @@ final class SyncEtf2lService
             $lastHeaders = $meta['headers'];
 
             if ($meta['curl_error'] !== '') {
-                $lastError = 'erreur cURL : ' . $meta['curl_error'];
+                $lastError = 'erreur cURL : '.$meta['curl_error'];
+
                 continue;
             }
 
             if ($meta['data'] === null) {
                 // Réponse non décodable en JSON : le plus souvent une page HTML
                 // d'erreur (Cloudflare / 429) renvoyée à la place du payload.
-                $lastError = 'HTTP ' . $meta['http_code'] . ' avec réponse non-JSON';
+                $lastError = 'HTTP '.$meta['http_code'].' avec réponse non-JSON';
+
                 continue;
             }
 
@@ -150,23 +152,29 @@ final class SyncEtf2lService
 
             // Pas de clé status (= throttle Laravel) ou code transitoire : on retente.
             if ($code === null || in_array($code, [429, 500, 502, 503, 504], true)) {
-                $lastError = 'HTTP ' . ($code ?? $meta['http_code']) . ' (réponse transitoire)';
+                $lastError = 'HTTP '.($code ?? $meta['http_code']).' (réponse transitoire)';
+
                 continue;
             }
 
             $msg = (string) ($meta['data']['status']['message'] ?? 'Réponse invalide/inaccessible');
-            throw new \RuntimeException("L'API ETF2L a répondu négativement pour {$url} : " . $msg);
+            throw new \RuntimeException("L'API ETF2L a répondu négativement pour {$url} : ".$msg);
         }
 
-        throw new \RuntimeException("Appel API ETF2L impossible après {$attempts} tentatives ({$url}) : " . $lastError);
+        throw new \RuntimeException("Appel API ETF2L impossible après {$attempts} tentatives ({$url}) : ".$lastError);
     }
 
-    public function run(int $historyDays = self::HISTORY_WINDOW_DAYS): string
+    /**
+     * @param  bool  $refreshRosters  Purge du cache des fiches équipes :
+     *                                rosters ETF2L re-téléchargés en priorité
+     *                                (correction manuelle de rosters obsolètes).
+     */
+    public function run(int $historyDays = self::HISTORY_WINDOW_DAYS, bool $refreshRosters = false): string
     {
         // Une seule exécution à la fois : un cron qui chevauche un run manuel
         // doublerait le taux d'appels et déclencherait le throttle de l'API.
         $lock = fopen(hlfr_data_path(self::LOCK_FILE), 'c');
-        if ($lock === false || !flock($lock, LOCK_EX | LOCK_NB)) {
+        if ($lock === false || ! flock($lock, LOCK_EX | LOCK_NB)) {
             if (is_resource($lock)) {
                 fclose($lock);
             }
@@ -177,20 +185,27 @@ final class SyncEtf2lService
         }
 
         try {
-            return $this->doRun(max(1, $historyDays));
+            return $this->doRun(max(1, $historyDays), $refreshRosters);
         } finally {
             flock($lock, LOCK_UN);
             fclose($lock);
         }
     }
 
-    private function doRun(int $historyDays): string
+    private function doRun(int $historyDays, bool $refreshRosters): string
     {
         $logToken = AdminLogger::log(self::SCRIPT_NAME);
 
         // Purge des entrées de cache devenues inutiles (TTL maximal dépassé).
         $this->db->prepare('DELETE FROM etf2l_api_cache WHERE fetched_at < ?')
             ->execute([time() - self::CACHE_TTL_TEAMS]);
+
+        // Rafraîchissement forcé des rosters : on invalide le cache des fiches
+        // équipes (TTL 7 jours) pour que chaque équipe soit re-interrogée.
+        if ($refreshRosters) {
+            $this->db->prepare("DELETE FROM etf2l_api_cache WHERE url LIKE 'https://api-v2.etf2l.org/team/%'")
+                ->execute();
+        }
 
         // Historique durable : on cumule matchs à venir + matchs passés récents,
         // et on upsert au lieu de tout effacer (les URLs /match/{id} restent valides).
@@ -200,7 +215,7 @@ final class SyncEtf2lService
         $from -= $from % 86400;
         $matches = array_merge(
             $this->fetchAllPages(self::API_URL),
-            $this->fetchAllPages('https://api-v2.etf2l.org/matches?scheduled=0&from=' . $from)
+            $this->fetchAllPages('https://api-v2.etf2l.org/matches?scheduled=0&from='.$from)
         );
 
         $upsertedCount = 0;
@@ -235,7 +250,7 @@ final class SyncEtf2lService
                 $t1 = $m['clan1'] ?? null;
                 $t2 = $m['clan2'] ?? null;
 
-                if (!$t1 || !$t2) {
+                if (! $t1 || ! $t2) {
                     continue;
                 }
 
@@ -247,7 +262,7 @@ final class SyncEtf2lService
                 $isWhitelisted1 = in_array($t1Id, self::WHITELISTED_TEAMS, true);
                 $isWhitelisted2 = in_array($t2Id, self::WHITELISTED_TEAMS, true);
 
-                if (!$isFr1 && !$isFr2 && !$isWhitelisted1 && !$isWhitelisted2) {
+                if (! $isFr1 && ! $isFr2 && ! $isWhitelisted1 && ! $isWhitelisted2) {
                     continue;
                 }
 
@@ -301,14 +316,14 @@ final class SyncEtf2lService
             $failedTeams = $this->syncRosters(array_keys($matchTeamIds));
         }
 
-        $statusMsg = 'SUCCESS (' . $upsertedCount . ' match(s) français synchronisé(s), '
-            . $enriched . ' enrichi(s) map_results'
-            . ($failedTeams > 0 ? ', ' . $failedTeams . ' équipe(s) en échec' : '') . ')';
+        $statusMsg = 'SUCCESS ('.$upsertedCount.' match(s) français synchronisé(s), '
+            .$enriched.' enrichi(s) map_results'
+            .($failedTeams > 0 ? ', '.$failedTeams.' équipe(s) en échec' : '').')';
         AdminLogger::log(self::SCRIPT_NAME, $logToken, $statusMsg);
 
-        return 'Agenda synchronisé ! ' . $upsertedCount . ' match(s) français ajouté(s) en base de données'
-            . ($enriched > 0 ? ' (' . $enriched . ' map_results enrichis)' : '')
-            . ($failedTeams > 0 ? ' — attention : ' . $failedTeams . ' roster(s) en échec (voir log)' : '') . '.';
+        return 'Agenda synchronisé ! '.$upsertedCount.' match(s) français ajouté(s) en base de données'
+            .($enriched > 0 ? ' ('.$enriched.' map_results enrichis)' : '')
+            .($failedTeams > 0 ? ' — attention : '.$failedTeams.' roster(s) en échec (voir log)' : '').'.';
     }
 
     /**
@@ -350,7 +365,7 @@ final class SyncEtf2lService
             $extraStmt->execute([$now]);
             foreach ($extraStmt->fetchAll(\PDO::FETCH_ASSOC) as $row) {
                 $mid = (int) $row['match_id'];
-                if (!isset($pending[$mid])) {
+                if (! isset($pending[$mid])) {
                     $isEmpty = ($row['map_results'] ?? null) === '[]';
                     if ($isEmpty && (int) ($row['match_date'] ?? 0) < $now - 3 * 86400) {
                         continue;
@@ -372,6 +387,7 @@ final class SyncEtf2lService
             }
             $ea = $pending[$a]['is_empty'] ? 1 : 0;
             $eb = $pending[$b]['is_empty'] ? 1 : 0;
+
             return $ea <=> $eb;
         });
 
@@ -387,7 +403,7 @@ final class SyncEtf2lService
         foreach ($matchIds as $matchId) {
             try {
                 $responseObj = $this->cachedGet(
-                    'https://api-v2.etf2l.org/matches/' . (int) $matchId,
+                    'https://api-v2.etf2l.org/matches/'.(int) $matchId,
                     self::CACHE_TTL_MATCHES
                 );
 
@@ -402,7 +418,7 @@ final class SyncEtf2lService
                 }
 
                 $match = $responseObj['match'] ?? null;
-                if (!is_array($match)) {
+                if (! is_array($match)) {
                     continue;
                 }
 
@@ -432,6 +448,7 @@ final class SyncEtf2lService
                             (int) $matchId,
                         ]);
                         $enriched++;
+
                         continue;
                     }
                 }
@@ -446,7 +463,8 @@ final class SyncEtf2lService
 
                 $enriched++;
             } catch (\Throwable $e) {
-                error_log('Enrichissement ETF2L match ' . $matchId . ' : ' . $e->getMessage());
+                error_log('Enrichissement ETF2L match '.$matchId.' : '.$e->getMessage());
+
                 continue;
             }
         }
@@ -463,26 +481,18 @@ final class SyncEtf2lService
      */
     private function syncRosters(array $teamIds): int
     {
-        $teamStmt = $this->db->prepare('
-            REPLACE INTO etf2l_teams (team_id, name, country, tag)
-            VALUES (?, ?, ?, ?)
-        ');
-        $playerStmt = $this->db->prepare('
-            REPLACE INTO etf2l_players (team_id, player_id, name, role, country, steamid64)
-            VALUES (?, ?, ?, ?, ?, ?)
-        ');
-
         $failed = 0;
 
         foreach ($teamIds as $teamId) {
             try {
                 $responseObj = $this->cachedGet(
-                    'https://api-v2.etf2l.org/team/' . (int) $teamId,
+                    'https://api-v2.etf2l.org/team/'.(int) $teamId,
                     self::CACHE_TTL_TEAMS
                 );
             } catch (\Throwable $e) {
                 $failed++;
-                error_log('Roster ETF2L équipe ' . $teamId . ' : ' . $e->getMessage());
+                error_log('Roster ETF2L équipe '.$teamId.' : '.$e->getMessage());
+
                 continue;
             }
 
@@ -490,7 +500,7 @@ final class SyncEtf2lService
                 continue;
             }
 
-            if (!isset($responseObj['status']['code']) || (int) $responseObj['status']['code'] !== 200) {
+            if (! isset($responseObj['status']['code']) || (int) $responseObj['status']['code'] !== 200) {
                 continue;
             }
 
@@ -499,37 +509,61 @@ final class SyncEtf2lService
                 continue;
             }
 
-            $players = $team['players'] ?? [];
-
-            // Équipe + joueurs en une transaction : écriture atomique et brève.
-            $this->db->beginTransaction();
-
-            try {
-                $teamStmt->execute([
-                    (int) $teamId,
-                    $team['name'] ?? 'TBD',
-                    isset($team['country']) ? strtolower((string) $team['country']) : 'unknown',
-                    $team['tag'] ?? null,
-                ]);
-
-                foreach ($players as $p) {
-                    $playerStmt->execute([
-                        (int) $teamId,
-                        (int) ($p['id'] ?? 0),
-                        $p['name'] ?? 'Joueur ETF2L',
-                        $p['role'] ?? 'Member',
-                        isset($p['country']) ? strtolower((string) $p['country']) : 'unknown',
-                        isset($p['steam']['id64']) ? (string) $p['steam']['id64'] : null,
-                    ]);
-                }
-
-                $this->db->commit();
-            } catch (\Throwable $e) {
-                $this->db->rollBack();
-                throw $e;
-            }
+            $this->replaceRoster((int) $teamId, $team, $team['players'] ?? []);
         }
 
         return $failed;
+    }
+
+    /**
+     * Remplace en base le roster complet d'une équipe ETF2L (fiche équipe
+     * + joueurs) en une transaction : écriture atomique et brève. Le roster
+     * remplace l'ancien (DELETE puis INSERT) : les joueurs ayant quitté
+     * l'équipe ne restent pas en base, sinon la fiche match affiche des
+     * rosters obsolètes (cumul de toutes les versions synchronisées).
+     *
+     * @param  array<string, mixed>  $team  Fiche équipe telle que renvoyée par l'API.
+     * @param  array<int, array<string, mixed>>  $players  Joueurs du roster courant.
+     */
+    public function replaceRoster(int $teamId, array $team, array $players): void
+    {
+        $teamStmt = $this->db->prepare('
+            REPLACE INTO etf2l_teams (team_id, name, country, tag)
+            VALUES (?, ?, ?, ?)
+        ');
+        $playerStmt = $this->db->prepare('
+            REPLACE INTO etf2l_players (team_id, player_id, name, role, country, steamid64)
+            VALUES (?, ?, ?, ?, ?, ?)
+        ');
+        $clearStmt = $this->db->prepare('DELETE FROM etf2l_players WHERE team_id = ?');
+
+        $this->db->beginTransaction();
+
+        try {
+            $teamStmt->execute([
+                $teamId,
+                $team['name'] ?? 'TBD',
+                isset($team['country']) ? strtolower((string) $team['country']) : 'unknown',
+                $team['tag'] ?? null,
+            ]);
+
+            $clearStmt->execute([$teamId]);
+
+            foreach ($players as $p) {
+                $playerStmt->execute([
+                    $teamId,
+                    (int) ($p['id'] ?? 0),
+                    $p['name'] ?? 'Joueur ETF2L',
+                    $p['role'] ?? 'Member',
+                    isset($p['country']) ? strtolower((string) $p['country']) : 'unknown',
+                    isset($p['steam']['id64']) ? (string) $p['steam']['id64'] : null,
+                ]);
+            }
+
+            $this->db->commit();
+        } catch (\Throwable $e) {
+            $this->db->rollBack();
+            throw $e;
+        }
     }
 }
