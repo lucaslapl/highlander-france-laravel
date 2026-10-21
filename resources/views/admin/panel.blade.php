@@ -60,8 +60,8 @@
         <div class="admin-cards-grid">
             <div class="admin-action-card" style="--accent: #9b6dff;">
                 <h4 class="admin-action-card__title"><i class="fa-solid fa-tv"></i> Overlay Logs (OBS)</h4>
-                <p class="admin-action-card__desc">Overlay de stats logs.tf pour OBS : URL unique pour tous les logs, chaque
-                    nouveau log chargé met le visuel à jour tout seul.</p>
+                <p class="admin-action-card__desc">Overlay de stats logs.tf pour OBS : deux URLs fixes (une par match,
+                    pour caster deux matchs en même temps), chaque nouveau log chargé met le visuel à jour tout seul.</p>
                 <a href="/admin/overlay" class="admin-link-btn">Gérer les overlays</a>
             </div>
 

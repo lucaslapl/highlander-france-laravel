@@ -18,19 +18,21 @@ use Illuminate\Http\Request;
  * par des logs logs.tf. Accessible aux admins et aux rôles caster / prod
  * (hub des overlays /admin/overlays-stream).
  *
- * Une URL publique UNIQUE sert tous les chargements de logs :
- * /overlay/match-logs. Elle se pointe une seule fois dans OBS (source
- * navigateur web) et ne change jamais ; chaque log chargé (lien saisi
- * ou bouton « Charger ce log » sur un log déjà généré) remplace le
- * contenu — mêmes équipes couleur pour couleur, le visuel suit le log
- * — et la vue OBS se rafraîchit toute seule (polling de version côté
- * navigateur). Chaque log chargé rejoint l'historique « Logs déjà
- * générés » (un log rechargé y rafraîchit son entrée au lieu de la
- * dupliquer), d'où le bouton « Charger ce log » : recharger un ancien
- * log sans le retaper. Les overlays à token individuel créés avant
- * cette URL unique restent listés comme historique de logs
- * rechargeables, et leurs pages publiques /overlay/{token} continuent
- * de fonctionner pour les sources OBS déjà configurées.
+ * DEUX URLs publiques à URL fixe reçoivent les chargements de logs :
+ * /overlay/match-logs (slot 1) et /overlay/match-logs-2 (slot 2), pour
+ * caster deux matchs en simultané. Chaque URL se pointe une seule
+ * fois dans OBS (source navigateur web) et ne change jamais ; chaque
+ * log chargé (lien saisi ou bouton « Charger ce log » sur un log déjà
+ * généré) remplace le contenu du slot visé — mêmes équipes couleur
+ * pour couleur, le visuel suit le log — et la vue OBS se rafraîchit
+ * toute seule (polling de version côté navigateur). Chaque log chargé
+ * rejoint l'historique « Logs déjà générés » (un log rechargé y
+ * rafraîchit son entrée au lieu de la dupliquer), d'où le bouton
+ * « Charger ce log » : recharger un ancien log sans le retaper. Les
+ * overlays à token individuel créés avant les URLs fixes restent
+ * listés comme historique de logs rechargeables, et leurs pages
+ * publiques /overlay/{token} continuent de fonctionner pour les
+ * sources OBS déjà configurées.
  *
  * Les noms et avatars d'équipes sont résolus automatiquement à chaque
  * chargement de log : les joueurs votent pour leurs équipes ETF2L
@@ -57,9 +59,10 @@ final class AdminOverlayController extends Controller
     }
 
     /**
-     * GET /admin/overlay — l'outil : URL OBS unique à pointer une seule
-     * fois dans OBS, chargement d'un log par lien, et historique des logs
-     * déjà générés avec un bouton « Charger ce log » par entrée.
+     * GET /admin/overlay — l'outil : les deux URLs OBS (slots 1 et 2) à
+     * pointer une seule fois chacune dans OBS, chargement d'un log par
+     * lien vers le slot visé, et historique des logs déjà générés avec un
+     * bouton « Charger ce log » par entrée et par slot.
      */
     public function index(): View
     {
@@ -68,19 +71,29 @@ final class AdminOverlayController extends Controller
         return view('admin.overlay', [
             'title' => 'Admin - Overlay Logs (OBS)',
             'description' => 'Overlay de stats logs.tf pour les broadcasts OBS de Highlander France.',
-            'overlay_url' => url('/overlay/match-logs'),
-            'current' => $this->overlays->find(OverlayRepository::MATCH_LOGS_TOKEN),
+            'slots' => [
+                [
+                    'slot' => 1,
+                    'url' => url('/overlay/match-logs'),
+                    'current' => $this->overlays->find(OverlayRepository::MATCH_LOGS_TOKEN),
+                ],
+                [
+                    'slot' => 2,
+                    'url' => url('/overlay/match-logs-2'),
+                    'current' => $this->overlays->find(OverlayRepository::MATCH_LOGS_TOKEN_2),
+                ],
+            ],
             'logs' => $this->historyLogs(),
         ]);
     }
 
     /**
      * POST /admin/overlay/load — extrait l'ID du log depuis une URL ou un
-     * identifiant saisi, récupère les stats logs.tf et les charge dans
-     * l'overlay unique (/overlay/match-logs) : l'URL OBS ne change pas,
-     * seul le visuel est remplacé. Le log rejoint aussi l'historique « Logs
-     * déjà générés » (entrée rafraîchie s'il y figure déjà). Les noms
-     * d'équipes ETF2L sont résolus automatiquement.
+     * identifiant saisi, récupère les stats logs.tf et les charge dans le
+     * slot visé (champ « slot », 1 ou 2, par défaut 1) : l'URL OBS ne
+     * change pas, seul le visuel est remplacé. Le log rejoint aussi
+     * l'historique « Logs déjà générés » (entrée rafraîchie s'il y figure
+     * déjà). Les noms d'équipes ETF2L sont résolus automatiquement.
      */
     public function loadLog(Request $request): RedirectResponse
     {
@@ -88,7 +101,10 @@ final class AdminOverlayController extends Controller
 
         $data = $request->validate([
             'log' => ['required', 'string', 'max:255'],
+            'slot' => ['nullable', 'integer', 'in:1,2'],
         ]);
+
+        $slot = (int) ($data['slot'] ?? 1);
 
         $logId = $this->parseLogId((string) $data['log']);
         if ($logId === null) {
@@ -112,17 +128,18 @@ final class AdminOverlayController extends Controller
             $this->overlays->save(OverlayStatsService::mergePayload($history, $payload));
         }
 
-        $overlay = $this->saveToUniqueOverlay($payload);
-        AdminLogger::log('admin_overlay_load', null, 'SUCCESS (overlay unique ← logs.tf #'.$logId.', historique mis à jour)');
+        $overlay = $this->saveToUniqueOverlay($payload, $slot);
+        AdminLogger::log('admin_overlay_load', null, 'SUCCESS (overlay '.$slot.' ← logs.tf #'.$logId.', historique mis à jour)');
 
-        return back()->with('success', "Log logs.tf #$logId chargé dans l'overlay unique : l'URL OBS ne change pas, l'overlay s'est mis à jour tout seul.".$this->teamNamesMessage($overlay));
+        return back()->with('success', "Log logs.tf #$logId chargé dans l'overlay $slot : l'URL OBS ne change pas, l'overlay s'est mis à jour tout seul.".$this->teamNamesMessage($overlay));
     }
 
     /**
      * POST /admin/overlay/{token}/load — « Charger ce log » : recharge le
-     * log d'un overlay de l'historique dans l'overlay unique, sans appel
-     * logs.tf (payload déjà résolu et persisté) et sans toucher à l'URL
-     * OBS. Les avatars uploadés historiques suivent le log.
+     * log d'un overlay de l'historique dans le slot visé (champ « slot »,
+     * 1 ou 2, par défaut 1), sans appel logs.tf (payload déjà résolu et
+     * persisté) et sans toucher à l'URL OBS. Les avatars uploadés
+     * historiques suivent le log.
      */
     public function loadFromHistory(Request $request, string $token): RedirectResponse
     {
@@ -133,30 +150,35 @@ final class AdminOverlayController extends Controller
             abort(404);
         }
 
+        $slot = $this->slotFrom($request);
+
         // Le payload historique est repris tel quel : seules les clés de
         // persistance (token, dates, version) n'appartiennent pas au log.
         $payload = array_diff_key($overlay, array_flip(['token', 'created_at', 'updated_at', 'version']));
 
-        $unique = $this->saveToUniqueOverlay($payload);
-        $this->overlays->copyAvatars($token, OverlayRepository::MATCH_LOGS_TOKEN);
-        AdminLogger::log('admin_overlay_load', null, 'SUCCESS (overlay unique ← logs.tf #'.$overlay['log_id'].' via historique)');
+        $unique = $this->saveToUniqueOverlay($payload, $slot);
+        $this->overlays->copyAvatars($token, $this->uniqueToken($slot));
+        AdminLogger::log('admin_overlay_load', null, 'SUCCESS (overlay '.$slot.' ← logs.tf #'.$overlay['log_id'].' via historique)');
 
-        return back()->with('success', 'Log logs.tf #'.$overlay['log_id']." chargé dans l'overlay unique : l'URL OBS ne change pas, l'overlay s'est mis à jour tout seul.".$this->teamNamesMessage($unique));
+        return back()->with('success', 'Log logs.tf #'.$overlay['log_id']." chargé dans l'overlay $slot : l'URL OBS ne change pas, l'overlay s'est mis à jour tout seul.".$this->teamNamesMessage($unique));
     }
 
     /**
-     * POST /admin/overlay/refresh — relit depuis logs.tf le log courant de
-     * l'overlay unique (scores et stats à jour, ex. fin de map) : une
-     * résolution ETF2L (noms, avatars) indisponible au chargement du log
-     * est rattrapée ici dès que l'API répond à nouveau.
+     * POST /admin/overlay/refresh — relit depuis logs.tf le log courant
+     * du slot visé (champ « slot », 1 ou 2, par défaut 1) (scores et
+     * stats à jour, ex. fin de map) : une résolution ETF2L (noms, avatars)
+     * indisponible au chargement du log est rattrapée ici dès que l'API
+     * répond à nouveau.
      */
     public function refresh(Request $request): RedirectResponse
     {
         Auth::requireOverlayTools();
 
-        $overlay = $this->overlays->find(OverlayRepository::MATCH_LOGS_TOKEN);
+        $slot = $this->slotFrom($request);
+
+        $overlay = $this->overlays->find($this->uniqueToken($slot));
         if ($overlay === null) {
-            return back()->with('error', "Aucun log chargé pour l'instant : chargez d'abord un log.");
+            return back()->with('error', "Aucun log chargé pour l'instant sur l'overlay $slot : chargez d'abord un log.");
         }
 
         $payload = $this->stats->buildPayload((int) $overlay['log_id']);
@@ -164,9 +186,9 @@ final class AdminOverlayController extends Controller
             return back()->with('error', 'Impossible de relire le log logs.tf, réessayez plus tard.');
         }
 
-        $overlay = $this->saveToUniqueOverlay($payload);
+        $overlay = $this->saveToUniqueOverlay($payload, $slot);
 
-        return back()->with('success', 'Stats rafraîchies depuis logs.tf.'.$this->teamNamesMessage($overlay));
+        return back()->with('success', "Stats de l'overlay $slot rafraîchies depuis logs.tf.".$this->teamNamesMessage($overlay));
     }
 
     /**
@@ -183,18 +205,38 @@ final class AdminOverlayController extends Controller
     }
 
     /**
-     * Persiste un payload dans l'overlay unique (créé au premier
-     * chargement) en conservant sa date de création, et bumper sa version
-     * : la vue OBS se rafraîchit toute seule.
+     * Numéro de slot visé par un formulaire de l'outil (1 ou 2) ; toute
+     * valeur absente ou invalide retombe sur le slot 1, par compatibilité
+     * avec les POST déjà en place.
+     */
+    private function slotFrom(Request $request): int
+    {
+        $slot = (string) $request->input('slot', '1');
+
+        return $slot === '2' ? 2 : 1;
+    }
+
+    /**
+     * Token réservé d'un slot d'overlay à URL fixe (1 ou 2).
+     */
+    private function uniqueToken(int $slot): string
+    {
+        return OverlayRepository::MATCH_LOGS_SLOTS[$slot] ?? OverlayRepository::MATCH_LOGS_TOKEN;
+    }
+
+    /**
+     * Persiste un payload dans l'overlay à URL fixe du slot visé (créé au
+     * premier chargement) en conservant sa date de création, et bumper sa
+     * version : la vue OBS se rafraîchit toute seule.
      *
      * @param  array<string, mixed>  $payload
      * @return array<string, mixed>
      */
-    private function saveToUniqueOverlay(array $payload): array
+    private function saveToUniqueOverlay(array $payload, int $slot = 1): array
     {
-        $existing = $this->overlays->find(OverlayRepository::MATCH_LOGS_TOKEN);
+        $existing = $this->overlays->find($this->uniqueToken($slot));
         $base = $existing ?? [
-            'token' => OverlayRepository::MATCH_LOGS_TOKEN,
+            'token' => $this->uniqueToken($slot),
             'created_at' => time(),
         ];
 
@@ -205,19 +247,17 @@ final class AdminOverlayController extends Controller
     }
 
     /**
-     * Historique des logs déjà générés : tous les overlays sauf l'overlay
-     * unique (qui est le log courant, affiché à part), du plus récent au
-     * plus ancien.
+     * Historique des logs déjà générés : tous les overlays sauf les deux
+     * overlays à URL fixe (qui vivent chacun avec leur log courant,
+     * affichés à part), du plus récent au plus ancien.
      *
      * @return array<int, array<string, mixed>>
      */
     private function historyLogs(): array
     {
-        $fixed = OverlayRepository::MATCH_LOGS_TOKEN;
-
         return array_values(array_filter(
             $this->overlays->all(),
-            static fn (array $entry): bool => ($entry['token'] ?? '') !== $fixed
+            static fn (array $entry): bool => ! in_array(($entry['token'] ?? ''), OverlayRepository::MATCH_LOGS_SLOTS, true)
         ));
     }
 

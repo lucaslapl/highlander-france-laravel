@@ -1,6 +1,7 @@
-{{-- État vide de l'overlay unique /overlay/match-logs : aucun log n'a encore
-     été chargé depuis l'outil « Overlay Logs ». Page 100 % transparente
-     pour OBS, sans moindre pixel : elle poll son endpoint de version et se
+{{-- État vide d'un overlay à URL fixe (/overlay/match-logs ou
+     /overlay/match-logs-2) : aucun log n'a encore été chargé sur ce slot
+     depuis l'outil « Overlay Logs ». Page 100 % transparente pour OBS,
+     sans moindre pixel : elle poll son endpoint de version et se
      recharge toute seule dès que le premier log arrive. --}}
 <!DOCTYPE html>
 <html lang="fr">
@@ -11,8 +12,8 @@
 </head>
 <body>
 <script src="{{ hlfr_asset('/_js/overlay_match.js') }}" defer
-        data-token="{{ \App\Models\OverlayRepository::MATCH_LOGS_TOKEN }}"
+        data-token="{{ $token }}"
         data-version="0"
-        data-version-url="/overlay/match-logs/version"></script>
+        data-version-url="{{ $baseUrl }}/version"></script>
 </body>
 </html>

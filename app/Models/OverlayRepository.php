@@ -18,13 +18,32 @@ namespace App\Models;
 final class OverlayRepository
 {
     /**
-     * Token réservé de l'overlay unique servi par l'URL fixe
-     * /overlay/match-logs : l'outil « Overlay Logs » charge chaque log
-     * dans cet overlay-là, l'URL OBS ne change jamais. Il suit le même
-     * format que les tokens aléatoires (16 caractères [a-z0-9]) : toutes
-     * les mécaniques (payload, version, avatars) sont partagées.
+     * Token réservé du PREMIER overlay à URL fixe, servi par
+     * /overlay/match-logs (slot 1) : l'outil « Overlay Logs » charge
+     * chaque log dans le slot visé, l'URL OBS ne change jamais. Il suit
+     * le même format que les tokens aléatoires (16 caractères [a-z0-9])
+     * : toutes les mécaniques (payload, version, avatars) sont partagées.
      */
     public const MATCH_LOGS_TOKEN = 'matchlogs0verlay';
+
+    /**
+     * Token réservé du SECOND overlay à URL fixe, /overlay/match-logs-2 :
+     * même mécanique que MATCH_LOGS_TOKEN, pour caster deux matchs en
+     * simultané (deux sources OBS indépendantes, deux logs courants).
+     */
+    public const MATCH_LOGS_TOKEN_2 = 'matchlogs2verlay';
+
+    /**
+     * Tokens réservés des overlays à URL fixe (« slots » de l'outil «
+     * Overlay Logs »), dans l'ordre des numéros d'URL :
+     * slot 1 → /overlay/match-logs, slot 2 → /overlay/match-logs-2.
+     *
+     * @var array<int, string>
+     */
+    public const MATCH_LOGS_SLOTS = [
+        1 => self::MATCH_LOGS_TOKEN,
+        2 => self::MATCH_LOGS_TOKEN_2,
+    ];
 
     /** Extensions d'avatar autorisées (fichiers historiques). */
     private const AVATAR_EXTENSIONS = ['jpg', 'png', 'webp'];
@@ -51,16 +70,16 @@ final class OverlayRepository
 
     /**
      * Payload complet de l'entrée d'historique portant un log logs.tf
-     * donné (l'overlay unique exclu : il vit avec le log courant), ou null.
-     * Sert à ne pas dupliquer un log dans « Logs déjà générés » quand il
-     * est rechargé par lien.
+     * donné (les overlays à URL fixe exclus : ils vivent chacun avec
+     * leur log courant), ou null. Sert à ne pas dupliquer un log dans
+     * « Logs déjà générés » quand il est rechargé par lien.
      *
      * @return array<string, mixed>|null
      */
     public function findByLogId(int $logId): ?array
     {
         foreach ($this->all() as $entry) {
-            if (($entry['token'] ?? '') !== self::MATCH_LOGS_TOKEN
+            if (! in_array(($entry['token'] ?? ''), self::MATCH_LOGS_SLOTS, true)
                 && (int) ($entry['log_id'] ?? 0) === $logId) {
                 return $this->find((string) $entry['token']);
             }
@@ -168,7 +187,8 @@ final class OverlayRepository
     /**
      * Copie les avatars uploadés d'un overlay vers un autre (silencieux si
      * la source n'en a pas). Utilisé par le bouton « Charger ce log » :
-     * les avatars historiques suivent le log dans l'overlay unique.
+     * les avatars historiques suivent le log vers l'overlay à URL fixe
+     * visé (slot 1 ou 2).
      */
     public function copyAvatars(string $fromToken, string $toToken): void
     {

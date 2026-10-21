@@ -9,13 +9,14 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
 /**
- * Outil « Overlay Logs » : accès réservé aux admins côté panel, overlay
- * unique servi par l'URL fixe /overlay/match-logs (tous les logs y sont
- * chargés, l'URL OBS ne change jamais), vues overlays publiques par token
- * (sources OBS historiques), bouton « Charger ce log » sur l'historique
- * et suppression. Noms et avatars d'équipes ne sont pas saisis :
- * résolution ETF2L automatique au chargement des logs (voir
- * OverlayStatsServiceTest), repli RED / BLU.
+ * Outil « Overlay Logs » : accès réservé aux admins côté panel, overlays
+ * à URL fixe /overlay/match-logs (slot 1) et /overlay/match-logs-2
+ * (slot 2) pour caster deux matchs en simultané — chaque log est chargé
+ * dans le slot visé, les URLs OBS ne changent jamais —, vues overlays
+ * publiques par token (sources OBS historiques), boutons « Charger ce
+ * log » sur l'historique et suppression. Noms et avatars d'équipes ne
+ * sont pas saisis : résolution ETF2L automatique au chargement des logs
+ * (voir OverlayStatsServiceTest), repli RED / BLU.
  */
 class OverlayTest extends TestCase
 {
@@ -108,17 +109,20 @@ class OverlayTest extends TestCase
         $this->post('/admin/overlay/'.self::TOKEN.'/delete')->assertForbidden();
     }
 
-    public function test_l_outil_affiche_l_url_unique_et_les_logs_deja_generes(): void
+    public function test_l_outil_affiche_les_deux_urls_et_les_logs_deja_generes(): void
     {
         $this->seedOverlay();
 
         $this->withSession($this->adminSession())
             ->get('/admin/overlay')
             ->assertOk()
-            // Une seule URL OBS pour tous les logs, sans token.
+            // Deux URLs OBS (slots 1 et 2), sans token.
             ->assertSee(url('/overlay/match-logs'), false)
+            ->assertSee(url('/overlay/match-logs-2'), false)
             ->assertSee('Charger un log')
-            ->assertSee('Charger ce log')
+            ->assertSee('Overlay 1')
+            ->assertSee('Overlay 2')
+            ->assertSee('Charger (O1)')
             ->assertSee('4059225')
             // La création est minimale (juste le log) : les noms d'équipes
             // sont identifiés automatiquement sur ETF2L à chaque chargement.
@@ -216,7 +220,7 @@ class OverlayTest extends TestCase
 
     // ─── Overlay unique /overlay/match-logs ─────────────────────────────────
 
-    public function test_l_url_unique_est_transparente_tant_qu_aucun_log_n_est_charge(): void
+    public function test_les_urls_fixes_sont_transparentes_tant_qu_aucun_log_n_est_charge(): void
     {
         $response = $this->get('/overlay/match-logs');
 
@@ -229,6 +233,17 @@ class OverlayTest extends TestCase
 
         $this->get('/overlay/match-logs/version')->assertOk()->assertJson(['version' => 0]);
         $this->get('/overlay/match-logs/avatar/red')->assertNotFound();
+
+        // Le slot 2 suit exactement la même mécanique, sous sa propre URL.
+        $response = $this->get('/overlay/match-logs-2');
+
+        $response->assertOk();
+        $this->assertStringNotContainsString('overlay-stage', (string) $response->getContent());
+        $this->assertStringContainsString('/overlay/match-logs-2/version', (string) $response->getContent());
+        $this->assertStringContainsString('no-store', (string) $response->headers->get('Cache-Control'));
+
+        $this->get('/overlay/match-logs-2/version')->assertOk()->assertJson(['version' => 0]);
+        $this->get('/overlay/match-logs-2/avatar/red')->assertNotFound();
     }
 
     public function test_le_bouton_charger_ce_log_remplit_l_url_unique(): void
@@ -240,7 +255,7 @@ class OverlayTest extends TestCase
             ->assertRedirect()
             ->assertSessionHas('success');
 
-        // L'overlay unique porte le log de l'historique, sous l'URL fixe.
+        // L'overlay du slot 1 porte le log de l'historique, sous l'URL fixe.
         $response = $this->get('/overlay/match-logs');
 
         $response->assertOk();
@@ -257,15 +272,41 @@ class OverlayTest extends TestCase
         $this->assertSame((int) 4059225, (int) (new OverlayRepository)->find(self::TOKEN)['log_id']);
     }
 
-    public function test_l_historique_dedoublonne_par_log_et_ignore_l_overlay_unique(): void
+    public function test_le_bouton_charger_ce_log_vise_le_slot_2_sans_toucher_au_slot_1(): void
     {
         $this->seedOverlay();
 
-        // L'overlay unique porte le même log : il ne compte pas dans la
-        // recherche d'historique — recharger le log par lien doit
-        // rafraîchir l'entrée existante, pas la dupliquer.
+        $this->withSession($this->adminSession())
+            ->post('/admin/overlay/'.self::TOKEN.'/load', ['slot' => '2'])
+            ->assertRedirect()
+            ->assertSessionHas('success');
+
+        // Le slot 2 porte le log, le slot 1 reste transparent.
+        $response = $this->get('/overlay/match-logs-2');
+
+        $response->assertOk();
+        $this->assertStringContainsString('ScoutFR', (string) $response->getContent());
+
+        $version = (int) $this->get('/overlay/match-logs-2/version')->json('version');
+        $this->assertGreaterThan(0, $version);
+
+        $this->assertNull((new OverlayRepository)->find(OverlayRepository::MATCH_LOGS_TOKEN));
+        $this->get('/overlay/match-logs')->assertOk();
+        $this->assertStringNotContainsString('ScoutFR', (string) $this->get('/overlay/match-logs')->getContent());
+    }
+
+    public function test_l_historique_dedoublonne_par_log_et_ignore_les_overlays_a_url_fixe(): void
+    {
+        $this->seedOverlay();
+
+        // Les deux overlays à URL fixe portent le même log : ils ne
+        // comptent pas dans la recherche d'historique — recharger le log
+        // par lien doit rafraîchir l'entrée existante, pas la dupliquer.
         $fixture = $this->overlayFixture();
         $fixture['token'] = OverlayRepository::MATCH_LOGS_TOKEN;
+        (new OverlayRepository)->save($fixture);
+
+        $fixture['token'] = OverlayRepository::MATCH_LOGS_TOKEN_2;
         (new OverlayRepository)->save($fixture);
 
         $repo = new OverlayRepository;

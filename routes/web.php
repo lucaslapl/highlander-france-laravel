@@ -96,11 +96,16 @@ Route::post('/api/discord/member-count', [ServerHookController::class, 'discordM
 Route::get('/live/{server}', [PageController::class, 'liveMatch']);
 
 // ─── Overlays OBS (source navigateur web, accès par token) ───────────────────
-// Overlay unique « Overlay Logs » : URL fixe, sans token — tous les logs
-// y sont chargés depuis l'outil admin, seule l'URL de départ compte.
+// Overlays « Overlay Logs » à URL fixe, sans token : slot 1
+// (/overlay/match-logs) et slot 2 (/overlay/match-logs-2) pour caster
+// deux matchs en simultané. Chaque URL se pointe une seule fois dans
+// OBS ; les logs y sont chargés depuis l'outil admin.
 Route::get('/overlay/match-logs', [OverlayController::class, 'showFixed']);
 Route::get('/overlay/match-logs/version', [OverlayController::class, 'versionFixed']);
 Route::get('/overlay/match-logs/avatar/{team}', [OverlayController::class, 'avatarFixed'])->whereIn('team', ['red', 'blue']);
+Route::get('/overlay/match-logs-2', [OverlayController::class, 'showFixed2']);
+Route::get('/overlay/match-logs-2/version', [OverlayController::class, 'versionFixed2']);
+Route::get('/overlay/match-logs-2/avatar/{team}', [OverlayController::class, 'avatarFixed2'])->whereIn('team', ['red', 'blue']);
 // Overlays individuels historiques : conservés pour les sources OBS
 // déjà configurées sur un /overlay/{token} avant l'URL unique.
 Route::get('/overlay/{token}', [OverlayController::class, 'show'])->where('token', '[a-z0-9]{16}');
