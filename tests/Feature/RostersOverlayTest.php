@@ -74,13 +74,13 @@ class RostersOverlayTest extends TestCase
 
     public function test_un_caster_accede_a_l_outil(): void
     {
-        $this->withSession(['steamid' => '76561198012345678', 'is_caster' => true])
+        $this->withSession($this->loginAs('76561198012345678', caster: true))
             ->get('/admin/overlay/rosters')->assertOk();
     }
 
     public function test_la_creation_posse_les_classes_du_format(): void
     {
-        $this->withSession(['steamid' => '76561198012345678', 'is_caster' => true])
+        $this->withSession($this->loginAs('76561198012345678', caster: true))
             ->post('/admin/overlay/rosters/create', [
                 'format' => 'hl',
                 'eyebrow' => 'ETF2L Highlander Saison 40 - Division 1',
@@ -101,7 +101,7 @@ class RostersOverlayTest extends TestCase
 
     public function test_la_creation_6v6_posse_deux_scouts_et_deux_soldiers(): void
     {
-        $this->withSession(['steamid' => '76561198012345678', 'is_caster' => true])
+        $this->withSession($this->loginAs('76561198012345678', caster: true))
             ->post('/admin/overlay/rosters/create', [
                 'format' => '6v6',
                 'eyebrow' => 'ETF2L 6v6 Season 53',
@@ -123,7 +123,7 @@ class RostersOverlayTest extends TestCase
     {
         $this->seedRosters(['format' => 'hl']);
 
-        $this->withSession(['steamid' => '76561198012345678', 'is_caster' => true])
+        $this->withSession($this->loginAs('76561198012345678', caster: true))
             ->get('/admin/overlay/rosters/'.self::TOKEN)
             ->assertOk()
             ->assertSee('Overlay Rosters')
@@ -139,7 +139,7 @@ class RostersOverlayTest extends TestCase
     {
         $this->seedRosters(['format' => '6v6']);
 
-        $this->withSession(['steamid' => '76561198012345678', 'is_caster' => true])
+        $this->withSession($this->loginAs('76561198012345678', caster: true))
             ->get('/admin/overlay/rosters/'.self::TOKEN)
             ->assertOk()
             ->assertSee('Scout 1')
@@ -156,7 +156,7 @@ class RostersOverlayTest extends TestCase
     {
         $this->seedRosters(['format' => 'hl']);
 
-        $this->withSession(['steamid' => '76561198012345678', 'is_caster' => true])
+        $this->withSession($this->loginAs('76561198012345678', caster: true))
             ->post('/admin/overlay/rosters/'.self::TOKEN.'/update', [
                 'eyebrow' => 'ETF2L Highlander Saison 40',
                 'title' => 'Rosters',
@@ -255,7 +255,7 @@ class RostersOverlayTest extends TestCase
             ],
         ]);
 
-        $this->withSession(['steamid' => '76561198012345678', 'is_caster' => true])
+        $this->withSession($this->loginAs('76561198012345678', caster: true))
             ->post('/admin/overlay/rosters/'.self::TOKEN.'/switch')
             ->assertSessionHas('success');
 
@@ -284,7 +284,7 @@ class RostersOverlayTest extends TestCase
             ],
         ]);
 
-        $this->withSession(['steamid' => '76561198012345678', 'is_caster' => true])
+        $this->withSession($this->loginAs('76561198012345678', caster: true))
             ->post('/admin/overlay/rosters/'.self::TOKEN.'/update', [
                 'eyebrow' => '',
                 'title' => 'Rosters',
@@ -348,7 +348,7 @@ class RostersOverlayTest extends TestCase
     {
         $this->seedRosters();
 
-        $this->withSession(['steamid' => '76561198012345678', 'is_caster' => true])
+        $this->withSession($this->loginAs('76561198012345678', caster: true))
             ->post('/admin/overlay/rosters/'.self::TOKEN.'/delete')
             ->assertRedirect('/admin/overlay/rosters');
 

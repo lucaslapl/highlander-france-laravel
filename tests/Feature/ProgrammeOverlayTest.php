@@ -66,13 +66,13 @@ class ProgrammeOverlayTest extends TestCase
 
     public function test_un_caster_accede_a_l_outil(): void
     {
-        $this->withSession(['steamid' => '76561198012345678', 'is_caster' => true])
+        $this->withSession($this->loginAs('76561198012345678', caster: true))
             ->get('/admin/overlay/programme')->assertOk();
     }
 
     public function test_la_creation_pose_les_valeurs_par_defaut(): void
     {
-        $this->withSession(['steamid' => '76561198012345678', 'is_caster' => true])
+        $this->withSession($this->loginAs('76561198012345678', caster: true))
             ->post('/admin/overlay/programme/create', [
                 'name' => 'Programme du dimanche',
             ])
@@ -102,7 +102,7 @@ class ProgrammeOverlayTest extends TestCase
             ],
         ]);
 
-        $this->withSession(['steamid' => '76561198012345678', 'is_caster' => true])
+        $this->withSession($this->loginAs('76561198012345678', caster: true))
             ->get('/admin/overlay/programme/'.self::TOKEN)
             ->assertOk()
             ->assertSee('Overlay Programme')
@@ -120,7 +120,7 @@ class ProgrammeOverlayTest extends TestCase
     {
         $this->seedProgramme();
 
-        $this->withSession(['steamid' => '76561198012345678', 'is_caster' => true])
+        $this->withSession($this->loginAs('76561198012345678', caster: true))
             ->post('/admin/overlay/programme/'.self::TOKEN.'/update', [
                 'name' => 'Programme du dimanche',
                 'welcome' => 'Bienvenue sur Highlander France !',
@@ -162,7 +162,7 @@ class ProgrammeOverlayTest extends TestCase
     {
         $this->seedProgramme();
 
-        $this->withSession(['steamid' => '76561198012345678', 'is_caster' => true])
+        $this->withSession($this->loginAs('76561198012345678', caster: true))
             ->post('/admin/overlay/programme/'.self::TOKEN.'/update', [
                 'name' => 'Programme du dimanche',
                 'welcome' => 'Bienvenue sur Highlander France !',
@@ -187,7 +187,7 @@ class ProgrammeOverlayTest extends TestCase
         // Date/heure absentes en mode date/heure : l'enregistrement
         // échoue, mais les entrées saisies doivent revenir dans le
         // formulaire (old()), pas disparaître.
-        $this->withSession(['steamid' => '76561198012345678', 'is_caster' => true])
+        $this->withSession($this->loginAs('76561198012345678', caster: true))
             ->post('/admin/overlay/programme/'.self::TOKEN.'/update', [
                 'name' => 'Programme du dimanche',
                 'welcome' => 'Bienvenue sur Highlander France !',
@@ -205,7 +205,7 @@ class ProgrammeOverlayTest extends TestCase
         $this->assertSame([], $this->findOverlay()['schedule']);
 
         // … mais l'éditeur ré-affiche l'entrée saisie.
-        $this->withSession(['steamid' => '76561198012345678', 'is_caster' => true])
+        $this->withSession($this->loginAs('76561198012345678', caster: true))
             ->get('/admin/overlay/programme/'.self::TOKEN)
             ->assertOk()
             ->assertSee('Dimanche 11 Octobre')
@@ -216,7 +216,7 @@ class ProgrammeOverlayTest extends TestCase
     {
         $this->seedProgramme();
 
-        $this->withSession(['steamid' => '76561198012345678', 'is_caster' => true])
+        $this->withSession($this->loginAs('76561198012345678', caster: true))
             ->post('/admin/overlay/programme/'.self::TOKEN.'/update', [
                 'name' => 'Programme du dimanche',
                 'welcome' => 'Bienvenue sur Highlander France !',
@@ -242,7 +242,7 @@ class ProgrammeOverlayTest extends TestCase
 
     public function test_l_editeur_precoche_le_bouton_radio_du_mode_enregistre(): void
     {
-        $session = ['steamid' => '76561198012345678', 'is_caster' => true];
+        $session = $this->loginAs('76561198012345678', caster: true);
         $this->seedProgramme();
 
         $this->withSession($session)
@@ -275,7 +275,7 @@ class ProgrammeOverlayTest extends TestCase
     {
         $this->seedProgramme();
 
-        $this->withSession(['steamid' => '76561198012345678', 'is_caster' => true])
+        $this->withSession($this->loginAs('76561198012345678', caster: true))
             ->post('/admin/overlay/programme/'.self::TOKEN.'/update', [
                 'name' => 'Programme du dimanche',
                 'welcome' => 'Bienvenue sur Highlander France !',
@@ -293,7 +293,7 @@ class ProgrammeOverlayTest extends TestCase
     public function test_changer_de_mode_conserve_les_reglages_de_l_autre_mode(): void
     {
         $this->seedProgramme();
-        $session = ['steamid' => '76561198012345678', 'is_caster' => true];
+        $session = $this->loginAs('76561198012345678', caster: true);
         $expected = (new \DateTimeImmutable('2026-10-18 21:00', new \DateTimeZone('Europe/Paris')))->getTimestamp();
 
         // Passage en mode date/heure : la durée réglée (60 min à la
@@ -422,7 +422,7 @@ class ProgrammeOverlayTest extends TestCase
         $this->seedProgramme();
         $before = $this->findOverlay();
 
-        $this->withSession(['steamid' => '76561198012345678', 'is_caster' => true])
+        $this->withSession($this->loginAs('76561198012345678', caster: true))
             ->post('/admin/overlay/programme/'.self::TOKEN.'/countdown', ['delta_s' => 60])
             ->assertSessionHas('success');
 
@@ -433,11 +433,11 @@ class ProgrammeOverlayTest extends TestCase
         $this->assertGreaterThanOrEqual((int) $before['version'], (int) $after['version']);
 
         // Négatif puis remise à zéro : l'offset retombe à 0.
-        $this->withSession(['steamid' => '76561198012345678', 'is_caster' => true])
+        $this->withSession($this->loginAs('76561198012345678', caster: true))
             ->post('/admin/overlay/programme/'.self::TOKEN.'/countdown', ['delta_s' => -60])
             ->assertSessionHas('success');
 
-        $this->withSession(['steamid' => '76561198012345678', 'is_caster' => true])
+        $this->withSession($this->loginAs('76561198012345678', caster: true))
             ->post('/admin/overlay/programme/'.self::TOKEN.'/countdown', ['reset' => '1'])
             ->assertSessionHas('success');
 
@@ -448,7 +448,7 @@ class ProgrammeOverlayTest extends TestCase
     {
         $this->seedProgramme();
 
-        $this->withSession(['steamid' => '76561198012345678', 'is_caster' => true])
+        $this->withSession($this->loginAs('76561198012345678', caster: true))
             ->post('/admin/overlay/programme/'.self::TOKEN.'/countdown', ['delta_s' => 99999999])
             ->assertSessionHas('errors');
 
@@ -459,7 +459,7 @@ class ProgrammeOverlayTest extends TestCase
     {
         $this->seedEtf2lMatchCache(93233);
 
-        $this->withSession(['steamid' => '76561198012345678', 'is_caster' => true])
+        $this->withSession($this->loginAs('76561198012345678', caster: true))
             ->get('/admin/overlay/programme/etf2l-match?match_url=https://etf2l.org/matches/93233/')
             ->assertOk()
             ->assertJsonPath('match.id', 93233)
@@ -481,7 +481,7 @@ class ProgrammeOverlayTest extends TestCase
             'competition_name' => 'ETF2L Highlander Season 40 - Division 1',
         ]);
 
-        $response = $this->withSession(['steamid' => '76561198012345678', 'is_caster' => true])
+        $response = $this->withSession($this->loginAs('76561198012345678', caster: true))
             ->get('/admin/overlay/programme/upcoming');
 
         $response->assertOk();
@@ -497,7 +497,7 @@ class ProgrammeOverlayTest extends TestCase
 
     public function test_les_prochains_matchs_sans_table_peuplee_repondent_vide(): void
     {
-        $this->withSession(['steamid' => '76561198012345678', 'is_caster' => true])
+        $this->withSession($this->loginAs('76561198012345678', caster: true))
             ->get('/admin/overlay/programme/upcoming')
             ->assertOk()
             ->assertJson(['matches' => []]);
@@ -510,7 +510,7 @@ class ProgrammeOverlayTest extends TestCase
 
     public function test_l_import_etf2l_refuse_une_url_invalide(): void
     {
-        $this->withSession(['steamid' => '76561198012345678', 'is_caster' => true])
+        $this->withSession($this->loginAs('76561198012345678', caster: true))
             ->get('/admin/overlay/programme/etf2l-match?match_url=https://example.com/pas-un-match')
             ->assertOk()
             ->assertJsonPath('match', null)
@@ -521,7 +521,7 @@ class ProgrammeOverlayTest extends TestCase
     {
         $this->seedProgramme();
 
-        $this->withSession(['steamid' => '76561198012345678', 'is_caster' => true])
+        $this->withSession($this->loginAs('76561198012345678', caster: true))
             ->post('/admin/overlay/programme/'.self::TOKEN.'/delete')
             ->assertRedirect('/admin/overlay/programme');
 
@@ -538,7 +538,7 @@ class ProgrammeOverlayTest extends TestCase
         // avant, le message « Overlay enregistré » s'affichait alors
         // que rien n'était sauvé et le formulaire revenait à son état
         // d'avant.
-        $this->withSession(['steamid' => '76561198012345678', 'is_caster' => true])
+        $this->withSession($this->loginAs('76561198012345678', caster: true))
             ->post('/admin/overlay/programme/'.self::TOKEN.'/update', [
                 'name' => 'Programme du dimanche',
                 'welcome' => 'Bienvenue sur Highlander France !',
@@ -641,7 +641,7 @@ class ProgrammeOverlayTest extends TestCase
 
         // Données polluées par l'ancien double échappement : entité
         // « &#039; » collée ou ré-enregistrée depuis le formulaire.
-        $this->withSession(['steamid' => '76561198012345678', 'is_caster' => true])
+        $this->withSession($this->loginAs('76561198012345678', caster: true))
             ->post('/admin/overlay/programme/'.self::TOKEN.'/update', [
                 'name' => 'Programme du dimanche',
                 'welcome' => 'Bienvenue sur Highlander France !',
@@ -663,7 +663,7 @@ class ProgrammeOverlayTest extends TestCase
     {
         $this->seedEtf2lMatchCache(93234, 'L&#039;Escouade 6');
 
-        $this->withSession(['steamid' => '76561198012345678', 'is_caster' => true])
+        $this->withSession($this->loginAs('76561198012345678', caster: true))
             ->get('/admin/overlay/programme/etf2l-match?match_url=https://etf2l.org/matches/93234/')
             ->assertOk()
             ->assertJsonPath('match.teams.1.name', "L'Escouade 6");

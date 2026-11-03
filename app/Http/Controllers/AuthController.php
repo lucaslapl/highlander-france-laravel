@@ -87,12 +87,6 @@ final class AuthController extends Controller
             $steamApi->syncOrCreatePlayer($steamid64);
 
             Bus::dispatchAfterResponse(new ComputePlayerEtf2lDataJob($steamid3));
-
-            // Rôles figés en session au login (comme is_admin) : un changement
-            // de rôle ne prend effet qu'à la prochaine connexion.
-            Session::put('is_admin', false);
-            Session::put('is_caster', false);
-            Session::put('is_producer', false);
         } else {
             // Compte existant : created_at manquant = première connexion
             $repo->ensureCreatedAt($steamid3);
@@ -102,9 +96,9 @@ final class AuthController extends Controller
                 $steamApi->syncOrCreatePlayer($steamid64);
             }
 
-            Session::put('is_admin', (isset($user['is_admin']) && (int) $user['is_admin'] === 1));
-            Session::put('is_caster', (isset($user['is_caster']) && (int) $user['is_caster'] === 1));
-            Session::put('is_producer', (isset($user['is_producer']) && (int) $user['is_producer'] === 1));
+            // Les rôles (is_admin, is_caster, is_producer) ne sont volontairement
+            // PAS stockés en session : Auth les lit dans players_info à chaque
+            // requête, pour qu'une révocation prenne effet sans reconnexion.
         }
 
         return redirect('/profile/dashboard');

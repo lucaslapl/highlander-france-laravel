@@ -273,7 +273,7 @@ class BracketOverlayTest extends TestCase
             'live' => ['column' => 'c1', 'match' => 'm1'],
         ]);
 
-        $response = $this->withSession(['steamid' => '76561198012345678', 'is_admin' => true])
+        $response = $this->withSession($this->loginAs('76561198012345678', admin: true))
             ->get('/admin/overlay/bracket/'.self::TOKEN);
         $response->assertOk();
 
@@ -299,7 +299,7 @@ class BracketOverlayTest extends TestCase
             ],
         ]);
 
-        $response = $this->withSession(['steamid' => '76561198012345678', 'is_admin' => true])
+        $response = $this->withSession($this->loginAs('76561198012345678', admin: true))
             ->get('/admin/overlay/bracket/'.self::TOKEN);
         $response->assertOk();
 
@@ -318,7 +318,7 @@ class BracketOverlayTest extends TestCase
 
         // Schéma sérialisé par l'éditeur visuel (admin_table_editor.js) :
         // identique au formulaire historique, le contrôleur n'a pas changé.
-        $this->withSession(['steamid' => '76561198012345678', 'is_admin' => true])
+        $this->withSession($this->loginAs('76561198012345678', admin: true))
             ->post('/admin/overlay/bracket/'.self::TOKEN.'/update', [
                 'eyebrow' => 'ETF2L Highlander Saison 36',
                 'title' => 'Division 2',
@@ -352,7 +352,7 @@ class BracketOverlayTest extends TestCase
         // identique au formulaire historique, le contrôleur n'a pas changé.
         // La colonne finale porte la grande finale et une case « 3è place »
         // avec son titre propre (label de case).
-        $this->withSession(['steamid' => '76561198012345678', 'is_admin' => true])
+        $this->withSession($this->loginAs('76561198012345678', admin: true))
             ->post('/admin/overlay/bracket/'.self::TOKEN.'/update', [
                 'eyebrow' => 'ETF2L Highlander Saison 36',
                 'title' => 'Division 1',
@@ -494,7 +494,7 @@ class BracketOverlayTest extends TestCase
 
         // Schéma sérialisé par l'éditeur visuel (admin_bracket_editor.js)
         // pour un squelette suisse : flat = 1 sur chaque colonne de round.
-        $this->withSession(['steamid' => '76561198012345678', 'is_admin' => true])
+        $this->withSession($this->loginAs('76561198012345678', admin: true))
             ->post('/admin/overlay/bracket/'.self::TOKEN.'/update', [
                 'eyebrow' => 'Swiss Round Robin',
                 'title' => 'Division 1',

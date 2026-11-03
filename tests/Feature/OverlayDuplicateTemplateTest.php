@@ -71,7 +71,7 @@ class OverlayDuplicateTemplateTest extends TestCase
         $this->seedOverlay($outil, self::TOKEN_A, 'Division 1');
         $this->seedOverlay($outil, self::TOKEN_B, 'Autre', time() - 50);
 
-        $response = $this->withSession(['steamid' => '76561198012345678', 'is_admin' => true])
+        $response = $this->withSession($this->loginAs('76561198012345678', admin: true))
             ->post('/admin/overlay/'.$outil.'/'.self::TOKEN_A.'/duplicate');
         $response->assertRedirect();
 
@@ -100,7 +100,7 @@ class OverlayDuplicateTemplateTest extends TestCase
         $this->seedOverlay($outil, self::TOKEN_A, 'Division 1');
         $this->seedOverlay($outil, self::TOKEN_B, 'Division 2', time() - 50);
 
-        $session = ['steamid' => '76561198012345678', 'is_admin' => true];
+        $session = $this->loginAs('76561198012345678', admin: true);
 
         $this->withSession($session)->post('/admin/overlay/'.$outil.'/'.self::TOKEN_A.'/template')->assertRedirect();
         $this->assertTrue((bool) ($this->find($outil, self::TOKEN_A)['is_template'] ?? false));
@@ -123,7 +123,7 @@ class OverlayDuplicateTemplateTest extends TestCase
     #[DataProvider('outils')]
     public function test_un_token_inconnu_renvoie_404(string $outil): void
     {
-        $session = ['steamid' => '76561198012345678', 'is_admin' => true];
+        $session = $this->loginAs('76561198012345678', admin: true);
 
         $this->withSession($session)->post('/admin/overlay/'.$outil.'/'.self::TOKEN_A.'/duplicate')->assertNotFound();
         $this->withSession($session)->post('/admin/overlay/'.$outil.'/'.self::TOKEN_A.'/template')->assertNotFound();

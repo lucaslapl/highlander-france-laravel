@@ -32,7 +32,7 @@ class Etf2lTeamsEndpointTest extends TestCase
     {
         $this->seedCompetitionTeams(42);
 
-        $response = $this->withSession(['steamid' => '76561198012345678', 'is_caster' => true])
+        $response = $this->withSession($this->loginAs('76561198012345678', caster: true))
             ->get('/admin/overlay/etf2l/teams?competition_id=42');
 
         $response->assertOk()
@@ -46,7 +46,7 @@ class Etf2lTeamsEndpointTest extends TestCase
     {
         $this->seedCompetitionTeams(42);
 
-        $this->withSession(['steamid' => '76561198012345678', 'is_producer' => true])
+        $this->withSession($this->loginAs('76561198012345678', producer: true))
             ->get('/admin/overlay/etf2l/teams?competition_id=42')
             ->assertOk()
             ->assertJsonCount(2, 'teams');
@@ -54,7 +54,7 @@ class Etf2lTeamsEndpointTest extends TestCase
 
     public function test_une_competition_sans_parametre_est_rejetee(): void
     {
-        $this->withSession(['steamid' => '76561198012345678', 'is_caster' => true])
+        $this->withSession($this->loginAs('76561198012345678', caster: true))
             ->get('/admin/overlay/etf2l/teams')
             ->assertInvalid(['competition_id']);
     }
@@ -93,7 +93,7 @@ class Etf2lTeamsEndpointTest extends TestCase
     {
         $this->seedTeamRoster(21747, ['76561198000552896', '76561198052898676']);
 
-        $response = $this->withSession(['steamid' => '76561198012345678', 'is_caster' => true])
+        $response = $this->withSession($this->loginAs('76561198012345678', caster: true))
             ->get('/admin/overlay/etf2l/roster?team_id=21747');
 
         $response->assertOk()
@@ -106,7 +106,7 @@ class Etf2lTeamsEndpointTest extends TestCase
 
     public function test_un_roster_sans_parametre_est_rejete(): void
     {
-        $this->withSession(['steamid' => '76561198012345678', 'is_caster' => true])
+        $this->withSession($this->loginAs('76561198012345678', caster: true))
             ->get('/admin/overlay/etf2l/roster')
             ->assertInvalid(['team_id']);
     }
@@ -121,7 +121,7 @@ class Etf2lTeamsEndpointTest extends TestCase
             'fetched_at' => time(),
         ]);
 
-        $this->withSession(['steamid' => '76561198012345678', 'is_caster' => true])
+        $this->withSession($this->loginAs('76561198012345678', caster: true))
             ->get('/admin/overlay/etf2l/roster?team_id=99999')
             ->assertOk()
             ->assertJson(['roster' => null]);

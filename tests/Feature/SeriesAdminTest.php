@@ -59,7 +59,7 @@ class SeriesAdminTest extends TestCase
      */
     private function adminSession(): array
     {
-        return ['steamid' => '76561198012345678', 'is_admin' => true];
+        return $this->loginAs('76561198012345678', admin: true);
     }
 
     /**

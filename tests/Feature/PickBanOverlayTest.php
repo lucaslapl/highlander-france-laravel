@@ -65,7 +65,7 @@ class PickBanOverlayTest extends TestCase
 
     public function test_un_caster_accede_a_l_outil(): void
     {
-        $this->withSession(['steamid' => '76561198012345678', 'is_caster' => true])
+        $this->withSession($this->loginAs('76561198012345678', caster: true))
             ->get('/admin/overlay/pickban')->assertOk();
     }
 
@@ -82,7 +82,7 @@ class PickBanOverlayTest extends TestCase
             ],
         ]);
 
-        $this->withSession(['steamid' => '76561198012345678', 'is_caster' => true])
+        $this->withSession($this->loginAs('76561198012345678', caster: true))
             ->get('/admin/overlay/pickban/'.self::TOKEN)
             ->assertOk()
             ->assertSee('Overlay Pick/Ban')
@@ -95,7 +95,7 @@ class PickBanOverlayTest extends TestCase
 
     public function test_la_creation_posse_six_cartes_selon_le_gabarit_du_format(): void
     {
-        $this->withSession(['steamid' => '76561198012345678', 'is_caster' => true])
+        $this->withSession($this->loginAs('76561198012345678', caster: true))
             ->post('/admin/overlay/pickban/create', [
                 'format' => '3_3',
                 'eyebrow' => 'ETF2L Highlander Saison 36 - Division 1 - Finale',
@@ -183,7 +183,7 @@ class PickBanOverlayTest extends TestCase
             ['map' => 'proot', 'image' => '', 'action' => 'ban', 'team' => 'b'],
         ];
 
-        $this->withSession(['steamid' => '76561198012345678', 'is_caster' => true])
+        $this->withSession($this->loginAs('76561198012345678', caster: true))
             ->post('/admin/overlay/pickban/'.self::TOKEN.'/update', [
                 'format' => '3_3',
                 'eyebrow' => '',
@@ -201,7 +201,7 @@ class PickBanOverlayTest extends TestCase
     {
         $this->seedPickBan(['format' => '3_3']);
 
-        $this->withSession(['steamid' => '76561198012345678', 'is_caster' => true])
+        $this->withSession($this->loginAs('76561198012345678', caster: true))
             ->post('/admin/overlay/pickban/'.self::TOKEN.'/update', [
                 'format' => '3_3',
                 'eyebrow' => 'ETF2L Highlander Saison 36',
@@ -231,7 +231,7 @@ class PickBanOverlayTest extends TestCase
     {
         $this->seedPickBan(['format' => '5_1']);
 
-        $this->withSession(['steamid' => '76561198012345678', 'is_caster' => true])
+        $this->withSession($this->loginAs('76561198012345678', caster: true))
             ->post('/admin/overlay/pickban/'.self::TOKEN.'/update', [
                 'format' => '5_1',
                 'eyebrow' => '',
@@ -256,7 +256,7 @@ class PickBanOverlayTest extends TestCase
     {
         $this->seedPickBan();
 
-        $this->withSession(['steamid' => '76561198012345678', 'is_caster' => true])
+        $this->withSession($this->loginAs('76561198012345678', caster: true))
             ->post('/admin/overlay/pickban/'.self::TOKEN.'/delete')
             ->assertRedirect('/admin/overlay/pickban');
 

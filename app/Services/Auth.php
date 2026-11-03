@@ -11,9 +11,45 @@ use Illuminate\Support\Facades\Session;
  * État d'authentification (session) — port du service Auth de l'ancien MVC.
  * La session est gérée par Laravel ; on expose la même API statique pour
  * ne pas réécrire toute la logique métier existante.
+ *
+ * Seul le SteamID64 est conservé en session : les rôles (admin, caster,
+ * prod) sont lus dans players_info à chaque vérification, afin qu'un
+ * changement de rôle (ajout ou révocation par un admin) prenne effet
+ * immédiatement, sans attendre la prochaine connexion du membre.
  */
 final class Auth
 {
+    /**
+     * Rôles du joueur connecté, lus dans la BDD (source de vérité).
+     *
+     * @return array{is_admin: bool, is_caster: bool, is_producer: bool}
+     */
+    private static function roles(): array
+    {
+        $empty = ['is_admin' => false, 'is_caster' => false, 'is_producer' => false];
+
+        $steamid64 = self::steamId64();
+
+        if ($steamid64 === null) {
+            return $empty;
+        }
+
+        $row = DB::table('players_info')
+            ->where('steamid', SteamId::toSteamId3($steamid64))
+            ->select('is_admin', 'is_caster', 'is_producer')
+            ->first();
+
+        if ($row === null) {
+            return $empty;
+        }
+
+        return [
+            'is_admin' => (int) $row->is_admin === 1,
+            'is_caster' => (int) $row->is_caster === 1,
+            'is_producer' => (int) $row->is_producer === 1,
+        ];
+    }
+
     public static function steamId64(): ?string
     {
         $value = Session::get('steamid');
@@ -28,17 +64,17 @@ final class Auth
 
     public static function isAdmin(): bool
     {
-        return Session::get('is_admin', false) === true;
+        return self::roles()['is_admin'];
     }
 
     public static function isCaster(): bool
     {
-        return Session::get('is_caster', false) === true;
+        return self::roles()['is_caster'];
     }
 
     public static function isProducer(): bool
     {
-        return Session::get('is_producer', false) === true;
+        return self::roles()['is_producer'];
     }
 
     /**
@@ -51,7 +87,9 @@ final class Auth
             return false;
         }
 
-        return self::isAdmin() || self::isCaster() || self::isProducer();
+        $roles = self::roles();
+
+        return $roles['is_admin'] || $roles['is_caster'] || $roles['is_producer'];
     }
 
     /**

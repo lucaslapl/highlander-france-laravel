@@ -155,7 +155,7 @@ class ManagedTeamsPublicTest extends TestCase
     {
         $this->insertTeam();
 
-        $this->withSession(['steamid' => '76561198999999999', 'is_admin' => true])
+        $this->withSession($this->loginAs('76561198999999999', admin: true))
             ->get('/equipes/france/editer')
             ->assertOk();
     }

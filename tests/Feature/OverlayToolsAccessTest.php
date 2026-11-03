@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace Tests\Feature;
 
+use App\Services\SteamId;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Tests\TestCase;
 
 /**
@@ -53,7 +55,7 @@ class OverlayToolsAccessTest extends TestCase
 
     public function test_un_caster_accede_au_hub_des_overlays_et_aux_outils(): void
     {
-        $session = ['steamid' => '76561198012345678', 'is_caster' => true];
+        $session = $this->loginAs('76561198012345678', caster: true);
 
         $this->withSession($session)->get('/admin/overlays-stream')->assertOk();
         $this->withSession($session)->get('/admin/overlay')->assertOk();
@@ -63,7 +65,7 @@ class OverlayToolsAccessTest extends TestCase
 
     public function test_un_membre_de_la_prod_accede_au_hub_des_overlays_et_aux_outils(): void
     {
-        $session = ['steamid' => '76561198012345678', 'is_producer' => true];
+        $session = $this->loginAs('76561198012345678', producer: true);
 
         $this->withSession($session)->get('/admin/overlays-stream')->assertOk();
         $this->withSession($session)->get('/admin/overlay')->assertOk();
@@ -73,7 +75,7 @@ class OverlayToolsAccessTest extends TestCase
 
     public function test_un_caster_n_accede_pas_au_rest_du_panel_admin(): void
     {
-        $session = ['steamid' => '76561198012345678', 'is_caster' => true];
+        $session = $this->loginAs('76561198012345678', caster: true);
 
         $this->withSession($session)->get('/admin/dashboard')->assertForbidden();
         $this->withSession($session)->get('/admin/list-staff')->assertForbidden();
@@ -83,7 +85,7 @@ class OverlayToolsAccessTest extends TestCase
 
     public function test_un_admin_conserve_l_acces_au_hub_des_overlays(): void
     {
-        $this->withSession(['steamid' => '76561198012345678', 'is_admin' => true])
+        $this->withSession($this->loginAs('76561198012345678', admin: true))
             ->get('/admin/overlays-stream')->assertOk();
     }
 
@@ -91,7 +93,7 @@ class OverlayToolsAccessTest extends TestCase
 
     public function test_le_hub_ne_montre_que_le_titre_et_les_six_outils(): void
     {
-        $response = $this->withSession(['steamid' => '76561198012345678', 'is_caster' => true])
+        $response = $this->withSession($this->loginAs('76561198012345678', caster: true))
             ->get('/admin/overlays-stream');
 
         $response->assertOk()
@@ -112,7 +114,7 @@ class OverlayToolsAccessTest extends TestCase
 
     public function test_les_pages_outils_overlay_ont_un_lien_de_retour_vers_le_hub(): void
     {
-        $session = ['steamid' => '76561198012345678', 'is_caster' => true];
+        $session = $this->loginAs('76561198012345678', caster: true);
 
         $this->withSession($session)->get('/admin/overlay')
             ->assertOk()
@@ -127,7 +129,7 @@ class OverlayToolsAccessTest extends TestCase
 
     public function test_le_lien_de_retour_d_un_admin_pointe_aussi_vers_le_hub(): void
     {
-        $this->withSession(['steamid' => '76561198012345678', 'is_admin' => true])
+        $this->withSession($this->loginAs('76561198012345678', admin: true))
             ->get('/admin/overlay')
             ->assertOk()
             ->assertSee('Retour aux overlays')
@@ -138,7 +140,7 @@ class OverlayToolsAccessTest extends TestCase
 
     public function test_le_hub_affiche_le_lien_de_retour_vers_le_dashboard_admin_pour_un_admin(): void
     {
-        $this->withSession(['steamid' => '76561198012345678', 'is_admin' => true])
+        $this->withSession($this->loginAs('76561198012345678', admin: true))
             ->get('/admin/overlays-stream')
             ->assertOk()
             ->assertSee('Retour au panel d\'administration', false)
@@ -147,8 +149,8 @@ class OverlayToolsAccessTest extends TestCase
 
     public function test_le_hub_n_affiche_pas_le_lien_du_dashboard_au_caster_ni_a_la_prod(): void
     {
-        $caster = ['steamid' => '76561198012345678', 'is_caster' => true];
-        $prod = ['steamid' => '76561198012345678', 'is_producer' => true];
+        $caster = $this->loginAs('76561198012345678', caster: true);
+        $prod = $this->loginAs('76561198012345678', producer: true);
 
         $this->withSession($caster)
             ->get('/admin/overlays-stream')
@@ -161,5 +163,43 @@ class OverlayToolsAccessTest extends TestCase
             ->assertOk()
             ->assertDontSee('Retour au panel d\'administration', false)
             ->assertDontSee('href="/admin/dashboard"', false);
+    }
+
+    // ─── Changement de rôle effectif sans reconnexion ─────────────────────
+
+    public function test_une_revocation_de_role_par_un_admin_prend_effet_sans_reconnexion(): void
+    {
+        $prod = $this->loginAs('76561198012345678', producer: true);
+
+        // Le membre de la prod a bien accès aux outils overlay.
+        $this->withSession($prod)->get('/admin/overlays-stream')->assertOk();
+
+        // Un admin retire son rôle prod via le panel (même session conservée).
+        $this->withSession($this->loginAs('76561198087654321', admin: true))
+            ->post('/api/admin/player-update', [
+                'target_steamid' => '76561198012345678',
+                'display_name' => 'MembreProd',
+                'country' => 'fr',
+            ])
+            ->assertRedirect();
+
+        // Sans reconnexion, l'accès aux outils overlay est désormais refusé.
+        $this->withSession($prod)->get('/admin/overlays-stream')->assertForbidden();
+        $this->withSession($prod)->get('/admin/overlay')->assertForbidden();
+        $this->withSession($prod)->get('/admin/series')->assertForbidden();
+    }
+
+    public function test_un_octroi_de_role_prend_effet_sans_reconnexion(): void
+    {
+        $session = $this->loginAs('76561198012345678');
+
+        $this->withSession($session)->get('/admin/overlays-stream')->assertForbidden();
+
+        // Un admin ajoute le rôle caster dans la BDD (même session conservée).
+        DB::table('players_info')
+            ->where('steamid', SteamId::toSteamId3('76561198012345678'))
+            ->update(['is_caster' => 1]);
+
+        $this->withSession($session)->get('/admin/overlays-stream')->assertOk();
     }
 }

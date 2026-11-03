@@ -2,11 +2,36 @@
 
 namespace Tests;
 
+use App\Services\SteamId;
 use Illuminate\Foundation\Testing\TestCase as BaseTestCase;
 use Illuminate\Support\Facades\DB;
 
 abstract class TestCase extends BaseTestCase
 {
+    /**
+     * Connecte un joueur en test : crée (ou met à jour) sa ligne players_info
+     * avec les rôles demandés, puis retourne la session (steamid seul).
+     * Comme en production, App\Services\Auth lit les rôles dans la BDD à
+     * chaque requête — les flags de rôle ne sont plus stockés en session.
+     *
+     * @return array{steamid: string}
+     */
+    protected function loginAs(string $steamid64, bool $admin = false, bool $caster = false, bool $producer = false): array
+    {
+        DB::table('players_info')->updateOrInsert(
+            ['steamid' => SteamId::toSteamId3($steamid64)],
+            [
+                'name' => 'TestPlayer',
+                'display_name' => 'TestPlayer',
+                'is_admin' => (int) $admin,
+                'is_caster' => (int) $caster,
+                'is_producer' => (int) $producer,
+            ],
+        );
+
+        return ['steamid' => $steamid64];
+    }
+
     /**
      * Amorce le cache ETF2L (table etf2l_api_cache) pour la liste des
      * compétitions interrogée par le remplissage assisté des outils
